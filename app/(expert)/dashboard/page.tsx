@@ -26,15 +26,55 @@ export default async function DashboardPage() {
           Sei loggato come <strong style={{ color: 'var(--text)' }}>{user.email}</strong>
         </p>
 
-        <div style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: '20px', padding: '32px', maxWidth: '500px'
-        }}>
-          <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.7 }}>
-            🎉 Login funzionante! La dashboard completa verrà costruita nel Giorno 6.
-          </p>
-        </div>
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', maxWidth: '900px' }}>
+
+  {/* Card genera prodotto */}
+  <a href="/generate" style={{ textDecoration: 'none' }}>
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px solid rgba(124,92,252,0.4)',
+      borderRadius: 20,
+      padding: '32px',
+      cursor: 'pointer',
+      transition: 'border-color 0.2s',
+    }}>
+      <div style={{ fontSize: 32, marginBottom: 16 }}>✦</div>
+      <h2 style={{ color: '#E8EDF8', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 20, margin: '0 0 8px 0' }}>
+        Genera prodotto AI
+      </h2>
+      <p style={{ color: '#6B7A99', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
+        Trasforma la tua metodologia in un prodotto digitale. L'AI usa solo le tue parole.
+      </p>
+      <div style={{ marginTop: 20, color: '#7C5CFC', fontSize: 13, fontWeight: 600 }}>
+        Inizia →
       </div>
+    </div>
+  </a>
+
+  {/* Card profilo pubblico */}
+  <a href="/onboarding" style={{ textDecoration: 'none' }}>
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px solid rgba(99,130,255,0.15)',
+      borderRadius: 20,
+      padding: '32px',
+      cursor: 'pointer',
+    }}>
+      <div style={{ fontSize: 32, marginBottom: 16 }}>⚙</div>
+      <h2 style={{ color: '#E8EDF8', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 20, margin: '0 0 8px 0' }}>
+        Aggiorna metodologia
+      </h2>
+      <p style={{ color: '#6B7A99', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
+        Modifica il tuo profilo, metodologia e dettagli del prodotto.
+      </p>
+      <div style={{ marginTop: 20, color: '#6385FF', fontSize: 13, fontWeight: 600 }}>
+        Modifica →
+      </div>
+    </div>
+  </a>
+
+</div>
+</div>
     </main>
   )
 }
