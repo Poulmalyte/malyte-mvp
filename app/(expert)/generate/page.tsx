@@ -22,7 +22,7 @@ export default function GeneratePage() {
       const res = await fetch('/api/generate-product', { method: 'POST' })
       const data = await res.json()
 
-      if (!res.ok) throw new Error(data.error || 'Errore generazione')
+      if (!res.ok) throw new Error(data.error || 'Generation error')
       setGenerated(data)
     } catch (err: any) {
       setError(err.message)
@@ -57,20 +57,20 @@ export default function GeneratePage() {
   const content = generated?.generated_content
 
   return (
-    <div style={{ minHeight: '100vh', background: '#070B14', padding: '40px 20px', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#070B14', padding: '40px 20px', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 40 }}>
-          <h1 style={{ color: '#E8EDF8', fontSize: 28, fontFamily: 'Syne, sans-serif', fontWeight: 800, margin: 0 }}>
-            Genera Prodotto AI
+          <h1 style={{ color: '#E8EDF8', fontSize: 28, fontFamily: 'Satoshi, sans-serif', fontWeight: 800, margin: 0 }}>
+            Generate AI Product
           </h1>
           <p style={{ color: '#6B7A99', marginTop: 8, fontSize: 15 }}>
-            L'AI strutturerà il tuo prodotto usando <strong style={{ color: '#A78BFA' }}>solo la tua metodologia</strong>. Nulla viene inventato.
+            The AI will structure your product using <strong style={{ color: '#A78BFA' }}>only your methodology</strong>. Nothing is invented.
           </p>
         </div>
 
-        {/* Avviso filosofia */}
+        {/* Philosophy notice */}
         {!generated && !loading && (
           <div style={{
             background: 'rgba(77,255,210,0.06)',
@@ -80,14 +80,14 @@ export default function GeneratePage() {
             marginBottom: 32,
           }}>
             <p style={{ color: '#4DFFD2', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
-              ✦ L'AI agisce come <strong>archivista</strong>, non come inventore.<br />
-              Tutto l'output è tracciato alla fonte — se un'informazione manca, verrà segnalata come "Da specificare" invece di essere inventata.<br />
-              <strong>Dovrai approvare il risultato prima che venga salvato.</strong>
+              ✦ The AI acts as an <strong>archivist</strong>, not an inventor.<br />
+              All output is traced back to the source — if information is missing, it will be flagged as "To be specified" instead of being invented.<br />
+              <strong>You must approve the result before it gets saved.</strong>
             </p>
           </div>
         )}
 
-        {/* Bottone genera */}
+        {/* Generate button */}
         {!generated && (
           <button
             onClick={handleGenerate}
@@ -105,7 +105,7 @@ export default function GeneratePage() {
               transition: 'opacity 0.2s',
             }}
           >
-            {loading ? '⟳ Generazione in corso...' : '✦ Genera il tuo prodotto digitale'}
+            {loading ? '⟳ Generating...' : '✦ Generate your digital product'}
           </button>
         )}
 
@@ -113,12 +113,12 @@ export default function GeneratePage() {
         {loading && (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ color: '#7C5CFC', fontSize: 40, marginBottom: 16 }}>◌</div>
-            <p style={{ color: '#6B7A99', fontSize: 15 }}>Claude sta leggendo la tua metodologia...</p>
-            <p style={{ color: '#4B5568', fontSize: 13, marginTop: 8 }}>Solo le tue parole verranno usate.</p>
+            <p style={{ color: '#6B7A99', fontSize: 15 }}>Claude is reading your methodology...</p>
+            <p style={{ color: '#4B5568', fontSize: 13, marginTop: 8 }}>Only your words will be used.</p>
           </div>
         )}
 
-        {/* Errore */}
+        {/* Error */}
         {error && (
           <div style={{
             background: 'rgba(255,80,80,0.08)',
@@ -133,11 +133,11 @@ export default function GeneratePage() {
           </div>
         )}
 
-        {/* Output generato */}
+        {/* Generated output */}
         {content && (
           <div style={{ marginTop: 16 }}>
 
-            {/* Avviso approvazione */}
+            {/* Approval notice */}
             <div style={{
               background: 'rgba(124,92,252,0.08)',
               border: '1px solid rgba(124,92,252,0.3)',
@@ -147,19 +147,19 @@ export default function GeneratePage() {
               color: '#A78BFA',
               fontSize: 14,
             }}>
-              ⚠ Rivedi attentamente prima di approvare. Le sezioni "Da specificare dall'expert" richiedono integrazione manuale.
+              ⚠ Review carefully before approving. Sections marked "To be specified" require manual input.
             </div>
 
-            {/* Nome + tagline */}
-            <Section title="Prodotto">
-              <Field label="Nome" value={content.product_name} />
+            {/* Name + tagline */}
+            <Section title="Product">
+              <Field label="Name" value={content.product_name} />
               <Field label="Tagline" value={content.tagline} />
-              <Field label="Per chi è" value={content.for_who} />
-              <Field label="Non adatto a" value={content.not_for_who} />
+              <Field label="Who it's for" value={content.for_who} />
+              <Field label="Not suitable for" value={content.not_for_who} />
             </Section>
 
-            {/* Cosa ottieni */}
-            <Section title="Cosa ottieni">
+            {/* What you get */}
+            <Section title="What you get">
               {content.what_you_get?.map((item: string, i: number) => (
                 <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid rgba(99,130,255,0.08)', color: '#E8EDF8', fontSize: 14 }}>
                   · {item}
@@ -167,8 +167,8 @@ export default function GeneratePage() {
               ))}
             </Section>
 
-            {/* Principi metodologia */}
-            <Section title="Principi della metodologia">
+            {/* Methodology principles */}
+            <Section title="Methodology principles">
               {content.methodology_principles?.map((p: any, i: number) => (
                 <div key={i} style={{ marginBottom: 20, padding: 16, background: '#0D1525', borderRadius: 10 }}>
                   <div style={{ color: '#A78BFA', fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{p.title}</div>
@@ -178,8 +178,8 @@ export default function GeneratePage() {
               ))}
             </Section>
 
-            {/* Risultati attesi */}
-            <Section title="Risultati attesi">
+            {/* Expected results */}
+            <Section title="Expected results">
               {content.expected_results?.map((r: any, i: number) => (
                 <div key={i} style={{ marginBottom: 14, padding: 14, background: '#0D1525', borderRadius: 10 }}>
                   <div style={{ color: '#E8EDF8', fontSize: 14, marginBottom: 4 }}>✓ {r.result}</div>
@@ -188,13 +188,13 @@ export default function GeneratePage() {
               ))}
             </Section>
 
-            {/* Struttura programma */}
-            <Section title="Struttura programma">
-              <Field label="Durata" value={content.program_structure?.duration} />
-              <Field label="Frequenza" value={content.program_structure?.frequency} />
+            {/* Program structure */}
+            <Section title="Program structure">
+              <Field label="Duration" value={content.program_structure?.duration} />
+              <Field label="Frequency" value={content.program_structure?.frequency} />
             </Section>
 
-            {/* Note generazione */}
+            {/* Generation notes */}
             {content.generation_notes && (
               <div style={{
                 background: 'rgba(255,200,50,0.06)',
@@ -209,7 +209,7 @@ export default function GeneratePage() {
               </div>
             )}
 
-            {/* Bottoni azione */}
+            {/* Action buttons */}
             <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
               <button
                 onClick={() => { setGenerated(null); setSaved(false) }}
@@ -224,7 +224,7 @@ export default function GeneratePage() {
                   cursor: 'pointer',
                 }}
               >
-                ↺ Rigenera
+                ↺ Regenerate
               </button>
 
               <button
@@ -242,7 +242,7 @@ export default function GeneratePage() {
                   cursor: saving || saved ? 'not-allowed' : 'pointer',
                 }}
               >
-                {saved ? '✓ Salvato — redirect...' : saving ? 'Salvataggio...' : '✓ Approvo e pubblico'}
+                {saved ? '✓ Saved — redirecting...' : saving ? 'Saving...' : '✓ Approve and publish'}
               </button>
             </div>
           </div>
@@ -252,7 +252,6 @@ export default function GeneratePage() {
   )
 }
 
-// Componenti helper
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 28 }}>
@@ -280,12 +279,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Field({ label, value }: { label: string; value: string }) {
-  const isMissing = !value || value.toLowerCase().includes('da specificare')
+  const isMissing = !value || value.toLowerCase().includes('to be specified')
   return (
     <div style={{ padding: '10px 0', borderBottom: '1px solid rgba(99,130,255,0.08)' }}>
       <div style={{ color: '#6B7A99', fontSize: 12, marginBottom: 4 }}>{label}</div>
       <div style={{ color: isMissing ? '#FF6B6B' : '#E8EDF8', fontSize: 14 }}>
-        {value || 'Da specificare dall\'expert'}
+        {value || 'To be specified by the expert'}
       </div>
     </div>
   )

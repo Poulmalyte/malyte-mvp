@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-
+import SignOutButton from './SignOutButton'
 
 export default async function MyPlansPage() {
   const supabase = await createServerSupabaseClient()
@@ -18,17 +18,18 @@ export default async function MyPlansPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#F5F4F0', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>
 
-     
-
       <div style={{ background: '#14182A', padding: '24px 24px 36px' }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <Link href="/marketplace" style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none' }}>
               ← Marketplace
             </Link>
-            <Link href="/account" style={{ fontSize: 13, color: '#6B7A99', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.1)', padding: '6px 14px', borderRadius: 100 }}>
-              Account
-            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Link href="/account" style={{ fontSize: 13, color: '#6B7A99', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.1)', padding: '6px 14px', borderRadius: 100 }}>
+                Account
+              </Link>
+              <SignOutButton />
+            </div>
           </div>
           <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 26, color: '#F1F3F9', margin: '0 0 6px' }}>
             My Plans

@@ -5,18 +5,18 @@ import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 const categories = [
-  { id: 'fitness', label: '🏋️ Fitness & Allenamento' },
-  { id: 'nutrition', label: '🥗 Nutrizione' },
-  { id: 'skincare', label: '✨ Skincare & Bellezza' },
+  { id: 'fitness', label: '🏋️ Fitness & Training' },
+  { id: 'nutrition', label: '🥗 Nutrition' },
+  { id: 'skincare', label: '✨ Skincare & Beauty' },
   { id: 'mental', label: '🧠 Mental Wellness' },
   { id: 'running', label: '🏃 Running & Endurance' },
   { id: 'yoga', label: '💆 Yoga & Mindfulness' },
 ]
 
 const pricingModels = [
-  { id: 'one_time', label: '💳 Pagamento unico', desc: 'Il cliente paga una volta e ha accesso per sempre' },
-  { id: 'subscription', label: '🔄 Abbonamento mensile', desc: 'Il cliente paga ogni mese per accesso continuato' },
-  { id: 'bundle', label: '📦 Bundle', desc: 'Offri base + premium a prezzi diversi' },
+  { id: 'one_time', label: '💳 One-time payment', desc: 'Client pays once and gets lifetime access' },
+  { id: 'subscription', label: '🔄 Monthly subscription', desc: 'Client pays monthly for continued access' },
+  { id: 'bundle', label: '📦 Bundle', desc: 'Offer base + premium at different price points' },
 ]
 
 export default function OnboardingPage() {
@@ -57,7 +57,6 @@ export default function OnboardingPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      // Carica i file su Storage
       const materialUrls: string[] = []
       if (files && files.length > 0) {
         for (let i = 0; i < files.length; i++) {
@@ -72,7 +71,6 @@ export default function OnboardingPage() {
 
       const expertSlug = generateSlug(name)
 
-      // Salva il profilo expert
       const { error: expertError } = await supabase
         .from('experts')
         .upsert({
@@ -88,12 +86,11 @@ export default function OnboardingPage() {
         })
 
       if (expertError) {
-        setError('Errore nel salvataggio profilo: ' + expertError.message)
+        setError('Error saving profile: ' + expertError.message)
         setLoading(false)
         return
       }
 
-      // Crea il prodotto base
       const { error: productError } = await supabase
         .from('products')
         .insert({
@@ -106,7 +103,7 @@ export default function OnboardingPage() {
         })
 
       if (productError) {
-        setError('Errore nella creazione prodotto: ' + productError.message)
+        setError('Error creating product: ' + productError.message)
         setLoading(false)
         return
       }
@@ -114,7 +111,7 @@ export default function OnboardingPage() {
       router.push('/dashboard')
 
     } catch {
-      setError('Errore imprevisto. Riprova.')
+      setError('Unexpected error. Please try again.')
       setLoading(false)
     }
   }
@@ -126,7 +123,7 @@ export default function OnboardingPage() {
       <div style={{ maxWidth: '640px', margin: '0 auto' }}>
 
         {/* Logo */}
-        <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: '22px', marginBottom: '40px' }}>
+        <div style={{ fontFamily: 'Satoshi', fontWeight: 800, fontSize: '22px', marginBottom: '40px' }}>
           maly<span style={{ color: 'var(--neon)' }}>te</span>
         </div>
 
@@ -143,22 +140,22 @@ export default function OnboardingPage() {
         {step === 1 && (
           <div>
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '8px', letterSpacing: '2px', textTransform: 'uppercase' }}>
-              Passo 1 di 3
+              Step 1 of 3
             </div>
-            <h1 style={{ fontFamily: 'Syne', fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>
-              Chi sei? 👋
+            <h1 style={{ fontFamily: 'Satoshi', fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>
+              Who are you? 👋
             </h1>
             <p style={{ color: 'var(--muted)', fontSize: '15px', marginBottom: '36px', lineHeight: 1.6 }}>
-              Inizia con le basi. Questi dati appariranno sul tuo profilo pubblico.
+              Start with the basics. This information will appear on your public profile.
             </p>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Nome completo</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Full name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="es. Marco Bianchi"
+                placeholder="e.g. John Smith"
                 style={{
                   width: '100%', padding: '12px 16px', borderRadius: '10px',
                   background: 'var(--surface)', border: '1px solid var(--border)',
@@ -168,12 +165,12 @@ export default function OnboardingPage() {
             </div>
 
             <div style={{ marginBottom: '28px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>La tua professione</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Your profession</label>
               <input
                 type="text"
                 value={profession}
                 onChange={(e) => setProfession(e.target.value)}
-                placeholder="es. Personal Trainer — Forza e Ipertrofia"
+                placeholder="e.g. Personal Trainer — Strength & Hypertrophy"
                 style={{
                   width: '100%', padding: '12px 16px', borderRadius: '10px',
                   background: 'var(--surface)', border: '1px solid var(--border)',
@@ -183,10 +180,11 @@ export default function OnboardingPage() {
             </div>
 
             <div style={{ marginBottom: '36px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '12px' }}>In quale categoria operi?</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '12px' }}>What category do you work in?</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                 {categories.map((cat) => (
                   <button
+                    type="button"
                     key={cat.id}
                     onClick={() => setCategory(cat.id)}
                     style={{
@@ -207,12 +205,12 @@ export default function OnboardingPage() {
 
             <button
               onClick={() => {
-                if (!name || !profession || !category) { setError('Compila tutti i campi e seleziona una categoria'); return }
+                if (!name || !profession || !category) { setError('Please fill in all fields and select a category'); return }
                 setError(''); setStep(2)
               }}
               style={{ width: '100%', padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg, #7C5CFC, #5B3FD4)', color: 'white', fontWeight: 600, fontSize: '15px', border: 'none', cursor: 'pointer' }}
             >
-              Continua →
+              Continue →
             </button>
           </div>
         )}
@@ -221,57 +219,57 @@ export default function OnboardingPage() {
         {step === 2 && (
           <div>
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '8px', letterSpacing: '2px', textTransform: 'uppercase' }}>
-              Passo 2 di 3
+              Step 2 of 3
             </div>
-            <h1 style={{ fontFamily: 'Syne', fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>
-              Il tuo metodo 🧬
+            <h1 style={{ fontFamily: 'Satoshi', fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>
+              Your method 🧬
             </h1>
             <p style={{ color: 'var(--muted)', fontSize: '15px', marginBottom: '36px', lineHeight: 1.6 }}>
-              Più dettagli dai, migliore sarà il prodotto digitale che l&apos;AI genererà per te.
+              The more detail you provide, the better the digital product the AI will generate for you.
             </p>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Come si chiama il tuo metodo?</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>What is your method called?</label>
               <input
                 type="text"
                 value={methodologyName}
                 onChange={(e) => setMethodologyName(e.target.value)}
-                placeholder="es. Metodo 3F — Forza, Forma, Funzione"
+                placeholder="e.g. The 3F Method — Force, Form, Function"
                 style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '15px', outline: 'none' }}
               />
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Descrivi la tua metodologia</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Describe your methodology</label>
               <textarea
                 value={methodologyDesc}
                 onChange={(e) => setMethodologyDesc(e.target.value)}
-                placeholder="es. Il mio approccio si basa su 3 pilastri..."
+                placeholder="e.g. My approach is based on 3 pillars..."
                 rows={4}
-                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '15px', outline: 'none', resize: 'vertical', lineHeight: 1.6, fontFamily: 'DM Sans, sans-serif' }}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '15px', outline: 'none', resize: 'vertical', lineHeight: 1.6, fontFamily: 'Inter, sans-serif' }}
               />
             </div>
 
             <div style={{ marginBottom: '28px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Che risultati ottieni con i tuoi clienti?</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>What results do you achieve with your clients?</label>
               <textarea
                 value={resultsDesc}
                 onChange={(e) => setResultsDesc(e.target.value)}
-                placeholder="es. I miei clienti perdono in media 8kg in 12 settimane..."
+                placeholder="e.g. My clients lose an average of 8kg in 12 weeks..."
                 rows={3}
-                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '15px', outline: 'none', resize: 'vertical', lineHeight: 1.6, fontFamily: 'DM Sans, sans-serif' }}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '15px', outline: 'none', resize: 'vertical', lineHeight: 1.6, fontFamily: 'Inter, sans-serif' }}
               />
             </div>
 
             <div style={{ marginBottom: '36px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Carica i tuoi materiali (PDF, documenti) — opzionale</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Upload your materials (PDF, documents) — optional</label>
               <div
                 style={{ border: '2px dashed var(--border)', borderRadius: '12px', padding: '32px', textAlign: 'center', cursor: 'pointer' }}
                 onClick={() => document.getElementById('file-upload')?.click()}
               >
                 <div style={{ fontSize: '28px', marginBottom: '8px' }}>📁</div>
                 <div style={{ fontSize: '14px', color: 'var(--muted)' }}>
-                  {files && files.length > 0 ? `${files.length} file selezionati` : 'Clicca per caricare — PDF, DOCX (Max 50MB)'}
+                  {files && files.length > 0 ? `${files.length} file(s) selected` : 'Click to upload — PDF, DOCX (Max 50MB)'}
                 </div>
               </div>
               <input id="file-upload" type="file" multiple accept=".pdf,.doc,.docx" onChange={(e) => setFiles(e.target.files)} style={{ display: 'none' }} />
@@ -280,15 +278,15 @@ export default function OnboardingPage() {
             {error && <div style={{ background: 'rgba(255,92,122,0.1)', border: '1px solid rgba(255,92,122,0.3)', borderRadius: '10px', padding: '12px 16px', color: '#FF5C7A', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setStep(1)} style={{ padding: '14px 24px', borderRadius: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 500, fontSize: '15px', cursor: 'pointer' }}>← Indietro</button>
+              <button onClick={() => setStep(1)} style={{ padding: '14px 24px', borderRadius: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 500, fontSize: '15px', cursor: 'pointer' }}>← Back</button>
               <button
                 onClick={() => {
-                  if (!methodologyName || !methodologyDesc || !resultsDesc) { setError('Compila tutti i campi obbligatori'); return }
+                  if (!methodologyName || !methodologyDesc || !resultsDesc) { setError('Please fill in all required fields'); return }
                   setError(''); setStep(3)
                 }}
                 style={{ flex: 1, padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg, #7C5CFC, #5B3FD4)', color: 'white', fontWeight: 600, fontSize: '15px', border: 'none', cursor: 'pointer' }}
               >
-                Continua →
+                Continue →
               </button>
             </div>
           </div>
@@ -298,51 +296,51 @@ export default function OnboardingPage() {
         {step === 3 && (
           <div>
             <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '8px', letterSpacing: '2px', textTransform: 'uppercase' }}>
-              Passo 3 di 3
+              Step 3 of 3
             </div>
-            <h1 style={{ fontFamily: 'Syne', fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>
-              Il tuo prodotto 🚀
+            <h1 style={{ fontFamily: 'Satoshi', fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>
+              Your product 🚀
             </h1>
             <p style={{ color: 'var(--muted)', fontSize: '15px', marginBottom: '36px', lineHeight: 1.6 }}>
-              Definisci il tuo prodotto digitale e il prezzo. Potrai modificarlo in qualsiasi momento.
+              Define your digital product and price. You can edit it at any time.
             </p>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Nome del prodotto</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Product name</label>
               <input
                 type="text"
                 value={productTitle}
                 onChange={(e) => setProductTitle(e.target.value)}
-                placeholder="es. Piano Trasformazione 12 Settimane"
+                placeholder="e.g. 12-Week Transformation Plan"
                 style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '15px', outline: 'none' }}
               />
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Descrizione breve del prodotto</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Short product description</label>
               <textarea
                 value={productDesc}
                 onChange={(e) => setProductDesc(e.target.value)}
-                placeholder="es. Piano personalizzato di 12 settimane per trasformare il tuo corpo..."
+                placeholder="e.g. A personalized 12-week plan to transform your body..."
                 rows={3}
-                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '15px', outline: 'none', resize: 'vertical', lineHeight: 1.6, fontFamily: 'DM Sans, sans-serif' }}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '15px', outline: 'none', resize: 'vertical', lineHeight: 1.6, fontFamily: 'Inter, sans-serif' }}
               />
             </div>
 
             <div style={{ marginBottom: '28px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Prezzo (€)</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>Price (€)</label>
               <input
                 type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                placeholder="es. 49"
+                placeholder="e.g. 49"
                 min="1"
                 style={{ width: '200px', padding: '12px 16px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '15px', outline: 'none' }}
               />
             </div>
 
             <div style={{ marginBottom: '36px' }}>
-              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '12px' }}>Modello di vendita</label>
+              <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '12px' }}>Sales model</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {pricingModels.map((model) => (
                   <button
@@ -367,10 +365,10 @@ export default function OnboardingPage() {
             {error && <div style={{ background: 'rgba(255,92,122,0.1)', border: '1px solid rgba(255,92,122,0.3)', borderRadius: '10px', padding: '12px 16px', color: '#FF5C7A', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setStep(2)} style={{ padding: '14px 24px', borderRadius: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 500, fontSize: '15px', cursor: 'pointer' }}>← Indietro</button>
+              <button onClick={() => setStep(2)} style={{ padding: '14px 24px', borderRadius: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 500, fontSize: '15px', cursor: 'pointer' }}>← Back</button>
               <button
                 onClick={() => {
-                  if (!productTitle || !productDesc || !price || !pricingModel) { setError('Compila tutti i campi e seleziona un modello di vendita'); return }
+                  if (!productTitle || !productDesc || !price || !pricingModel) { setError('Please fill in all fields and select a sales model'); return }
                   handleSubmit()
                 }}
                 disabled={loading}
@@ -381,7 +379,7 @@ export default function OnboardingPage() {
                   fontWeight: 700, fontSize: '15px', border: 'none', cursor: loading ? 'not-allowed' : 'pointer'
                 }}
               >
-                {loading ? 'Salvataggio...' : '🎉 Lancia il mio prodotto!'}
+                {loading ? 'Saving...' : '🎉 Launch my product!'}
               </button>
             </div>
           </div>

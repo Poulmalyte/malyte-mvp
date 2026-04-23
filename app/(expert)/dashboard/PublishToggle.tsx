@@ -35,7 +35,7 @@ export default function PublishToggle({ productId, isPublished }: { productId: s
         transition: 'all 0.2s',
       }}
     >
-      {loading ? '...' : published ? 'Nascondi' : 'Pubblica'}
+      {loading ? '...' : published ? 'Hide' : 'Publish'}
     </button>
   )
 }

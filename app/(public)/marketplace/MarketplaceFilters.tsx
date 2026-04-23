@@ -18,7 +18,7 @@ export default function MarketplaceFilters({
 
   function applyFilters(cat?: string, q?: string) {
     const params = new URLSearchParams()
-    if (cat && cat !== 'Tutti') params.set('cat', cat)
+    if (cat && cat !== 'All') params.set('cat', cat)
     if (q) params.set('q', q)
     const qs = params.toString()
     router.push(qs ? `${pathname}?${qs}` : pathname)
@@ -26,11 +26,11 @@ export default function MarketplaceFilters({
 
   return (
     <div style={{ marginBottom: 32 }}>
-      {/* Ricerca */}
+      {/* Search */}
       <div style={{ marginBottom: 20 }}>
         <input
           type="text"
-          placeholder="Cerca per nome prodotto o expert..."
+          placeholder="Search by product name or expert..."
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && applyFilters(activeCategory, query)}
@@ -44,15 +44,15 @@ export default function MarketplaceFilters({
             fontSize: 15,
             outline: 'none',
             boxSizing: 'border-box',
-            fontFamily: 'DM Sans, sans-serif',
+            fontFamily: 'Inter, sans-serif',
           }}
         />
       </div>
 
-      {/* Filtri categoria */}
+      {/* Category filters */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {categories.map(cat => {
-          const isActive = cat === 'Tutti' ? !activeCategory : activeCategory === cat
+          const isActive = cat === 'All' ? !activeCategory : activeCategory === cat
           return (
             <button
               key={cat}
@@ -66,7 +66,7 @@ export default function MarketplaceFilters({
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 400,
                 cursor: 'pointer',
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'Inter, sans-serif',
                 transition: 'all 0.15s',
               }}
             >
