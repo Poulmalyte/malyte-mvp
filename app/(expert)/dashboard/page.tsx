@@ -2,8 +2,8 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import PublishToggle from './PublishToggle'
-import SignOutButton from './SignOutButton'
 import ShareButton from './ShareButton'
+import ProfileMenu from './ProfileMenu'
 
 async function getExpertData(supabase: any, userId: string) {
   const { data: expert } = await supabase
@@ -165,18 +165,17 @@ export default async function DashboardPage({
               <p style={{ color: '#8B92A5', fontSize: 13, margin: 0 }}>{user.email}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Link href="/profile" style={{ textDecoration: 'none' }}>
-                <div style={{ color: '#8B92A5', fontWeight: 500, fontSize: 13, padding: '10px 18px', borderRadius: 100, border: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>
-                  Edit Profile
-                </div>
-              </Link>
               <ShareButton slug={expert?.slug || ''} />
-              <SignOutButton />
               <Link href="/create-product" style={{ textDecoration: 'none' }}>
                 <div style={{ background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 22px', borderRadius: 100, whiteSpace: 'nowrap' }}>
                   + Create product
                 </div>
               </Link>
+              <ProfileMenu
+                name={expert?.name || ''}
+                email={user.email || ''}
+                slug={expert?.slug || ''}
+              />
             </div>
           </div>
 
