@@ -1,86 +1,159 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+interface Props {
+  name: string
+  email: string
+}
 
-export default async function MyPlansPage() {
-  const supabase = await createServerSupabaseClient()
+export default function ClientProfileMenu({ name, email }: Props) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) redirect('/login')
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
-  const { data: purchases } = await supabase
-    .from('purchases')
-    .select(`*, products ( title, description, duration_months, experts ( name, category ) )`)
-    .eq('client_id', user.id)
-    .order('created_at', { ascending: false })
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
+
+  const initials = name
+    ? name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : email?.slice(0, 2).toUpperCase() || '?'
+
+  const menuItems = [
+    { label: 'My plans',          href: '/my-plans',     icon: '◈' },
+    { label: 'Browse marketplace', href: '/marketplace',  icon: '◎' },
+    { label: 'Account',           href: '/account',      icon: '▦' },
+  ]
 
   return (
-    <main style={{ minHeight: '100vh', background: '#F5F4F0', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>
+    <div ref={ref} style={{ position: 'relative' }}>
 
-     
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: 36, height: 36, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #4DFFD2, #6385FF)',
+          border: open ? '2px solid #4DFFD2' : '2px solid rgba(77,255,210,0.3)',
+          color: '#070B14', fontWeight: 700, fontSize: 13,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'border-color 0.2s',
+          fontFamily: "'Satoshi', 'Inter', sans-serif",
+        }}
+      >
+        {initials}
+      </button>
 
-      <div style={{ background: '#14182A', padding: '24px 24px 36px' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <Link href="/marketplace" style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none' }}>
-              ← Marketplace
-            </Link>
-            <Link href="/account" style={{ fontSize: 13, color: '#6B7A99', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.1)', padding: '6px 14px', borderRadius: 100 }}>
-              Account
-            </Link>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+          width: 230, background: '#14182A',
+          border: '1px solid rgba(77,255,210,0.15)',
+          borderRadius: 16, overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          zIndex: 100,
+          animation: 'fadeIn 0.15s ease',
+        }}>
+
+          {/* header */}
+          <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(77,255,210,0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#E8EDF8', fontFamily: "'Satoshi', sans-serif" }}>
+                {name || 'Client'}
+              </span>
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: '#4DFFD2',
+                background: 'rgba(77,255,210,0.12)',
+                border: '1px solid rgba(77,255,210,0.25)',
+                padding: '2px 8px', borderRadius: 100, letterSpacing: '0.3px',
+              }}>
+                CLIENT
+              </span>
+            </div>
+            <span style={{ fontSize: 12, color: '#6B7A99', wordBreak: 'break-all' }}>{email}</span>
           </div>
-          <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 26, color: '#F1F3F9', margin: '0 0 6px' }}>
-            My Plans
-          </h1>
-          <p style={{ color: '#8B92A5', fontSize: 13, margin: 0 }}>
-            Your personalized programs
-          </p>
-        </div>
-      </div>
 
-      <div style={{ flex: 1, maxWidth: 720, margin: '0 auto', width: '100%', padding: '24px 24px 48px' }}>
-        {!purchases || purchases.length === 0 ? (
-          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '48px 24px', textAlign: 'center', border: '1px solid #EDE9E2' }}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>📭</div>
-            <p style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>No plans yet</p>
-            <p style={{ color: '#9CA3AF', fontSize: 14, marginBottom: 24 }}>Browse the marketplace to find your perfect program</p>
-            <Link href="/marketplace" style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100, textDecoration: 'none' }}>
-              Browse marketplace →
-            </Link>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {purchases.map((purchase: any) => {
-              const product = purchase.products
-              const expert = product?.experts
-              return (
-                <div key={purchase.id} style={{ background: '#FFFFFF', borderRadius: 14, padding: '20px 24px', border: '1px solid #EDE9E2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                  <div>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#10B981', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                      {expert?.category} · {expert?.name}
-                    </p>
-                    <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700, fontSize: 17, color: '#111827', marginBottom: 4 }}>
-                      {product?.title}
-                    </h2>
-                    <p style={{ fontSize: 12, color: '#9CA3AF' }}>
-                      {product?.duration_months} month program
-                    </p>
-                  </div>
-                  <Link href={`/my-plans/${purchase.id}/plan`} style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 20px', borderRadius: 100, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    Open plan →
-                  </Link>
+          {/* nav items */}
+          <div style={{ padding: '8px 0' }}>
+            {menuItems.map(item => (
+              <Link key={item.label} href={item.href} onClick={() => setOpen(false)} style={{ textDecoration: 'none' }}>
+                <div
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 16px', fontSize: 13, color: '#C4CBE0', fontWeight: 500,
+                    cursor: 'pointer', transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span style={{ fontSize: 14, opacity: 0.6 }}>{item.icon}</span>
+                  {item.label}
                 </div>
-              )
-            })}
+              </Link>
+            ))}
           </div>
-        )}
-      </div>
 
-      <div style={{ background: '#1E2337', padding: '20px 24px', textAlign: 'center' }}>
-        <p style={{ fontSize: 11, color: '#4B5563', margin: 0 }}>© 2025 Malyte · AI-powered wellness programs</p>
-      </div>
+          {/* subscription */}
+          <div style={{ borderTop: '1px solid rgba(77,255,210,0.08)', padding: '8px 0' }}>
+            <Link href="/subscription" onClick={() => setOpen(false)} style={{ textDecoration: 'none' }}>
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 16px', fontSize: 13, color: '#C4CBE0', fontWeight: 500,
+                  cursor: 'pointer', transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <span style={{ fontSize: 14, opacity: 0.6 }}>◇</span>
+                Subscription
+              </div>
+            </Link>
+          </div>
 
-    </main>
+          {/* sign out */}
+          <div style={{ borderTop: '1px solid rgba(77,255,210,0.08)', padding: '8px 0' }}>
+            <button
+              onClick={handleSignOut}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 16px', fontSize: 13, color: '#FF6B6B', fontWeight: 500,
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                fontFamily: "'Satoshi', 'Inter', sans-serif", transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,107,107,0.06)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <span style={{ fontSize: 14, opacity: 0.7 }}>→</span>
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
   )
 }
