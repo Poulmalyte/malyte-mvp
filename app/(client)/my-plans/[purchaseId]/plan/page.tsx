@@ -49,7 +49,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
   return (
     <main style={{ minHeight: '100vh', background: '#F5F4F0', fontFamily: "'Inter', sans-serif" }}>
 
-      {/* HERO DARK */}
       <div style={{ background: '#14182A', padding: '24px 24px 32px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -66,7 +65,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
             {currentWeekData?.plan_title || `Week ${currentWeek}`}
           </p>
 
-          {/* Progress bar */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 11, color: '#6B7A99' }}>Week {currentWeek} of {totalWeeks}</span>
@@ -77,7 +75,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
             </div>
           </div>
 
-          {/* Week navigation */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {weeks.map((w: any) => (
               <Link key={w.week_number} href={`/my-plans/${purchaseId}/plan?week=${w.week_number}`} style={{ textDecoration: 'none' }}>
@@ -96,12 +93,10 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
         </div>
       </div>
 
-      {/* BODY */}
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '28px 24px 80px' }}>
 
         {currentWeekData ? (
           <>
-            {/* 7 giorni */}
             {currentWeekData.days?.map((day: any, dayIdx: number) => (
               <div key={dayIdx} style={{ background: '#fff', borderRadius: 14, border: '1px solid #EDE9E2', padding: '20px 24px', marginBottom: 12 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
@@ -128,7 +123,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               </div>
             ))}
 
-            {/* Weekly Wisdom */}
             {(currentWeekData.common_mistakes || currentWeekData.success_metrics || currentWeekData.tips) && (
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #EDE9E2', padding: '20px 24px', marginBottom: 12 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
@@ -159,10 +153,9 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               </div>
             )}
 
-            {/* CTA check-in o genera settimana */}
             <div style={{ marginTop: 20 }}>
               {currentWeek < totalWeeks ? (
-                <WeeklyCheckinButton purchaseId={purchaseId} currentWeek={currentWeek} />
+                <WeeklyCheckinButton purchaseId={purchaseId} weekNumber={currentWeek} />
               ) : (
                 <div style={{ background: 'rgba(77,255,210,0.08)', border: '1px solid rgba(77,255,210,0.2)', borderRadius: 12, padding: '16px 20px', textAlign: 'center' }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#4DFFD2', margin: 0 }}>🎉 Program complete!</p>
@@ -173,7 +166,11 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
         ) : (
           <div style={{ textAlign: 'center', padding: '48px 0' }}>
             <p style={{ color: '#9CA3AF', fontSize: 14 }}>No plan data available for this week.</p>
-            <GenerateNextWeekButton purchaseId={purchaseId} weekNumber={currentWeek} />
+            <GenerateNextWeekButton
+              purchaseId={purchaseId}
+              nextWeek={currentWeek}
+              totalWeeks={totalWeeks}
+            />
           </div>
         )}
       </div>
