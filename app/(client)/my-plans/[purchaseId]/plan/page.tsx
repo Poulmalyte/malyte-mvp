@@ -1,7 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import ClientProfileMenu from './ClientProfileMenu'
 
 export default async function MyPlansPage() {
   const supabase = await createServerSupabaseClient()
@@ -18,14 +17,12 @@ export default async function MyPlansPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#F5F4F0', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>
 
+      {/* HERO DARK */}
       <div style={{ background: '#14182A', padding: '24px 24px 36px' }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <Link href="/marketplace" style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none' }}>
-              ← Marketplace
-            </Link>
-            <ClientProfileMenu email={user.email || ''} />
-          </div>
+          <Link href="/marketplace" style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none', display: 'inline-block', marginBottom: 20 }}>
+            ← Marketplace
+          </Link>
           <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 26, color: '#F1F3F9', margin: '0 0 6px' }}>
             My Plans
           </h1>
@@ -35,13 +32,15 @@ export default async function MyPlansPage() {
         </div>
       </div>
 
+      {/* BODY LIGHT */}
       <div style={{ flex: 1, maxWidth: 720, margin: '0 auto', width: '100%', padding: '24px 24px 48px' }}>
         {!purchases || purchases.length === 0 ? (
           <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '48px 24px', textAlign: 'center', border: '1px solid #EDE9E2' }}>
             <div style={{ fontSize: 40, marginBottom: 16 }}>📭</div>
             <p style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>No plans yet</p>
             <p style={{ color: '#9CA3AF', fontSize: 14, marginBottom: 24 }}>Browse the marketplace to find your perfect program</p>
-            <Link href="/marketplace" style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100, textDecoration: 'none' }}>
+            <Link href="/marketplace"
+              style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100, textDecoration: 'none' }}>
               Browse marketplace →
             </Link>
           </div>
@@ -63,7 +62,8 @@ export default async function MyPlansPage() {
                       {product?.duration_months} month program
                     </p>
                   </div>
-                  <Link href={`/my-plans/${purchase.id}/plan`} style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 20px', borderRadius: 100, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <Link href={`/my-plans/${purchase.id}/plan`}
+                    style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 20px', borderRadius: 100, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     Open plan →
                   </Link>
                 </div>
@@ -73,6 +73,7 @@ export default async function MyPlansPage() {
         )}
       </div>
 
+      {/* FOOTER DARK */}
       <div style={{ background: '#1E2337', padding: '20px 24px', textAlign: 'center' }}>
         <p style={{ fontSize: 11, color: '#4B5563', margin: 0 }}>© 2025 Malyte · AI-powered wellness programs</p>
       </div>
