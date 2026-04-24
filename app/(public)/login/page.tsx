@@ -21,8 +21,8 @@ const PANELS = [
     headline: ['A plan built', 'just for you.'],
     sub: 'Browse programs from top wellness experts. Answer a few questions. Get your personalized AI plan.',
     steps: [
-      { n: '01', title: 'Browse expert programs',    sub: 'Nutritionists, trainers, skincare specialists' },
-      { n: '02', title: 'Answer a few questions',    sub: 'Tell us your goals, habits and starting point' },
+      { n: '01', title: 'Browse expert programs',     sub: 'Nutritionists, trainers, skincare specialists' },
+      { n: '02', title: 'Answer a few questions',     sub: 'Tell us your goals, habits and starting point' },
       { n: '03', title: 'Get your personalized plan', sub: 'AI generates a plan built around you, instantly' },
     ],
   },
@@ -31,6 +31,7 @@ const PANELS = [
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
@@ -40,7 +41,6 @@ export default function LoginPage() {
   const supabase = createClient()
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // ── Auto-switch panels ────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
       setFading(true)
@@ -52,7 +52,6 @@ export default function LoginPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // ── Animated orb ──────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -118,7 +117,6 @@ export default function LoginPage() {
     }
   }, [])
 
-  // ── Auth handlers ─────────────────────────────────────────────
   async function handleLogin() {
     setLoading(true)
     setError('')
@@ -156,6 +154,23 @@ export default function LoginPage() {
     transition: 'border-color 0.2s',
   }
 
+  // Icona occhio aperto
+  const EyeOpen = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  )
+
+  // Icona occhio chiuso
+  const EyeOff = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  )
+
   return (
     <main style={{
       display: 'flex',
@@ -185,14 +200,12 @@ export default function LoginPage() {
           pointerEvents: 'none',
         }} />
 
-        {/* logo */}
         <Link href="/" style={{ textDecoration: 'none', position: 'relative', zIndex: 2, marginBottom: '72px', display: 'block' }}>
           <span style={{ fontWeight: 800, fontSize: '22px', color: '#E8EDF8', letterSpacing: '-0.5px' }}>
             malyte<span style={{ color: '#4DFFD2' }}>.</span>
           </span>
         </Link>
 
-        {/* animated content */}
         <div style={{
           position: 'relative',
           zIndex: 2,
@@ -201,16 +214,11 @@ export default function LoginPage() {
           transform: fading ? 'translateY(8px)' : 'translateY(0)',
           transition: 'opacity 0.4s ease, transform 0.4s ease',
         }}>
-          {/* tag pill */}
           <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '5px 12px',
-            borderRadius: '100px',
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '5px 12px', borderRadius: '100px',
             border: '1px solid rgba(77,255,210,0.25)',
-            background: 'rgba(77,255,210,0.06)',
-            marginBottom: '20px',
+            background: 'rgba(77,255,210,0.06)', marginBottom: '20px',
           }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4DFFD2', display: 'block' }} />
             <span style={{ fontSize: '12px', fontWeight: '500', color: '#4DFFD2', letterSpacing: '0.3px' }}>
@@ -219,31 +227,21 @@ export default function LoginPage() {
           </div>
 
           <h1 style={{
-            fontSize: 'clamp(40px, 4.5vw, 62px)',
-            fontWeight: '800',
-            lineHeight: '1.06',
-            letterSpacing: '-2px',
-            color: '#E8EDF8',
-            margin: '0 0 22px',
+            fontSize: 'clamp(40px, 4.5vw, 62px)', fontWeight: '800',
+            lineHeight: '1.06', letterSpacing: '-2px', color: '#E8EDF8', margin: '0 0 22px',
           }}>
             {panel.headline[0]}<br />
             <span style={{
               background: 'linear-gradient(135deg, #A78BFA 0%, #4DFFD2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
             }}>
               {panel.headline[1]}
             </span>
           </h1>
 
           <p style={{
-            fontSize: '17px',
-            fontWeight: '300',
-            lineHeight: '1.7',
-            color: 'rgba(232,237,248,0.50)',
-            margin: '0 0 48px',
-            maxWidth: '370px',
+            fontSize: '17px', fontWeight: '300', lineHeight: '1.7',
+            color: 'rgba(232,237,248,0.50)', margin: '0 0 48px', maxWidth: '370px',
           }}>
             {panel.sub}
           </p>
@@ -263,15 +261,9 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* dot indicators */}
         <div style={{
-          position: 'absolute',
-          bottom: '36px',
-          left: '64px',
-          zIndex: 2,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
+          position: 'absolute', bottom: '36px', left: '64px', zIndex: 2,
+          display: 'flex', alignItems: 'center', gap: '8px',
         }}>
           {PANELS.map((_, i) => (
             <button
@@ -281,13 +273,10 @@ export default function LoginPage() {
                 setTimeout(() => { setPanelIndex(i); setFading(false) }, 400)
               }}
               style={{
-                width: i === panelIndex ? '20px' : '6px',
-                height: '6px',
+                width: i === panelIndex ? '20px' : '6px', height: '6px',
                 borderRadius: '100px',
                 background: i === panelIndex ? '#4DFFD2' : 'rgba(232,237,248,0.20)',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0,
+                border: 'none', cursor: 'pointer', padding: 0,
                 transition: 'all 0.4s ease',
               }}
             />
@@ -297,14 +286,10 @@ export default function LoginPage() {
 
       {/* RIGHT PANEL */}
       <div style={{
-        flex: '0 0 420px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        flex: '0 0 420px', display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '40px 32px',
         background: 'rgba(13,21,37,0.65)',
-        backdropFilter: 'blur(28px)',
-        WebkitBackdropFilter: 'blur(28px)',
+        backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
         borderLeft: '1px solid rgba(99,130,255,0.10)',
       }}>
         <div style={{ width: '100%', maxWidth: '340px' }}>
@@ -346,6 +331,7 @@ export default function LoginPage() {
             <div style={{ flex: 1, height: '1px', background: 'rgba(99,130,255,0.12)' }} />
           </div>
 
+          {/* EMAIL */}
           <div style={{ marginBottom: '14px' }}>
             <label style={{ fontSize: '12px', fontWeight: '500', color: 'rgba(232,237,248,0.45)', display: 'block', marginBottom: '6px', letterSpacing: '0.4px' }}>
               EMAIL
@@ -361,31 +347,46 @@ export default function LoginPage() {
             />
           </div>
 
+          {/* PASSWORD con occhietto */}
           <div style={{ marginBottom: '22px' }}>
             <label style={{ fontSize: '12px', fontWeight: '500', color: 'rgba(232,237,248,0.45)', display: 'block', marginBottom: '6px', letterSpacing: '0.4px' }}>
               PASSWORD
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              onKeyDown={e => e.key === 'Enter' && handleLogin()}
-              style={inputStyle}
-              onFocus={e => (e.target.style.borderColor = 'rgba(124,92,252,0.65)')}
-              onBlur={e  => (e.target.style.borderColor = 'rgba(99,130,255,0.22)')}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                style={{ ...inputStyle, paddingRight: '44px' }}
+                onFocus={e => (e.target.style.borderColor = 'rgba(124,92,252,0.65)')}
+                onBlur={e  => (e.target.style.borderColor = 'rgba(99,130,255,0.22)')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                style={{
+                  position: 'absolute', right: '14px', top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: showPassword ? '#A78BFA' : 'rgba(232,237,248,0.35)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: 0, transition: 'color 0.2s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#A78BFA')}
+                onMouseLeave={e => (e.currentTarget.style.color = showPassword ? '#A78BFA' : 'rgba(232,237,248,0.35)')}
+              >
+                {showPassword ? <EyeOff /> : <EyeOpen />}
+              </button>
+            </div>
           </div>
 
           {error && (
             <div style={{
-              background: 'rgba(255,92,122,0.08)',
-              border: '1px solid rgba(255,92,122,0.25)',
-              borderRadius: '10px',
-              padding: '12px 14px',
-              color: '#FF5C7A',
-              fontSize: '13px',
-              marginBottom: '16px',
+              background: 'rgba(255,92,122,0.08)', border: '1px solid rgba(255,92,122,0.25)',
+              borderRadius: '10px', padding: '12px 14px',
+              color: '#FF5C7A', fontSize: '13px', marginBottom: '16px',
             }}>
               {error}
             </div>
