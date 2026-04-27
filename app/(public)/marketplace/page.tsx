@@ -71,10 +71,10 @@ const HOW_IT_WORKS = [
 ]
 
 const TRUST_POINTS = [
-  { icon: '⚡', text: 'Plan delivered in a few seconds' },
-  { icon: '🔄', text: 'Adapts weekly to your real progress' },
-  { icon: '💳', text: 'One-time or monthly subscription' },
-  { icon: '✅', text: 'Backed by real client results' },
+  { icon: '⚡', text: 'Delivered in seconds' },
+  { icon: '🔄', text: 'Adapts every week' },
+  { icon: '💳', text: 'One-time or subscription' },
+  { icon: '✅', text: 'Real client results' },
 ]
 
 export default async function MarketplacePage({
@@ -287,16 +287,11 @@ export default async function MarketplacePage({
             <p style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 24 }}>
               Why people choose Malyte
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 520, margin: '0 auto' }}>
               {TRUST_POINTS.map((point, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 28px' }}>
-                    <span style={{ fontSize: 20 }}>{point.icon}</span>
-                    <span style={{ fontSize: 13, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>{point.text}</span>
-                  </div>
-                  {i < TRUST_POINTS.length - 1 && (
-                    <div style={{ width: 1, height: 32, background: '#E8EDF8', flexShrink: 0 }} />
-                  )}
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F5F7FA', borderRadius: 12, padding: '14px 18px' }}>
+                  <span style={{ fontSize: 22, flexShrink: 0 }}>{point.icon}</span>
+                  <span style={{ fontSize: 13, color: '#334155', fontWeight: 500, lineHeight: 1.4 }}>{point.text}</span>
                 </div>
               ))}
             </div>
