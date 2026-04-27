@@ -70,13 +70,12 @@ const HOW_IT_WORKS = [
   },
 ]
 
-const TRUST_POINTS_TOP = [
+const TRUST_POINTS = [
   { icon: '⚡', text: 'Plan delivered in a few seconds' },
   { icon: '🔄', text: 'Adapts weekly to your real progress' },
-  { icon: '💳', text: 'Choose your model: one-time purchase or monthly subscription' },
+  { icon: '💳', text: 'One-time or monthly subscription' },
+  { icon: '✅', text: 'Backed by real client results' },
 ]
-
-const TRUST_POINT_BOTTOM = { icon: '✅', text: 'Backed by real client results' }
 
 export default async function MarketplacePage({
   searchParams,
@@ -284,23 +283,22 @@ export default async function MarketplacePage({
           </div>
 
           {/* TRUST BAR */}
-          <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E8EDF8', padding: '32px 36px', marginBottom: 48 }}>
+          <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E8EDF8', padding: '28px 36px', marginBottom: 48 }}>
             <p style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 24 }}>
               Why people choose Malyte
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 48, flexWrap: 'wrap' }}>
-                {TRUST_POINTS_TOP.map((point, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20, flexShrink: 0 }}>{point.icon}</span>
-                    <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>{point.text}</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {TRUST_POINTS.map((point, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 28px' }}>
+                    <span style={{ fontSize: 20 }}>{point.icon}</span>
+                    <span style={{ fontSize: 13, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>{point.text}</span>
                   </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 20, flexShrink: 0 }}>{TRUST_POINT_BOTTOM.icon}</span>
-                <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>{TRUST_POINT_BOTTOM.text}</span>
-              </div>
+                  {i < TRUST_POINTS.length - 1 && (
+                    <div style={{ width: 1, height: 32, background: '#E8EDF8', flexShrink: 0 }} />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
