@@ -7,6 +7,7 @@ import { createBrowserClient } from '@supabase/ssr'
 
 export default function MarketplaceNav() {
   const [user, setUser] = useState<any>(null)
+  const [loaded, setLoaded] = useState(false)
   const router = useRouter()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +15,10 @@ export default function MarketplaceNav() {
   )
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user)
+      setLoaded(true)
+    })
   }, [])
 
   const handleSignOut = async () => {
@@ -23,7 +27,44 @@ export default function MarketplaceNav() {
     router.refresh()
   }
 
-  if (!user) return null
+  if (!loaded) return null
+
+  if (!user) return (
+    <div style={{
+      position: 'fixed', top: 0, right: 0,
+      padding: '16px 24px',
+      display: 'flex', alignItems: 'center', gap: '12px',
+      zIndex: 100,
+    }}>
+      <Link href="/login" style={{
+        background: '#FFFFFF',
+        border: '1px solid #E8EDF8',
+        borderRadius: '100px',
+        padding: '8px 20px',
+        color: '#0F172A',
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '14px',
+        fontWeight: 500,
+        textDecoration: 'none',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      }}>
+        Log in
+      </Link>
+      <Link href="/signup" style={{
+        background: '#7C5CFC',
+        border: 'none',
+        borderRadius: '100px',
+        padding: '8px 20px',
+        color: '#fff',
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '14px',
+        fontWeight: 600,
+        textDecoration: 'none',
+      }}>
+        Sign up free
+      </Link>
+    </div>
+  )
 
   return (
     <div style={{
@@ -32,7 +73,7 @@ export default function MarketplaceNav() {
       display: 'flex', alignItems: 'center', gap: '12px',
       zIndex: 100,
     }}>
-      <Link href="/account" style={{
+      <Link href="/dashboard" style={{
         background: '#FFFFFF',
         border: '1px solid #E8EDF8',
         borderRadius: '100px',
@@ -44,7 +85,7 @@ export default function MarketplaceNav() {
         textDecoration: 'none',
         boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
       }}>
-        Account
+        Dashboard
       </Link>
       <button onClick={handleSignOut} style={{
         background: '#FFFFFF',
