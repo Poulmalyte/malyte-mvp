@@ -5,7 +5,6 @@ import ClientProfileMenu from './ClientProfileMenu'
 
 export default async function MyPlansPage() {
   const supabase = await createServerSupabaseClient()
-
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) redirect('/login')
 
@@ -16,31 +15,38 @@ export default async function MyPlansPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <main style={{ minHeight: '100vh', background: '#F5F4F0', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>
+    <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>
 
-      <div style={{ background: '#14182A', padding: '24px 24px 36px' }}>
+      {/* HEADER */}
+      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '0 24px' }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <Link href="/marketplace" style={{ fontSize: 12, color: '#6B7280', textDecoration: 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0' }}>
+            <Link href="/marketplace" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>
               ← Marketplace
             </Link>
+            <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 18, color: '#0F172A' }}>
+              malyte<span style={{ color: '#7C5CFC' }}>.</span>
+            </span>
             <ClientProfileMenu email={user.email || ''} />
           </div>
-          <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 26, color: '#F1F3F9', margin: '0 0 6px' }}>
-            My Plans
-          </h1>
-          <p style={{ color: '#8B92A5', fontSize: 13, margin: 0 }}>
-            Your personalized programs
-          </p>
+          <div style={{ paddingBottom: '24px' }}>
+            <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 26, color: '#0F172A', margin: '0 0 4px' }}>
+              My Plans
+            </h1>
+            <p style={{ color: '#94A3B8', fontSize: 13, margin: 0 }}>
+              Your personalized programs
+            </p>
+          </div>
         </div>
       </div>
 
+      {/* BODY */}
       <div style={{ flex: 1, maxWidth: 720, margin: '0 auto', width: '100%', padding: '24px 24px 48px' }}>
         {!purchases || purchases.length === 0 ? (
-          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '48px 24px', textAlign: 'center', border: '1px solid #EDE9E2' }}>
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '48px 24px', textAlign: 'center', border: '1px solid #E8EDF8' }}>
             <div style={{ fontSize: 40, marginBottom: 16 }}>📭</div>
-            <p style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>No plans yet</p>
-            <p style={{ color: '#9CA3AF', fontSize: 14, marginBottom: 24 }}>Browse the marketplace to find your perfect program</p>
+            <p style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700, fontSize: 18, color: '#0F172A', marginBottom: 8 }}>No plans yet</p>
+            <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 24 }}>Browse the marketplace to find your perfect program</p>
             <Link href="/marketplace" style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100, textDecoration: 'none' }}>
               Browse marketplace →
             </Link>
@@ -51,19 +57,29 @@ export default async function MyPlansPage() {
               const product = purchase.products
               const expert = product?.experts
               return (
-                <div key={purchase.id} style={{ background: '#FFFFFF', borderRadius: 14, padding: '20px 24px', border: '1px solid #EDE9E2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                <div key={purchase.id} style={{
+                  background: '#FFFFFF', borderRadius: 14, padding: '20px 24px',
+                  border: '1px solid #E8EDF8',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 16, flexWrap: 'wrap',
+                }}>
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#10B981', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: '#7C5CFC', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
                       {expert?.category} · {expert?.name}
                     </p>
-                    <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700, fontSize: 17, color: '#111827', marginBottom: 4 }}>
+                    <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700, fontSize: 17, color: '#0F172A', marginBottom: 4 }}>
                       {product?.title}
                     </h2>
-                    <p style={{ fontSize: 12, color: '#9CA3AF' }}>
+                    <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>
                       {product?.duration_months} month program
                     </p>
                   </div>
-                  <Link href={`/my-plans/${purchase.id}/plan`} style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 20px', borderRadius: 100, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <Link href={`/my-plans/${purchase.id}/plan`} style={{
+                    background: '#7C5CFC', color: '#fff',
+                    fontWeight: 600, fontSize: 13, padding: '10px 20px',
+                    borderRadius: 100, textDecoration: 'none',
+                    whiteSpace: 'nowrap', flexShrink: 0,
+                  }}>
                     Open plan →
                   </Link>
                 </div>
@@ -73,10 +89,10 @@ export default async function MyPlansPage() {
         )}
       </div>
 
-      <div style={{ background: '#1E2337', padding: '20px 24px', textAlign: 'center' }}>
-        <p style={{ fontSize: 11, color: '#4B5563', margin: 0 }}>© 2025 Malyte · AI-powered wellness programs</p>
+      {/* FOOTER */}
+      <div style={{ borderTop: '1px solid #E8EDF8', padding: '20px 24px', textAlign: 'center', background: '#FFFFFF' }}>
+        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
       </div>
-
     </main>
   )
 }

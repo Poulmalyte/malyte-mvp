@@ -27,45 +27,37 @@ export default function MarketplaceNav() {
 
   return (
     <div style={{
-      position: 'fixed',
-      top: 0,
-      right: 0,
+      position: 'fixed', top: 0, right: 0,
       padding: '16px 24px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
+      display: 'flex', alignItems: 'center', gap: '12px',
       zIndex: 100,
     }}>
-      <Link
-        href="/account"
-        style={{
-          background: '#0D1525',
-          border: '1px solid rgba(99,130,255,0.2)',
-          borderRadius: '100px',
-          padding: '8px 18px',
-          color: '#E8EDF8',
-          fontFamily: 'Inter, sans-serif',
-          fontSize: '14px',
-          fontWeight: 500,
-          textDecoration: 'none',
-        }}
-      >
+      <Link href="/account" style={{
+        background: '#FFFFFF',
+        border: '1px solid #E8EDF8',
+        borderRadius: '100px',
+        padding: '8px 18px',
+        color: '#0F172A',
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '14px',
+        fontWeight: 500,
+        textDecoration: 'none',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      }}>
         Account
       </Link>
-      <button
-        onClick={handleSignOut}
-        style={{
-          background: 'transparent',
-          border: '1px solid rgba(255,100,100,0.3)',
-          borderRadius: '100px',
-          padding: '8px 18px',
-          color: '#FF8080',
-          fontFamily: 'Inter, sans-serif',
-          fontSize: '14px',
-          fontWeight: 500,
-          cursor: 'pointer',
-        }}
-      >
+      <button onClick={handleSignOut} style={{
+        background: '#FFFFFF',
+        border: '1px solid #FECACA',
+        borderRadius: '100px',
+        padding: '8px 18px',
+        color: '#EF4444',
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '14px',
+        fontWeight: 500,
+        cursor: 'pointer',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      }}>
         Sign out
       </button>
     </div>

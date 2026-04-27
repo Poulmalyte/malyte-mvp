@@ -27,21 +27,9 @@ export default function WeeklyCheckinPage() {
   useEffect(() => {
     const fetchQuestions = async () => {
       const supabase = createClient()
-
-      const { data: purchase } = await supabase
-        .from('purchases')
-        .select('product_id')
-        .eq('id', purchaseId)
-        .single()
-
+      const { data: purchase } = await supabase.from('purchases').select('product_id').eq('id', purchaseId).single()
       if (!purchase) { setFetching(false); return }
-
-      const { data: questions } = await supabase
-        .from('product_checkin_questions')
-        .select('*')
-        .eq('product_id', purchase.product_id)
-        .order('order_index', { ascending: true })
-
+      const { data: questions } = await supabase.from('product_checkin_questions').select('*').eq('product_id', purchase.product_id).order('order_index', { ascending: true })
       setQuestions(questions || [])
       setFetching(false)
     }
@@ -53,38 +41,20 @@ export default function WeeklyCheckinPage() {
   const handleSubmit = async () => {
     if (!allAnswered) return
     setLoading(true)
-
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-
-      // Save check-in
-      const { error: checkinError } = await supabase
-        .from('weekly_checkins')
-        .insert({
-          purchase_id: purchaseId,
-          client_id: user.id,
-          week_number: weekNumber,
-          answers,
-        })
-
+      const { error: checkinError } = await supabase.from('weekly_checkins').insert({
+        purchase_id: purchaseId, client_id: user.id, week_number: weekNumber, answers,
+      })
       if (checkinError) throw checkinError
-
-      // Generate next week with checkin context
       const res = await fetch('/api/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          purchaseId,
-          weekNumber: weekNumber + 1,
-          questionnaireAnswers: {},
-          checkinAnswers: answers,
-        }),
+        body: JSON.stringify({ purchaseId, weekNumber: weekNumber + 1, questionnaireAnswers: {}, checkinAnswers: answers }),
       })
-
       if (!res.ok) throw new Error('Error generating next week')
-
       router.push(`/my-plans/${purchaseId}/plan`)
     } catch (err) {
       console.error(err)
@@ -94,63 +64,70 @@ export default function WeeklyCheckinPage() {
     }
   }
 
-  if (fetching) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <p style={{ color: 'var(--muted)' }}>Loading...</p>
-      </div>
-    )
-  }
+  if (fetching) return (
+    <div style={{ minHeight: '100vh', background: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>Loading...</p>
+    </div>
+  )
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-2xl mx-auto px-6 py-12">
+    <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
 
-        <div className="mb-10">
-          <Link href={`/my-plans/${purchaseId}/plan`} className="text-sm mb-6 inline-block" style={{ color: 'var(--muted)' }}>
+      {/* HEADER */}
+      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '16px 24px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link href={`/my-plans/${purchaseId}/plan`} style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>
             ← Back to my plan
           </Link>
-          <div className="text-4xl mb-4">📊</div>
-          <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: 'Satoshi, sans-serif', color: 'var(--text)' }}>
+          <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A' }}>
+            malyte<span style={{ color: '#7C5CFC' }}>.</span>
+          </span>
+        </div>
+      </div>
+
+      {/* HERO */}
+      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '28px 24px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>📊</div>
+          <h1 style={{ fontFamily: 'Satoshi, sans-serif', fontSize: 26, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>
             Week {weekNumber} Check-in
           </h1>
-          <p style={{ color: 'var(--muted)' }}>
+          <p style={{ color: '#64748B', fontSize: 13 }}>
             Your answers will be used to personalize Week {weekNumber + 1}
           </p>
         </div>
+      </div>
 
+      {/* BODY */}
+      <div style={{ flex: 1, maxWidth: 640, margin: '0 auto', width: '100%', padding: '24px 24px 40px' }}>
         {questions.length === 0 ? (
-          <div className="rounded-2xl p-6 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <p style={{ color: 'var(--muted)', marginBottom: 16 }}>No check-in questions defined for this product.</p>
-            <button
-              onClick={() => router.push(`/my-plans/${purchaseId}/plan`)}
-              style={{ background: 'var(--violet)', color: '#fff', border: 'none', borderRadius: 100, padding: '12px 24px', cursor: 'pointer', fontWeight: 600 }}
-            >
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '32px 24px', textAlign: 'center', border: '1px solid #E8EDF8' }}>
+            <p style={{ color: '#94A3B8', marginBottom: 16 }}>No check-in questions defined for this product.</p>
+            <button onClick={() => router.push(`/my-plans/${purchaseId}/plan`)}
+              style={{ background: '#7C5CFC', color: '#fff', border: 'none', borderRadius: 100, padding: '12px 24px', cursor: 'pointer', fontWeight: 600 }}>
               Back to plan →
             </button>
           </div>
         ) : (
           <>
-            <div className="space-y-6 mb-10">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
               {questions.map((q, i) => (
-                <div key={q.id} className="rounded-2xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <label className="block text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>
-                    <span style={{ color: 'var(--neon)' }}>{i + 1}.</span> {q.question_text}
+                <div key={q.id} style={{ background: '#FFFFFF', borderRadius: 14, padding: '16px 20px', border: '1px solid #E8EDF8' }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0F172A', marginBottom: 12 }}>
+                    <span style={{ color: '#7C5CFC', marginRight: 6 }}>{i + 1}.</span>{q.question_text}
                   </label>
 
                   {q.question_type === 'select' && q.options && (
-                    <div className="grid grid-cols-1 gap-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {q.options.map(opt => (
-                        <button
-                          key={opt}
-                          onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
-                          className="text-left px-4 py-3 rounded-xl text-sm font-medium"
+                        <button key={opt} onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
                           style={{
-                            background: answers[q.id] === opt ? 'rgba(77,255,210,0.2)' : 'var(--surface2)',
-                            border: `1px solid ${answers[q.id] === opt ? 'var(--neon)' : 'transparent'}`,
-                            color: answers[q.id] === opt ? 'var(--neon)' : 'var(--muted)',
-                          }}
-                        >
+                            textAlign: 'left', padding: '10px 14px', borderRadius: 10,
+                            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                            background: answers[q.id] === opt ? '#EDE9FE' : '#F5F7FA',
+                            border: `1px solid ${answers[q.id] === opt ? '#7C5CFC' : '#E8EDF8'}`,
+                            color: answers[q.id] === opt ? '#7C5CFC' : '#334155',
+                          }}>
                           {opt}
                         </button>
                       ))}
@@ -163,33 +140,39 @@ export default function WeeklyCheckinPage() {
                       placeholder={q.question_type === 'number' ? 'Enter a number...' : 'Write here...'}
                       value={answers[q.id] || ''}
                       onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                      className="w-full rounded-xl px-4 py-3 text-sm resize-none outline-none"
                       style={{
-                        background: 'var(--surface2)',
-                        border: '1px solid var(--border)',
-                        color: 'var(--text)',
+                        width: '100%', borderRadius: 10, padding: '10px 14px',
+                        fontSize: 13, resize: 'none', outline: 'none',
+                        background: '#F5F7FA', border: '1px solid #E8EDF8',
+                        color: '#0F172A', fontFamily: 'Inter, sans-serif',
+                        boxSizing: 'border-box', transition: 'border-color 0.2s',
                       }}
+                      onFocus={e => (e.target.style.borderColor = '#7C5CFC')}
+                      onBlur={e => (e.target.style.borderColor = '#E8EDF8')}
                     />
                   )}
                 </div>
               ))}
             </div>
 
-            <button
-              onClick={handleSubmit}
-              disabled={!allAnswered || loading}
-              className="w-full py-4 rounded-full font-bold text-lg"
+            <button onClick={handleSubmit} disabled={!allAnswered || loading}
               style={{
-                background: allAnswered && !loading ? 'var(--neon)' : 'var(--surface2)',
-                color: allAnswered && !loading ? '#070B14' : 'var(--muted)',
-                border: 'none',
+                width: '100%', padding: '15px', borderRadius: 12,
+                fontSize: 15, fontWeight: 700, border: 'none',
                 cursor: allAnswered && !loading ? 'pointer' : 'not-allowed',
-              }}
-            >
+                background: allAnswered && !loading ? '#7C5CFC' : '#E8EDF8',
+                color: allAnswered && !loading ? '#fff' : '#94A3B8',
+                fontFamily: 'Inter, sans-serif',
+              }}>
               {loading ? `✨ Generating Week ${weekNumber + 1}...` : `Save & unlock Week ${weekNumber + 1} →`}
             </button>
           </>
         )}
+      </div>
+
+      {/* FOOTER */}
+      <div style={{ borderTop: '1px solid #E8EDF8', padding: '16px 24px', textAlign: 'center', background: '#FFFFFF' }}>
+        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
       </div>
     </div>
   )
