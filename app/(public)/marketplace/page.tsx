@@ -71,7 +71,6 @@ const HOW_IT_WORKS = [
 ]
 
 const TRUST_POINTS = [
-  { icon: '🎓', text: 'Created by certified experts, not AI alone' },
   { icon: '⚡', text: 'Plan delivered in a few seconds' },
   { icon: '🔄', text: 'Adapts weekly to your real progress' },
   { icon: '💳', text: 'Choose your model: one-time purchase or monthly subscription' },
