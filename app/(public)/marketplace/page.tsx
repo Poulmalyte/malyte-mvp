@@ -287,7 +287,7 @@ export default async function MarketplacePage({
             <p style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 24 }}>
               Why people choose Malyte
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '24px 48px' }}>
               {TRUST_POINTS.map((point, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <span style={{ fontSize: 20, flexShrink: 0 }}>{point.icon}</span>
