@@ -150,7 +150,7 @@ export default async function MarketplacePage({
 
       {/* CATEGORY TABS */}
       <div style={{ borderBottom: '1px solid #E8EDF8', background: '#FFFFFF', overflowX: 'auto' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', gap: 0 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', gap: 0, justifyContent: 'center' }}>
           {CATEGORIES.map(cat => {
             const active = goal === cat.id || (!goal && cat.id === '')
             return (
