@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 
 interface LoginModalProps {
   onClose: () => void
+  onSwitchToSignup?: () => void
 }
 
-export default function LoginModal({ onClose }: LoginModalProps) {
+export default function LoginModal({ onClose, onSwitchToSignup }: LoginModalProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -162,9 +162,9 @@ export default function LoginModal({ onClose }: LoginModalProps) {
 
         <p style={{ textAlign: 'center', fontSize: 13, color: '#94A3B8' }}>
           Don't have an account?{' '}
-          <Link href="/signup" onClick={onClose} style={{ color: '#7C5CFC', textDecoration: 'none', fontWeight: 600 }}>
+          <button onClick={onSwitchToSignup} style={{ color: '#7C5CFC', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, padding: 0 }}>
             Sign up free
-          </Link>
+          </button>
         </p>
       </div>
     </>

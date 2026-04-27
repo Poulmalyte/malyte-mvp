@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
+import Link from 'next/link'
 import LoginModal from './LoginModal'
+import SignupModal from './SignupModal'
 
 export default function MarketplaceNav() {
   const [user, setUser] = useState<any>(null)
   const [loaded, setLoaded] = useState(false)
-  const [showModal, setShowModal] = useState(false)
+  const [showLogin, setShowLogin] = useState(false)
+  const [showSignup, setShowSignup] = useState(false)
   const router = useRouter()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,7 +39,18 @@ export default function MarketplaceNav() {
 
   return (
     <>
-      {showModal && <LoginModal onClose={() => setShowModal(false)} />}
+      {showLogin && (
+        <LoginModal
+          onClose={() => setShowLogin(false)}
+          onSwitchToSignup={() => { setShowLogin(false); setShowSignup(true) }}
+        />
+      )}
+      {showSignup && (
+        <SignupModal
+          onClose={() => setShowSignup(false)}
+          onSwitchToLogin={() => { setShowSignup(false); setShowLogin(true) }}
+        />
+      )}
       <div style={{
         position: 'fixed', top: 0, right: 0,
         padding: '16px 24px',
@@ -46,7 +59,7 @@ export default function MarketplaceNav() {
       }}>
         {!user ? (
           <>
-            <button onClick={() => setShowModal(true)} style={{
+            <button onClick={() => setShowLogin(true)} style={{
               background: '#FFFFFF', border: '1px solid #E8EDF8',
               borderRadius: '100px', padding: '8px 20px',
               color: '#0F172A', fontFamily: 'Inter, sans-serif',
@@ -55,14 +68,14 @@ export default function MarketplaceNav() {
             }}>
               Log in
             </button>
-            <Link href="/signup" style={{
+            <button onClick={() => setShowSignup(true)} style={{
               background: '#7C5CFC', border: 'none',
               borderRadius: '100px', padding: '8px 20px',
               color: '#fff', fontFamily: 'Inter, sans-serif',
-              fontSize: '14px', fontWeight: 600, textDecoration: 'none',
+              fontSize: '14px', fontWeight: 600, cursor: 'pointer',
             }}>
               Sign up free
-            </Link>
+            </button>
           </>
         ) : (
           <>
