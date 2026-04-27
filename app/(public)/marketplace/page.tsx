@@ -70,12 +70,13 @@ const HOW_IT_WORKS = [
   },
 ]
 
-const TRUST_POINTS = [
+const TRUST_POINTS_TOP = [
   { icon: '⚡', text: 'Plan delivered in a few seconds' },
   { icon: '🔄', text: 'Adapts weekly to your real progress' },
   { icon: '💳', text: 'Choose your model: one-time purchase or monthly subscription' },
-  { icon: '✅', text: 'Backed by real client results' },
 ]
+
+const TRUST_POINT_BOTTOM = { icon: '✅', text: 'Backed by real client results' }
 
 export default async function MarketplacePage({
   searchParams,
@@ -287,13 +288,19 @@ export default async function MarketplacePage({
             <p style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 24 }}>
               Why people choose Malyte
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '24px 48px' }}>
-              {TRUST_POINTS.map((point, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <span style={{ fontSize: 20, flexShrink: 0 }}>{point.icon}</span>
-                  <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>{point.text}</span>
-                </div>
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 48, flexWrap: 'wrap' }}>
+                {TRUST_POINTS_TOP.map((point, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>{point.icon}</span>
+                    <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>{point.text}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 20, flexShrink: 0 }}>{TRUST_POINT_BOTTOM.icon}</span>
+                <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>{TRUST_POINT_BOTTOM.text}</span>
+              </div>
             </div>
           </div>
 
