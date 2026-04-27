@@ -57,7 +57,7 @@ export default function IbanForm({ currentIban, expertId }: { currentIban: strin
       <div style={{ marginTop: 16, background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '12px 16px' }}>
         <p style={{ fontSize: 12, color: '#D97706', fontWeight: 600, marginBottom: 4 }}>⚠ Important</p>
         <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
-          Your IBAN is used exclusively for receiving payouts from Malyte. Payments are processed manually within 5 business days after each transaction.
+          Your IBAN is used exclusively for receiving payouts from Malyte. Payments are disbursed twice a month, on the 1st and 15th of each month, for all transactions completed in the previous period.
         </p>
       </div>
     </div>
