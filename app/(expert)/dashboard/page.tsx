@@ -5,6 +5,7 @@ import PublishToggle from './PublishToggle'
 import ShareButton from './ShareButton'
 import ProfileMenu from './ProfileMenu'
 import IbanForm from './IbanForm'
+import MethodSection from './MethodSection'
 
 async function getExpertData(supabase: any, userId: string) {
   const { data: expert } = await supabase.from('experts').select('*').eq('id', userId).single()
@@ -99,7 +100,7 @@ const COLORS = ['#7C5CFC', '#4DFFD2', '#A78BFA', '#6385FF', '#F59E0B']
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams
-  const activeTab = tab === 'analytics' ? 'analytics' : tab === 'settings' ? 'settings' : 'overview'
+  const activeTab = tab === 'analytics' ? 'analytics' : tab === 'settings' ? 'settings' : tab === 'method' ? 'method' : 'overview'
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -164,6 +165,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {[
               { label: 'Overview', value: 'overview', href: '/dashboard' },
               { label: 'Analytics', value: 'analytics', href: '/dashboard?tab=analytics' },
+              { label: 'My Method', value: 'method', href: '/dashboard?tab=method' },
               { label: 'Settings', value: 'settings', href: '/dashboard?tab=settings' },
             ].map(t => (
               <Link key={t.value} href={t.href} style={{ textDecoration: 'none' }}>
@@ -379,6 +381,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               )}
             </div>
           </>
+        )}
+
+        {/* METHOD */}
+        {activeTab === 'method' && (
+          <MethodSection expert={expert} />
         )}
 
         {/* SETTINGS */}
