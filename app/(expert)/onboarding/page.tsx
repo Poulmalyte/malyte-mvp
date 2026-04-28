@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -34,7 +34,7 @@ const CATEGORY_QUESTIONS: Record<string, { key: string; label: string; placehold
     { key: 'weekly_volume', label: 'What weekly mileage/volume does your method prescribe?', placeholder: 'e.g. Build from 30km/week to 60km/week over 12 weeks using 80/20 intensity split' },
     { key: 'intensity_zones', label: 'How do you define and use training zones?', placeholder: 'e.g. Zone 2 = 80% of sessions, Zone 4-5 = 20%. HR or pace-based depending on client' },
     { key: 'progression', label: 'How does your training plan progress over time?', placeholder: 'e.g. 3 weeks build + 1 week recovery. Each block increases volume by max 10%' },
-    { key: 'race_specificity', label: 'How does your method adapt to the client\'s target race or goal?', placeholder: 'e.g. Last 6 weeks are race-specific with goal-pace intervals and taper' },
+    { key: 'race_specificity', label: "How does your method adapt to the client's target race or goal?", placeholder: 'e.g. Last 6 weeks are race-specific with goal-pace intervals and taper' },
     { key: 'stop_criteria', label: 'When should the client not follow your plan?', placeholder: 'e.g. Any pain (not soreness), illness, or injury — rest and reassess before continuing' },
   ],
   yoga: [
@@ -95,17 +95,12 @@ export default function OnboardingPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  // Step 1
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [age, setAge] = useState('')
   const [sex, setSex] = useState('')
   const [category, setCategory] = useState('')
-
-  // Step 2
   const [methodAnswers, setMethodAnswers] = useState<Record<string, string>>({})
-
-  // Step 3
   const [productTitle, setProductTitle] = useState('')
   const [productDesc, setProductDesc] = useState('')
   const [price, setPrice] = useState('')
@@ -125,39 +120,22 @@ export default function OnboardingPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-
       const fullName = `${firstName} ${lastName}`.trim()
       const expertSlug = generateSlug(fullName || firstName)
-
       const { error: expertError } = await supabase.from('experts').upsert({
-        id: user.id,
-        name: fullName,
-        slug: expertSlug,
-        category,
+        id: user.id, name: fullName, slug: expertSlug, category,
         methodology_name: selectedCategory?.label || category,
         methodology_description: Object.entries(methodAnswers).map(([k, v]) => `${k}: ${v}`).join('\n'),
         results_description: methodAnswers['specific_result'] || methodAnswers['caloric_target'] || '',
-        method_questions_answers: methodAnswers,
-        is_published: false,
+        method_questions_answers: methodAnswers, is_published: false,
       })
       if (expertError) { setError('Error saving profile: ' + expertError.message); setLoading(false); return }
-
-      await supabase.from('profiles').upsert({
-        id: user.id,
-        name: fullName,
-        role: 'expert',
-      }, { onConflict: 'id' })
-
+      await supabase.from('profiles').upsert({ id: user.id, name: fullName, role: 'expert' }, { onConflict: 'id' })
       const { error: productError } = await supabase.from('products').insert({
-        expert_id: user.id,
-        title: productTitle,
-        description: productDesc,
-        price: parseFloat(price),
-        pricing_model: pricingModel,
-        is_published: false,
+        expert_id: user.id, title: productTitle, description: productDesc,
+        price: parseFloat(price), pricing_model: pricingModel, is_published: false,
       })
       if (productError) { setError('Error creating product: ' + productError.message); setLoading(false); return }
-
       router.push('/dashboard')
     } catch {
       setError('Unexpected error. Please try again.')
@@ -165,27 +143,28 @@ export default function OnboardingPage() {
     }
   }
 
+  const ErrorBox = () => error ? (
+    <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 16px', color: '#EF4444', fontSize: '13px', marginBottom: '16px' }}>{error}</div>
+  ) : null
+
   return (
     <>
       <style>{`
         @media (max-width: 600px) {
-          .onboarding-grid { grid-template-columns: 1fr !important; }
-          .onboarding-price { width: 100% !important; }
-          .onboarding-back { padding: 14px 16px !important; }
-          .category-modal { padding: 24px 16px !important; }
-          .category-modal-grid { grid-template-columns: 1fr 1fr !important; }
+          .ob-grid { grid-template-columns: 1fr !important; }
+          .ob-price { width: 100% !important; }
+          .ob-back { padding: 14px 16px !important; }
+          .cat-grid { grid-template-columns: 1fr 1fr !important; }
         }
       `}</style>
 
       <main style={{ minHeight: '100vh', background: '#F5F7FA', padding: '32px 16px', fontFamily: "'Inter', sans-serif" }}>
         <div style={{ maxWidth: '640px', margin: '0 auto' }}>
 
-          {/* Logo */}
           <div style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: '22px', marginBottom: '32px', color: '#0F172A' }}>
             malyte<span style={{ color: '#7C5CFC' }}>.</span>
           </div>
 
-          {/* Progress bar */}
           <div style={{ height: '3px', background: '#E8EDF8', borderRadius: '100px', marginBottom: '40px' }}>
             <div style={{ height: '100%', borderRadius: '100px', background: 'linear-gradient(90deg, #7C5CFC, #4DFFD2)', width: `${progress}%`, transition: 'width 0.5s ease' }} />
           </div>
@@ -197,8 +176,7 @@ export default function OnboardingPage() {
               <h1 style={{ fontFamily: 'Satoshi, sans-serif', fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: '#0F172A' }}>Who are you? 👋</h1>
               <p style={{ color: '#64748B', fontSize: '15px', marginBottom: '32px', lineHeight: 1.6 }}>This information will appear on your public profile.</p>
 
-              {/* First + Last name */}
-              <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div className="ob-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                 <div>
                   <label style={{ fontSize: '13px', color: '#64748B', display: 'block', marginBottom: '6px', fontWeight: 500 }}>First name</label>
                   <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="e.g. Sara" style={input} />
@@ -209,8 +187,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {/* Age + Sex */}
-              <div className="onboarding-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+              <div className="ob-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
                 <div>
                   <label style={{ fontSize: '13px', color: '#64748B', display: 'block', marginBottom: '6px', fontWeight: 500 }}>Age</label>
                   <input type="number" value={age} onChange={e => setAge(e.target.value)} placeholder="e.g. 32" min="18" max="99" style={input} />
@@ -226,7 +203,6 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {/* Category */}
               <div style={{ marginBottom: '32px' }}>
                 <label style={{ fontSize: '13px', color: '#64748B', display: 'block', marginBottom: '8px', fontWeight: 500 }}>Professional category</label>
                 <button
@@ -236,7 +212,8 @@ export default function OnboardingPage() {
                     background: category ? '#EDE9FE' : '#F5F7FA',
                     border: category ? '1.5px solid #7C5CFC' : '1.5px solid #E8EDF8',
                     cursor: 'pointer', fontSize: '15px', fontWeight: category ? 600 : 400,
-                    color: category ? '#7C5CFC' : '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    color: category ? '#7C5CFC' : '#94A3B8',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}
                 >
                   <span>{selectedCategory ? `${selectedCategory.emoji} ${selectedCategory.label}` : 'Select your category...'}</span>
@@ -244,8 +221,7 @@ export default function OnboardingPage() {
                 </button>
               </div>
 
-              {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 16px', color: '#EF4444', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
-
+              <ErrorBox />
               <button onClick={() => {
                 if (!firstName || !lastName || !age || !sex || !category) { setError('Please fill in all fields'); return }
                 setError(''); setStep(2)
@@ -278,10 +254,9 @@ export default function OnboardingPage() {
                 </div>
               ))}
 
-              {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 16px', color: '#EF4444', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
-
+              <ErrorBox />
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => setStep(1)} className="onboarding-back" style={{ padding: '14px 24px', borderRadius: '12px', background: '#FFFFFF', border: '1px solid #E8EDF8', color: '#0F172A', fontWeight: 500, fontSize: '15px', cursor: 'pointer', whiteSpace: 'nowrap' }}>← Back</button>
+                <button onClick={() => setStep(1)} className="ob-back" style={{ padding: '14px 24px', borderRadius: '12px', background: '#FFFFFF', border: '1px solid #E8EDF8', color: '#0F172A', fontWeight: 500, fontSize: '15px', cursor: 'pointer', whiteSpace: 'nowrap' }}>← Back</button>
                 <button onClick={() => {
                   if (!allAnswered) { setError('Please answer all questions to continue'); return }
                   setError(''); setStep(3)
@@ -313,7 +288,7 @@ export default function OnboardingPage() {
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ fontSize: '13px', color: '#64748B', display: 'block', marginBottom: '6px', fontWeight: 500 }}>Price (€)</label>
                 <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 49" min="1"
-                  className="onboarding-price" style={{ ...input, width: '180px' }} />
+                  className="ob-price" style={{ ...input, width: '180px' }} />
               </div>
 
               <div style={{ marginBottom: '32px' }}>
@@ -334,10 +309,9 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 16px', color: '#EF4444', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
-
+              <ErrorBox />
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => setStep(2)} className="onboarding-back" style={{ padding: '14px 24px', borderRadius: '12px', background: '#FFFFFF', border: '1px solid #E8EDF8', color: '#0F172A', fontWeight: 500, fontSize: '15px', cursor: 'pointer', whiteSpace: 'nowrap' }}>← Back</button>
+                <button onClick={() => setStep(2)} className="ob-back" style={{ padding: '14px 24px', borderRadius: '12px', background: '#FFFFFF', border: '1px solid #E8EDF8', color: '#0F172A', fontWeight: 500, fontSize: '15px', cursor: 'pointer', whiteSpace: 'nowrap' }}>← Back</button>
                 <button onClick={() => {
                   if (!productTitle || !productDesc || !price || !pricingModel) { setError('Please fill in all fields'); return }
                   handleSubmit()
@@ -351,29 +325,41 @@ export default function OnboardingPage() {
         </div>
       </main>
 
-      {/* CATEGORY MODAL */}
+      {/* CATEGORY MODAL — centrato come login/signup */}
       {showCategoryModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0' }}
-          onClick={() => setShowCategoryModal(false)}>
-          <div className="category-modal"
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+          onClick={() => setShowCategoryModal(false)}
+        >
+          <div
             onClick={e => e.stopPropagation()}
-            style={{ background: '#FFFFFF', borderRadius: '24px 24px 0 0', padding: '32px 24px', width: '100%', maxWidth: '640px', maxHeight: '80vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: '20px', color: '#0F172A', margin: 0 }}>Select your category</h2>
-              <button onClick={() => setShowCategoryModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94A3B8' }}>✕</button>
+            style={{ background: '#FFFFFF', borderRadius: '24px', padding: '36px 32px', width: '100%', maxWidth: '520px', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 25px 60px rgba(0,0,0,0.15)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+              <div>
+                <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: '22px', color: '#0F172A', margin: '0 0 4px' }}>Select your category</h2>
+                <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>Choose the one that best describes your expertise</p>
+              </div>
+              <button
+                onClick={() => setShowCategoryModal(false)}
+                style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '16px', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              >✕</button>
             </div>
-            <div className="category-modal-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+            <div className="cat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               {CATEGORIES.map(cat => (
-                <button key={cat.id} onClick={() => { setCategory(cat.id); setShowCategoryModal(false) }}
+                <button
+                  key={cat.id}
+                  onClick={() => { setCategory(cat.id); setShowCategoryModal(false) }}
                   style={{
-                    padding: '16px 12px', borderRadius: '14px', textAlign: 'center', cursor: 'pointer',
+                    padding: '18px 14px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer',
                     border: `2px solid ${category === cat.id ? '#7C5CFC' : '#E8EDF8'}`,
                     background: category === cat.id ? '#EDE9FE' : '#F8FAFC',
                     transition: 'all 0.15s',
-                  }}>
-                  <div style={{ fontSize: '24px', marginBottom: '6px' }}>{cat.emoji}</div>
-                  <div style={{ fontWeight: 600, fontSize: '12px', color: category === cat.id ? '#7C5CFC' : '#0F172A', marginBottom: '4px', lineHeight: 1.3 }}>{cat.label}</div>
-                  <div style={{ fontSize: '11px', color: '#94A3B8', lineHeight: 1.3 }}>{cat.desc}</div>
+                  }}
+                >
+                  <div style={{ fontSize: '26px', marginBottom: '8px' }}>{cat.emoji}</div>
+                  <div style={{ fontWeight: 700, fontSize: '13px', color: category === cat.id ? '#7C5CFC' : '#0F172A', marginBottom: '4px', lineHeight: 1.3 }}>{cat.label}</div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8', lineHeight: 1.4 }}>{cat.desc}</div>
                 </button>
               ))}
             </div>
