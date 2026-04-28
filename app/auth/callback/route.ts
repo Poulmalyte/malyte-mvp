@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     if (session?.user) {
       const userId = session.user.id
 
-      // Controlla se il profilo esiste già con un role
+      // Controlla se il profilo esiste già
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('role')
@@ -37,21 +37,30 @@ export async function GET(request: NextRequest) {
         .single()
 
       if (existingProfile?.role) {
-        const redirectPath = existingProfile.role === 'expert' ? '/dashboard' : '/marketplace'
-        return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
+        // Expert già esistente con onboarding completato → dashboard
+        // Expert nuovo → onboarding
+        if (existingProfile.role === 'expert') {
+          const { data: expertProfile } = await supabase
+            .from('experts')
+            .select('id, slug')
+            .eq('id', userId)
+            .single()
+          const redirectPath = expertProfile?.slug ? '/dashboard' : '/onboarding'
+          return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
+        }
+        return NextResponse.redirect(new URL('/marketplace', requestUrl.origin))
       }
 
-      // Legge il role da user_metadata (impostato durante signup email)
+      // Nuovo utente — legge role da user_metadata
       const role = (session.user.user_metadata?.role as string) || 'client'
 
-      // Salva il profilo con il role
       await supabase.from('profiles').upsert({
         id: userId,
         name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
         role,
       }, { onConflict: 'id' })
 
-      const redirectPath = role === 'expert' ? '/dashboard' : '/marketplace'
+      const redirectPath = role === 'expert' ? '/onboarding' : '/client-onboarding'
       return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
     }
   }
