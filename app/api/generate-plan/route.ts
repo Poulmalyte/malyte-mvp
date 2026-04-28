@@ -1,10 +1,100 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+async function fetchPdfsAsBase64(pdfPaths: string[]): Promise<string[]> {
+  const results: string[] = []
+  for (const path of pdfPaths.slice(0, 5)) {
+    try {
+      const { data, error } = await supabaseAdmin.storage
+        .from('method-pdfs')
+        .download(path)
+      if (error || !data) continue
+      const arrayBuffer = await data.arrayBuffer()
+      const base64 = Buffer.from(arrayBuffer).toString('base64')
+      results.push(base64)
+    } catch {
+      continue
+    }
+  }
+  return results
+}
+
+function buildMethodContext(expert: any): string {
+  const answers = expert.method_questions_answers || {}
+  const category = expert.category?.toLowerCase() || ''
+  const isNutritionist = category.includes('nutri')
+
+  if (isNutritionist) {
+    return `
+=== EXPERT METHOD — NUTRITION ===
+These rules are ABSOLUTE and cannot be violated under any circumstance.
+
+CALORIC TARGET & MACROS: ${answers.caloric_target || 'not specified'}
+ON/OFF DAYS: ${answers.on_off_days || 'not specified'}
+UNTOUCHABLE FOODS: ${answers.untouchable_foods || 'not specified'}
+METABOLIC ADAPTATION: ${answers.metabolic_adaptation || 'not specified'}
+ALLERGIES & PREFERENCES: ${answers.allergies_management || 'not specified'}
+FOOD SUBSTITUTIONS POLICY: ${expert.allow_substitutions === 'always' ? 'AI can always substitute foods with macro-equivalent alternatives' : expert.allow_substitutions === 'selective' ? 'AI can substitute only foods not listed as untouchable' : 'No substitutions allowed — client must follow the plan exactly as written'}
+=================================`
+  }
+
+  return `
+=== EXPERT METHOD ===
+These rules are ABSOLUTE and cannot be violated under any circumstance.
+
+GUARANTEED RESULT: ${answers.specific_result || 'not specified'}
+ABSOLUTE RULES: ${answers.absolute_rules || 'not specified'}
+WHAT THE METHOD NEVER DOES: ${answers.never_does || 'not specified'}
+PROGRESSION OVER TIME: ${answers.progression || 'not specified'}
+STOP CRITERIA: ${answers.stop_criteria || 'not specified'}
+====================`
+}
+
+function buildDoubleCheckInstructions(isNutritionist: boolean): string {
+  if (isNutritionist) {
+    return `
+MANDATORY DOUBLE-CHECK — EXECUTE BEFORE RETURNING OUTPUT:
+
+PHASE 1 — METHOD COMPLIANCE:
+- Every meal must respect untouchable foods exactly as declared
+- Caloric target must be respected with max 5% variance
+- ON/OFF day macro ratios must be applied correctly for the current day
+- Substitutions must follow the declared policy
+- If any constraint is violated, correct before returning
+
+PHASE 2 — NUTRITIONAL VALIDATION:
+- Sum of meal calories must match daily_calories (max 5% variance)
+- Macros per meal must add up to daily totals
+- All ingredients must have exact gram quantities
+- No excluded or allergen foods present
+- Plan must be realistically followable
+
+Only return the plan after both phases pass.`
+  }
+
+  return `
+MANDATORY DOUBLE-CHECK — EXECUTE BEFORE RETURNING OUTPUT:
+
+PHASE 1 — METHOD COMPLIANCE:
+- Output must align with the guaranteed result declared by the expert
+- All absolute rules must be respected — if even one is violated, correct before returning
+- The plan must never do what the expert declared the method never does
+- Progression must match the current week within the declared framework
+- If stop criteria apply to this client's situation, do not generate the plan — return a message explaining why
+
+Only return the plan after phase 1 passes.`
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
@@ -24,11 +114,15 @@ export async function POST(request: NextRequest) {
       products (
         *,
         experts (
+          id,
           name,
           category,
           methodology_name,
           methodology_description,
-          results_description
+          results_description,
+          method_questions_answers,
+          method_pdfs_urls,
+          allow_substitutions
         )
       )
     `)
@@ -44,19 +138,28 @@ export async function POST(request: NextRequest) {
   const expert = product.experts as any
   const totalMonths = product.duration_months || 1
   const totalWeeks = totalMonths * 4
+  const isNutritionist = expert.category?.toLowerCase().includes('nutri')
+
+  // Fetch PDF documents
+  const pdfPaths: string[] = expert.method_pdfs_urls || []
+  const pdfBase64List = pdfPaths.length > 0 ? await fetchPdfsAsBase64(pdfPaths) : []
+
+  const methodContext = buildMethodContext(expert)
+  const doubleCheck = buildDoubleCheckInstructions(isNutritionist)
 
   const checkinContext = checkinAnswers && Object.keys(checkinAnswers).length > 0
     ? `\nPREVIOUS WEEK CHECK-IN RESULTS:\n${Object.entries(checkinAnswers).map(([k, v]) => `${k}: ${v}`).join('\n')}\nAdapt this week's plan based on these results.`
     : ''
 
-  const prompt = `You are an elite AI coach for ${expert.name}, expert in ${expert.category}.
+  const systemPrompt = `You are an elite AI coach replicating the methodology of ${expert.name}, expert in ${expert.category}.
 
-METHODOLOGY: ${expert.methodology_name}
-${expert.methodology_description}
+${methodContext}
 
-EXPECTED RESULTS: ${expert.results_description}
+${doubleCheck}
 
-PRODUCT: ${product.title} — ${product.description}
+CRITICAL: The client only sees the final verified plan. Never show your validation process.`
+
+  const userPrompt = `PRODUCT: ${product.title} — ${product.description}
 PROGRAM: ${totalMonths} month${totalMonths > 1 ? 's' : ''} — ${totalWeeks} weeks total
 CURRENT WEEK: ${currentWeek} of ${totalWeeks}
 
@@ -156,12 +259,29 @@ Reply ONLY with valid JSON, no markdown:
 
 CRITICAL: "days" must have exactly 7 items (Monday to Sunday). Each day must have exactly 3 meals. Keep ingredients to max 3 items. Vary meals across days.`
 
+  // Build message content — PDFs first, then text prompt
+  const messageContent: any[] = []
+
+  for (const base64 of pdfBase64List) {
+    messageContent.push({
+      type: 'document',
+      source: {
+        type: 'base64',
+        media_type: 'application/pdf',
+        data: base64,
+      },
+    })
+  }
+
+  messageContent.push({ type: 'text', text: userPrompt })
+
   let aiWeek
   try {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 8192,
-      messages: [{ role: 'user', content: prompt }],
+      system: systemPrompt,
+      messages: [{ role: 'user', content: messageContent }],
     })
 
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
