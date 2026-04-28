@@ -47,7 +47,7 @@ export default function SignupModal({ onClose, onSwitchToLogin }: SignupModalPro
     if (data.session) {
       const r = data.session.user.user_metadata?.role || 'client'
       await supabase.from('profiles').upsert({ id: data.session.user.id, name: email.split('@')[0], role: r }, { onConflict: 'id' })
-      router.push(r === 'expert' ? '/dashboard' : '/client-onboarding')
+      router.push(r === 'expert' ? '/onboarding' : '/client-onboarding')
       onClose(); return
     }
     setSuccess(true); setLoading(false)
