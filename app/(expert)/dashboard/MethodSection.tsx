@@ -13,6 +13,19 @@ const card: React.CSSProperties = {
   border: '1px solid #E8EDF8', padding: '24px', marginBottom: 16,
 }
 
+const input: React.CSSProperties = {
+  width: '100%', padding: '12px 14px', borderRadius: 10,
+  border: '1px solid #E8EDF8', fontSize: 13, color: '#0F172A',
+  background: '#F8FAFC', outline: 'none', fontFamily: 'inherit',
+  boxSizing: 'border-box', lineHeight: 1.6,
+}
+
+const PRICING_MODELS = [
+  { id: 'one_time', label: '💳 One-time payment', desc: 'Client pays once and gets lifetime access' },
+  { id: 'subscription', label: '🔄 Monthly subscription', desc: 'Client pays monthly for continued access' },
+  { id: 'bundle', label: '📦 Bundle', desc: 'Offer base + premium at different price points' },
+]
+
 const NUTRITION_QUESTIONS = [
   { key: 'caloric_target', label: 'D1 — Caloric Target & Macro Distribution', question: 'What is your daily caloric target and macro distribution?', placeholder: 'e.g. 1800 kcal — 40% protein / 30% carbs / 30% fats' },
   { key: 'on_off_days', label: 'D2 — ON/OFF Days & Weekly Variations', question: 'Do you use ON/OFF days or weekly variations in your protocol?', placeholder: 'e.g. Mon/Wed/Fri = training days with higher macros; weekend = refeed' },
@@ -23,7 +36,7 @@ const NUTRITION_QUESTIONS = [
 
 const UNIVERSAL_QUESTIONS = [
   { key: 'specific_result', label: 'D1 — The Specific Result of Your Method', question: 'What specific result does your method deliver?', placeholder: 'e.g. 4–6kg fat loss in 8 weeks while preserving muscle mass' },
-  { key: 'absolute_rules', label: 'D2 — The Absolute Rules of Your Method', question: 'What are the absolute rules of your method — the ones that if broken, it\'s no longer your method?', placeholder: 'e.g. Never go below 1200 kcal; every session starts with 10 min mobility' },
+  { key: 'absolute_rules', label: 'D2 — The Absolute Rules of Your Method', question: "What are the absolute rules of your method — the ones that if broken, it's no longer your method?", placeholder: 'e.g. Never go below 1200 kcal; every session starts with 10 min mobility' },
   { key: 'never_does', label: 'D3 — What Your Method Never Does', question: 'What does your method never do — and why?', placeholder: 'e.g. Never eliminate entire food groups; never prescribe daily training without recovery' },
   { key: 'progression', label: 'D4 — Progression Over Time', question: 'How does your method evolve over time — is there a defined progression?', placeholder: 'e.g. Every 2 weeks I review parameters; 3 phases: adaptation, intensification, maintenance' },
   { key: 'stop_criteria', label: 'D5 — Stop Criteria', question: 'In which situations does your method not apply — and what do you do instead?', placeholder: 'e.g. I do not work with people with diagnosed conditions without medical clearance' },
@@ -45,11 +58,19 @@ export default function MethodSection({ expert }: { expert: any }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  // Step 3 — Product
+  const [productTitle, setProductTitle] = useState('')
+  const [productDesc, setProductDesc] = useState('')
+  const [price, setPrice] = useState('')
+  const [pricingModel, setPricingModel] = useState('')
+  const [savingProduct, setSavingProduct] = useState(false)
+  const [savedProduct, setSavedProduct] = useState(false)
+  const [productError, setProductError] = useState('')
+
   async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
     if (!files || files.length === 0) return
-    setUploading(true)
-    setUploadError('')
+    setUploading(true); setUploadError('')
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setUploadError('Session expired. Please log in again.'); setUploading(false); return }
     for (const file of Array.from(files)) {
@@ -71,7 +92,7 @@ export default function MethodSection({ expert }: { expert: any }) {
     setUploading(false)
   }
 
-  async function handleSave() {
+  async function handleSaveMethod() {
     setSaving(true)
     const { error } = await supabase
       .from('experts')
@@ -82,7 +103,25 @@ export default function MethodSection({ expert }: { expert: any }) {
       })
       .eq('id', expert.id)
     setSaving(false)
-    if (!error) setSaved(true)
+    if (!error) { setSaved(true); setStep(3) }
+  }
+
+  async function handleSaveProduct() {
+    if (!productTitle || !productDesc || !price || !pricingModel) {
+      setProductError('Please fill in all fields'); return
+    }
+    setSavingProduct(true); setProductError('')
+    const { error } = await supabase.from('products').insert({
+      expert_id: expert.id,
+      title: productTitle,
+      description: productDesc,
+      price: parseFloat(price),
+      pricing_model: pricingModel,
+      is_published: false,
+    })
+    setSavingProduct(false)
+    if (!error) setSavedProduct(true)
+    else setProductError('Error saving product. Please try again.')
   }
 
   const allAnswered = questions.every(q => answers[q.key]?.trim().length > 0)
@@ -103,19 +142,23 @@ export default function MethodSection({ expert }: { expert: any }) {
             My Method
           </h2>
           <p style={{ color: '#64748B', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
-            Upload your real plans and answer the questions. The AI will learn your method and replicate it for every client.
+            Complete all three steps to start selling your methodology as personalised AI plans.
           </p>
         </div>
 
         {/* Steps */}
         <div className="method-steps" style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {['1. Upload PDFs', '2. Your method'].map((label, i) => (
+          {['1. Upload PDFs', '2. Your method', '3. Your product'].map((label, i) => (
             <div
               key={i}
               className="method-step-btn"
-              onClick={() => { if (i === 0 || enoughPdfs) setStep(i + 1) }}
+              onClick={() => {
+                if (i === 0) setStep(1)
+                if (i === 1 && enoughPdfs) setStep(2)
+                if (i === 2 && saved) setStep(3)
+              }}
               style={{
-                padding: '8px 20px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 background: step === i + 1 ? '#7C5CFC' : '#F1F5F9',
                 color: step === i + 1 ? '#fff' : '#94A3B8',
                 transition: 'all 0.15s',
@@ -126,14 +169,14 @@ export default function MethodSection({ expert }: { expert: any }) {
           ))}
         </div>
 
-        {/* STEP 1 */}
+        {/* STEP 1 — Upload PDFs */}
         {step === 1 && (
           <div style={card}>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
               Step 1 — Your real plans
             </p>
             <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
-              Upload at least <strong>5 PDFs</strong> of your real plans or programs. The AI uses them as the primary source to learn your method — your choices, quantities, language, and structure.
+              Upload at least <strong>5 PDFs</strong> of your real plans or programs. The AI uses them as the primary source to learn your method.
             </p>
             <label style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -166,22 +209,19 @@ export default function MethodSection({ expert }: { expert: any }) {
                 </div>
               </div>
             )}
-            <button
-              onClick={() => setStep(2)}
-              disabled={!enoughPdfs}
+            <button onClick={() => setStep(2)} disabled={!enoughPdfs}
               style={{
                 width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14,
                 background: enoughPdfs ? '#7C5CFC' : '#E8EDF8',
                 color: enoughPdfs ? '#fff' : '#94A3B8',
                 border: 'none', cursor: enoughPdfs ? 'pointer' : 'not-allowed',
-              }}
-            >
+              }}>
               {enoughPdfs ? 'Continue →' : `Upload ${5 - pdfs.length} more PDFs to continue`}
             </button>
           </div>
         )}
 
-        {/* STEP 2 */}
+        {/* STEP 2 — Method questions */}
         {step === 2 && (
           <div>
             <div style={card}>
@@ -196,23 +236,16 @@ export default function MethodSection({ expert }: { expert: any }) {
 
             {questions.map((q) => (
               <div key={q.key} style={card}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: '#7C5CFC', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-                  {q.label}
-                </p>
-                <p style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', marginBottom: 12, lineHeight: 1.5 }}>
-                  {q.question}
-                </p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#7C5CFC', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{q.label}</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', marginBottom: 12, lineHeight: 1.5 }}>{q.question}</p>
                 <textarea
                   value={answers[q.key] || ''}
                   onChange={e => setAnswers(prev => ({ ...prev, [q.key]: e.target.value }))}
                   placeholder={q.placeholder}
                   rows={4}
                   style={{
-                    width: '100%', padding: '12px 14px', borderRadius: 10,
+                    ...input, resize: 'vertical',
                     border: answers[q.key]?.trim() ? '1.5px solid #7C5CFC' : '1.5px solid #E8EDF8',
-                    fontSize: 13, color: '#0F172A', background: '#F8FAFC',
-                    resize: 'vertical', outline: 'none', fontFamily: 'inherit',
-                    boxSizing: 'border-box', lineHeight: 1.6,
                   }}
                 />
               </div>
@@ -232,17 +265,14 @@ export default function MethodSection({ expert }: { expert: any }) {
                     { value: 'selective', emoji: '⚙️', label: 'Yes, but only for some foods', desc: 'Specify in your notes which foods can be substituted and which are non-negotiable.' },
                     { value: 'never', emoji: '❌', label: 'No', desc: 'The client is informed that the food is a core part of the protocol.' },
                   ].map(opt => (
-                    <div
-                      key={opt.value}
-                      onClick={() => setSubstitutions(opt.value)}
+                    <div key={opt.value} onClick={() => setSubstitutions(opt.value)}
                       style={{
                         display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px',
                         borderRadius: 10, cursor: 'pointer',
                         border: substitutions === opt.value ? '2px solid #7C5CFC' : '2px solid #E8EDF8',
                         background: substitutions === opt.value ? '#F5F3FF' : '#F8FAFC',
                         transition: 'all 0.15s',
-                      }}
-                    >
+                      }}>
                       <span style={{ fontSize: 18, flexShrink: 0 }}>{opt.emoji}</span>
                       <div>
                         <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px' }}>{opt.label}</p>
@@ -254,32 +284,96 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             )}
 
-            <button
-              onClick={handleSave}
-              disabled={!allAnswered || saving}
+            <button onClick={handleSaveMethod} disabled={!allAnswered || saving}
               style={{
                 width: '100%', padding: '16px', borderRadius: 12, fontWeight: 700, fontSize: 15,
                 background: allAnswered ? 'linear-gradient(135deg, #7C5CFC, #4DFFD2)' : '#E8EDF8',
                 color: allAnswered ? '#fff' : '#94A3B8',
                 border: 'none', cursor: allAnswered ? 'pointer' : 'not-allowed',
                 marginBottom: 8,
-              }}
-            >
-              {saving ? 'Saving...' : saved ? '✓ Method saved!' : 'Save my method'}
+              }}>
+              {saving ? 'Saving...' : saved ? '✓ Saved — continue to product →' : 'Save & continue →'}
             </button>
 
             {!allAnswered && (
-              <p style={{ textAlign: 'center', fontSize: 12, color: '#94A3B8' }}>
-                Answer all questions to save.
+              <p style={{ textAlign: 'center', fontSize: 12, color: '#94A3B8' }}>Answer all questions to continue.</p>
+            )}
+          </div>
+        )}
+
+        {/* STEP 3 — Your product */}
+        {step === 3 && (
+          <div>
+            <div style={card}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Step 3 — Your product
               </p>
+              <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>
+                Define your first digital product. You can create more from the dashboard at any time.
+              </p>
+            </div>
+
+            <div style={card}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.04em' }}>PRODUCT NAME</label>
+                <input type="text" value={productTitle} onChange={e => setProductTitle(e.target.value)}
+                  placeholder="e.g. 12-Week Transformation Plan" style={input} />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.04em' }}>SHORT DESCRIPTION</label>
+                <textarea value={productDesc} onChange={e => setProductDesc(e.target.value)}
+                  placeholder="e.g. A personalized 12-week plan to transform your body..." rows={3}
+                  style={{ ...input, resize: 'vertical' }} />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.04em' }}>PRICE (€)</label>
+                <input type="number" value={price} onChange={e => setPrice(e.target.value)}
+                  placeholder="e.g. 49" min="1"
+                  style={{ ...input, width: '160px' }} />
+              </div>
+
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 10, fontWeight: 600, letterSpacing: '0.04em' }}>SALES MODEL</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {PRICING_MODELS.map(model => (
+                    <button key={model.id} onClick={() => setPricingModel(model.id)}
+                      style={{
+                        padding: '12px 16px', borderRadius: 12, textAlign: 'left',
+                        border: `1.5px solid ${pricingModel === model.id ? '#7C5CFC' : '#E8EDF8'}`,
+                        background: pricingModel === model.id ? '#EDE9FE' : '#F8FAFC',
+                        cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
+                      }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: pricingModel === model.id ? '#7C5CFC' : '#0F172A', marginBottom: 2 }}>{model.label}</div>
+                      <div style={{ fontSize: 12, color: '#94A3B8' }}>{model.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {productError && (
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>
+                {productError}
+              </div>
             )}
 
-            {saved && (
-              <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 10, padding: '14px 16px', marginTop: 12 }}>
-                <p style={{ color: '#059669', fontWeight: 600, fontSize: 13, margin: 0 }}>
-                  ✓ Method saved. The AI will use this information to generate personalised plans for your clients.
-                </p>
+            {savedProduct ? (
+              <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 10, padding: '16px', textAlign: 'center' }}>
+                <p style={{ color: '#059669', fontWeight: 700, fontSize: 14, margin: '0 0 4px' }}>🎉 Product created!</p>
+                <p style={{ color: '#059669', fontSize: 13, margin: 0 }}>Your method and product are live. Go to Overview to manage everything.</p>
               </div>
+            ) : (
+              <button onClick={handleSaveProduct} disabled={savingProduct}
+                style={{
+                  width: '100%', padding: '16px', borderRadius: 12, fontWeight: 700, fontSize: 15,
+                  background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)',
+                  color: '#fff', border: 'none', cursor: savingProduct ? 'not-allowed' : 'pointer',
+                  opacity: savingProduct ? 0.7 : 1,
+                }}>
+                {savingProduct ? 'Saving...' : '🚀 Launch my product!'}
+              </button>
             )}
           </div>
         )}
