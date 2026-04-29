@@ -113,6 +113,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     : null
 
   const maxMonthly = Math.max(...monthlyData.map(m => m.value), 1)
+  const methodCompleted = expert?.method_onboarding_completed === true
 
   const card: React.CSSProperties = {
     background: '#FFFFFF', borderRadius: 16,
@@ -137,11 +138,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <ShareButton slug={expert?.slug || ''} />
-              <Link href="/create-product" style={{ textDecoration: 'none' }}>
-                <div style={{ background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 22px', borderRadius: 100, whiteSpace: 'nowrap' }}>
-                  + Create product
-                </div>
-              </Link>
+              {methodCompleted ? (
+                <Link href="/create-product" style={{ textDecoration: 'none' }}>
+                  <div style={{ background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 22px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                    + Create product
+                  </div>
+                </Link>
+              ) : (
+                <Link href="/dashboard?tab=method" style={{ textDecoration: 'none' }}>
+                  <div style={{ background: '#FEF3C7', color: '#D97706', fontWeight: 700, fontSize: 13, padding: '10px 22px', borderRadius: 100, whiteSpace: 'nowrap', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    ⚠️ Complete My Method first
+                  </div>
+                </Link>
+              )}
               <ProfileMenu name={expert?.name || ''} email={user.email || ''} slug={expert?.slug || ''} />
             </div>
           </div>
@@ -189,6 +198,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {/* OVERVIEW */}
         {activeTab === 'overview' && (
           <>
+            {/* Banner se metodo non completato */}
+            {!methodCompleted && (
+              <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 12, padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>⚠️</span>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 13, color: '#92400E', margin: '0 0 2px' }}>Complete your method to start selling</p>
+                    <p style={{ fontSize: 12, color: '#B45309', margin: 0 }}>Upload your PDFs, answer the questions, and create your first product.</p>
+                  </div>
+                </div>
+                <Link href="/dashboard?tab=method" style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div style={{ background: '#D97706', color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                    Go to My Method →
+                  </div>
+                </Link>
+              </div>
+            )}
+
             <div style={card}>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Revenue last 6 months</p>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 100 }}>
@@ -208,9 +235,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {products.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '24px 0' }}>
                   <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 16 }}>No products yet.</p>
-                  <Link href="/create-product" style={{ textDecoration: 'none' }}>
-                    <span style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100 }}>+ Create your first product</span>
-                  </Link>
+                  {methodCompleted ? (
+                    <Link href="/create-product" style={{ textDecoration: 'none' }}>
+                      <span style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100 }}>+ Create your first product</span>
+                    </Link>
+                  ) : (
+                    <Link href="/dashboard?tab=method" style={{ textDecoration: 'none' }}>
+                      <span style={{ background: '#FEF3C7', color: '#D97706', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100, border: '1px solid #FDE68A' }}>⚠️ Complete My Method first</span>
+                    </Link>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

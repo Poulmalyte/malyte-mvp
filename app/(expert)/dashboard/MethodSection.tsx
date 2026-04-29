@@ -58,7 +58,6 @@ export default function MethodSection({ expert }: { expert: any }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  // Step 3 — Product
   const [productTitle, setProductTitle] = useState('')
   const [productDesc, setProductDesc] = useState('')
   const [price, setPrice] = useState('')
@@ -83,11 +82,8 @@ export default function MethodSection({ expert }: { expert: any }) {
         body: formData,
       })
       const json = await res.json()
-      if (json.success) {
-        setPdfs(prev => [...prev, json.fileName])
-      } else {
-        setUploadError(json.error || 'Upload error. Please try again.')
-      }
+      if (json.success) setPdfs(prev => [...prev, json.fileName])
+      else setUploadError(json.error || 'Upload error. Please try again.')
     }
     setUploading(false)
   }
@@ -127,6 +123,27 @@ export default function MethodSection({ expert }: { expert: any }) {
   const allAnswered = questions.every(q => answers[q.key]?.trim().length > 0)
   const enoughPdfs = pdfs.length >= 0
 
+  // Stato completamento step
+  const step1Done = pdfs.length >= 5
+  const step2Done = saved || expert?.method_onboarding_completed
+  const step3Done = savedProduct
+
+  function stepStyle(index: number, currentStep: number, done: boolean) {
+    const isActive = currentStep === index + 1
+    if (done) return {
+      padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+      background: '#D1FDF3', color: '#059669', border: '1.5px solid #6EE7B7', transition: 'all 0.15s',
+    }
+    if (isActive) return {
+      padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+      background: '#7C5CFC', color: '#fff', transition: 'all 0.15s',
+    }
+    return {
+      padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+      background: '#F1F5F9', color: '#94A3B8', transition: 'all 0.15s',
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -147,24 +164,23 @@ export default function MethodSection({ expert }: { expert: any }) {
         </div>
 
         {/* Steps */}
-        <div className="method-steps" style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {['1. Upload PDFs', '2. Your method', '3. Your product'].map((label, i) => (
+        <div className="method-steps" style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+          {[
+            { label: '1. Upload PDFs', done: step1Done },
+            { label: '2. Your method', done: step2Done },
+            { label: '3. Your product', done: step3Done },
+          ].map((s, i) => (
             <div
               key={i}
               className="method-step-btn"
               onClick={() => {
                 if (i === 0) setStep(1)
                 if (i === 1 && enoughPdfs) setStep(2)
-                if (i === 2 && saved) setStep(3)
+                if (i === 2 && step2Done) setStep(3)
               }}
-              style={{
-                padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                background: step === i + 1 ? '#7C5CFC' : '#F1F5F9',
-                color: step === i + 1 ? '#fff' : '#94A3B8',
-                transition: 'all 0.15s',
-              }}
+              style={stepStyle(i, step, s.done)}
             >
-              {label}
+              {s.done ? `✓ ${s.label}` : s.label}
             </div>
           ))}
         </div>
@@ -243,10 +259,7 @@ export default function MethodSection({ expert }: { expert: any }) {
                   onChange={e => setAnswers(prev => ({ ...prev, [q.key]: e.target.value }))}
                   placeholder={q.placeholder}
                   rows={4}
-                  style={{
-                    ...input, resize: 'vertical',
-                    border: answers[q.key]?.trim() ? '1.5px solid #7C5CFC' : '1.5px solid #E8EDF8',
-                  }}
+                  style={{ ...input, resize: 'vertical', border: answers[q.key]?.trim() ? '1.5px solid #7C5CFC' : '1.5px solid #E8EDF8' }}
                 />
               </div>
             ))}
@@ -289,8 +302,7 @@ export default function MethodSection({ expert }: { expert: any }) {
                 width: '100%', padding: '16px', borderRadius: 12, fontWeight: 700, fontSize: 15,
                 background: allAnswered ? 'linear-gradient(135deg, #7C5CFC, #4DFFD2)' : '#E8EDF8',
                 color: allAnswered ? '#fff' : '#94A3B8',
-                border: 'none', cursor: allAnswered ? 'pointer' : 'not-allowed',
-                marginBottom: 8,
+                border: 'none', cursor: allAnswered ? 'pointer' : 'not-allowed', marginBottom: 8,
               }}>
               {saving ? 'Saving...' : saved ? '✓ Saved — continue to product →' : 'Save & continue →'}
             </button>
@@ -319,22 +331,18 @@ export default function MethodSection({ expert }: { expert: any }) {
                 <input type="text" value={productTitle} onChange={e => setProductTitle(e.target.value)}
                   placeholder="e.g. 12-Week Transformation Plan" style={input} />
               </div>
-
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.04em' }}>SHORT DESCRIPTION</label>
                 <textarea value={productDesc} onChange={e => setProductDesc(e.target.value)}
                   placeholder="e.g. A personalized 12-week plan to transform your body..." rows={3}
                   style={{ ...input, resize: 'vertical' }} />
               </div>
-
               <div style={{ marginBottom: 20 }}>
                 <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.04em' }}>PRICE (€)</label>
                 <input type="number" value={price} onChange={e => setPrice(e.target.value)}
-                  placeholder="e.g. 49" min="1"
-                  style={{ ...input, width: '160px' }} />
+                  placeholder="e.g. 49" min="1" style={{ ...input, width: '160px' }} />
               </div>
-
-              <div style={{ marginBottom: 8 }}>
+              <div>
                 <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 10, fontWeight: 600, letterSpacing: '0.04em' }}>SALES MODEL</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {PRICING_MODELS.map(model => (
@@ -360,9 +368,9 @@ export default function MethodSection({ expert }: { expert: any }) {
             )}
 
             {savedProduct ? (
-              <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 10, padding: '16px', textAlign: 'center' }}>
-                <p style={{ color: '#059669', fontWeight: 700, fontSize: 14, margin: '0 0 4px' }}>🎉 Product created!</p>
-                <p style={{ color: '#059669', fontSize: 13, margin: 0 }}>Your method and product are live. Go to Overview to manage everything.</p>
+              <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 12, padding: '20px', textAlign: 'center' }}>
+                <p style={{ color: '#059669', fontWeight: 700, fontSize: 16, margin: '0 0 6px' }}>🎉 You&apos;re all set!</p>
+                <p style={{ color: '#059669', fontSize: 13, margin: 0 }}>Your method is saved and your first product is ready. Go to Overview to manage everything.</p>
               </div>
             ) : (
               <button onClick={handleSaveProduct} disabled={savingProduct}
