@@ -87,7 +87,7 @@ function buildMonthlyData(purchases: any[]) {
   }
   purchases.forEach(p => {
     const d = new Date(p.created_at)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '00')}`
     if (key in months) months[key] += Number(p.amount || 0)
   })
   return Object.entries(months).map(([key, value]) => ({
@@ -117,328 +117,339 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const card: React.CSSProperties = {
     background: '#FFFFFF', borderRadius: 16,
-    border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 16,
+    border: '1px solid #E8EDF8', padding: '16px', marginBottom: 12,
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
+    <>
+      <style>{`
+        @media (max-width: 600px) {
+          .dash-header { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; padding: 14px 0 0 !important; }
+          .dash-actions { width: 100% !important; justify-content: flex-start !important; flex-wrap: wrap !important; }
+          .dash-title { font-size: 20px !important; }
+          .dash-kpi { grid-template-columns: 1fr 1fr 1fr !important; gap: 8px !important; }
+          .dash-kpi-value { font-size: 18px !important; }
+          .dash-kpi-label { font-size: 10px !important; }
+          .dash-tabs { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+          .dash-tab { padding: 10px 14px !important; font-size: 12px !important; white-space: nowrap !important; }
+          .dash-body { padding: 16px 12px 48px !important; }
+          .dash-banner { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+          .dash-banner-btn { width: 100% !important; text-align: center !important; }
+          .analytics-grid { grid-template-columns: 1fr !important; }
+          .method-warning { font-size: 11px !important; padding: 8px 14px !important; }
+        }
+      `}</style>
 
-      {/* HEADER */}
-      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '0 24px' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
-            <div>
-              <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>
-                malyte<span style={{ color: '#7C5CFC' }}>.</span>
-              </span>
-              <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 24, color: '#0F172A', margin: '6px 0 2px' }}>
-                Welcome back{expert?.name ? `, ${expert.name.split(' ')[0]}` : ''} 👋
-              </h1>
-              <p style={{ color: '#94A3B8', fontSize: 13, margin: 0 }}>{user.email}</p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <ShareButton slug={expert?.slug || ''} />
-              {methodCompleted ? (
-                <Link href="/create-product" style={{ textDecoration: 'none' }}>
-                  <div style={{ background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 22px', borderRadius: 100, whiteSpace: 'nowrap' }}>
-                    + Create product
-                  </div>
-                </Link>
-              ) : (
-                <Link href="/dashboard?tab=method" style={{ textDecoration: 'none' }}>
-                  <div style={{ background: '#FEF3C7', color: '#D97706', fontWeight: 700, fontSize: 13, padding: '10px 22px', borderRadius: 100, whiteSpace: 'nowrap', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    ⚠️ Complete My Method first
-                  </div>
-                </Link>
-              )}
-              <ProfileMenu name={expert?.name || ''} email={user.email || ''} slug={expert?.slug || ''} />
-            </div>
-          </div>
+      <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
 
-          {/* KPI Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, margin: '20px 0 0' }}>
-            {[
-              { label: 'Total revenue', value: `€${totalRevenue.toFixed(2)}`, color: '#7C5CFC', bg: '#EDE9FE' },
-              { label: 'Total clients', value: String(totalClients), color: '#059669', bg: '#D1FDF3' },
-              { label: 'Live products', value: String(publishedProducts), color: '#6385FF', bg: '#EEF2FF' },
-            ].map((kpi, i) => (
-              <div key={i} style={{ background: kpi.bg, borderRadius: 12, padding: '14px 18px' }}>
-                <p style={{ fontSize: 11, color: '#64748B', marginBottom: 4, fontWeight: 500 }}>{kpi.label}</p>
-                <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 26, fontWeight: 800, color: kpi.color, margin: 0 }}>{kpi.value}</p>
+        {/* HEADER */}
+        <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '0 16px' }}>
+          <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+
+            {/* Top row */}
+            <div className="dash-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
+              <div>
+                <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>
+                  malyte<span style={{ color: '#7C5CFC' }}>.</span>
+                </span>
+                <h1 className="dash-title" style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 22, color: '#0F172A', margin: '4px 0 2px' }}>
+                  Welcome back{expert?.name ? `, ${expert.name.split(' ')[0]}` : ''} 👋
+                </h1>
+                <p style={{ color: '#94A3B8', fontSize: 12, margin: 0 }}>{user.email}</p>
               </div>
-            ))}
-          </div>
-
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 0, marginTop: 20 }}>
-            {[
-              { label: 'Overview', value: 'overview', href: '/dashboard' },
-              { label: 'Analytics', value: 'analytics', href: '/dashboard?tab=analytics' },
-              { label: 'My Method', value: 'method', href: '/dashboard?tab=method' },
-              { label: 'Settings', value: 'settings', href: '/dashboard?tab=settings' },
-            ].map(t => (
-              <Link key={t.value} href={t.href} style={{ textDecoration: 'none' }}>
-                <div style={{
-                  padding: '12px 24px', fontSize: 13, fontWeight: 600,
-                  color: activeTab === t.value ? '#7C5CFC' : '#94A3B8',
-                  borderBottom: activeTab === t.value ? '2px solid #7C5CFC' : '2px solid transparent',
-                  cursor: 'pointer', transition: 'all 0.15s',
-                }}>
-                  {t.label}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* BODY */}
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 24px 48px' }}>
-
-        {/* OVERVIEW */}
-        {activeTab === 'overview' && (
-          <>
-            {/* Banner se metodo non completato */}
-            {!methodCompleted && (
-              <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 12, padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 18 }}>⚠️</span>
-                  <div>
-                    <p style={{ fontWeight: 700, fontSize: 13, color: '#92400E', margin: '0 0 2px' }}>Complete your method to start selling</p>
-                    <p style={{ fontSize: 12, color: '#B45309', margin: 0 }}>Upload your PDFs, answer the questions, and create your first product.</p>
-                  </div>
-                </div>
-                <Link href="/dashboard?tab=method" style={{ textDecoration: 'none', flexShrink: 0 }}>
-                  <div style={{ background: '#D97706', color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', borderRadius: 100, whiteSpace: 'nowrap' }}>
-                    Go to My Method →
-                  </div>
-                </Link>
-              </div>
-            )}
-
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Revenue last 6 months</p>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 100 }}>
-                {monthlyData.map((m, i) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: '#7C5CFC', fontSize: 10, fontWeight: 600 }}>{m.value > 0 ? `€${m.value}` : ''}</span>
-                    <div style={{ width: '100%', height: `${Math.max((m.value / maxMonthly) * 80, 4)}px`, background: m.value > 0 ? '#7C5CFC' : '#E8EDF8', borderRadius: '4px 4px 0 0' }} />
-                    <span style={{ color: '#94A3B8', fontSize: 10 }}>{m.label}</span>
-                  </div>
-                ))}
-              </div>
-              {totalRevenue === 0 && <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', marginTop: 12 }}>No purchases yet — data will appear when your first clients arrive.</p>}
-            </div>
-
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Your products ({products.length})</p>
-              {products.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                  <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 16 }}>No products yet.</p>
-                  {methodCompleted ? (
-                    <Link href="/create-product" style={{ textDecoration: 'none' }}>
-                      <span style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100 }}>+ Create your first product</span>
-                    </Link>
-                  ) : (
-                    <Link href="/dashboard?tab=method" style={{ textDecoration: 'none' }}>
-                      <span style={{ background: '#FEF3C7', color: '#D97706', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100, border: '1px solid #FDE68A' }}>⚠️ Complete My Method first</span>
-                    </Link>
-                  )}
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {products.map((product: any) => {
-                    const questionCount = product.product_questions?.[0]?.count || 0
-                    return (
-                      <div key={product.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F5F7FA', borderRadius: 12, border: '1px solid #E8EDF8' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                            <span style={{ fontWeight: 600, fontSize: 14, color: '#0F172A' }}>{product.title}</span>
-                            <span style={{ background: product.is_published ? '#D1FDF3' : '#F1F5F9', color: product.is_published ? '#059669' : '#94A3B8', fontSize: 10, fontWeight: 600, padding: '2px 10px', borderRadius: 100 }}>
-                              {product.is_published ? '● Live' : '○ Draft'}
-                            </span>
-                          </div>
-                          <p style={{ color: '#94A3B8', fontSize: 12, margin: 0 }}>€{product.price} · {product.pricing_model} · {questionCount} question{questionCount !== 1 ? 's' : ''}</p>
-                        </div>
-                        <PublishToggle productId={product.id} isPublished={product.is_published} />
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Recent purchases ({purchases.length})</p>
-              {purchases.length === 0 ? (
-                <p style={{ color: '#94A3B8', fontSize: 13 }}>No purchases yet.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {purchases.slice(0, 10).map((purchase: any) => (
-                    <div key={purchase.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#F5F7FA', borderRadius: 10, border: '1px solid #E8EDF8' }}>
-                      <div>
-                        <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{purchase.products?.title || 'Product'}</span>
-                        <span style={{ color: '#94A3B8', fontSize: 11, marginLeft: 10 }}>{new Date(purchase.created_at).toLocaleDateString('en-US')}</span>
-                      </div>
-                      <span style={{ color: '#7C5CFC', fontWeight: 700, fontSize: 14 }}>€{Number(purchase.amount).toFixed(2)}</span>
+              <div className="dash-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ShareButton slug={expert?.slug || ''} />
+                {methodCompleted ? (
+                  <Link href="/create-product" style={{ textDecoration: 'none' }}>
+                    <div style={{ background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 12, padding: '9px 18px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                      + Create product
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* ANALYTICS */}
-        {activeTab === 'analytics' && analytics && (
-          <>
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Revenue Trend — Last 6 months</p>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 120 }}>
-                {monthlyData.map((m, i) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: '#7C5CFC', fontSize: 10, fontWeight: 600 }}>{m.value > 0 ? `€${m.value}` : ''}</span>
-                    <div style={{ width: '100%', height: `${Math.max((m.value / maxMonthly) * 100, 4)}px`, background: i === monthlyData.length - 1 ? 'linear-gradient(180deg,#7C5CFC,#4DFFD2)' : '#7C5CFC', opacity: i === monthlyData.length - 1 ? 1 : 0.35, borderRadius: '4px 4px 0 0' }} />
-                    <span style={{ color: '#94A3B8', fontSize: 10 }}>{m.label}</span>
-                  </div>
-                ))}
+                  </Link>
+                ) : (
+                  <Link href="/dashboard?tab=method" style={{ textDecoration: 'none' }}>
+                    <div className="method-warning" style={{ background: '#FEF3C7', color: '#D97706', fontWeight: 700, fontSize: 12, padding: '9px 16px', borderRadius: 100, whiteSpace: 'nowrap', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      ⚠️ Complete My Method first
+                    </div>
+                  </Link>
+                )}
+                <ProfileMenu name={expert?.name || ''} email={user.email || ''} slug={expert?.slug || ''} />
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            {/* KPI Cards */}
+            <div className="dash-kpi" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '16px 0 0' }}>
               {[
-                { title: 'Age Distribution', data: analytics.ageBuckets, empty: 'Not enough data — add birth dates to client profiles.' },
-                { title: 'Gender', data: analytics.sexBuckets, empty: 'Not enough data — add gender to client profiles.' },
-              ].map(({ title, data, empty }) => (
-                <div key={title} style={{ ...card, marginBottom: 0 }}>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>{title}</p>
-                  {Object.values(data).every(v => v === 0) ? (
-                    <p style={{ color: '#94A3B8', fontSize: 13 }}>{empty}</p>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {Object.entries(data).map(([label, count], i) => {
-                        const total = Object.values(data).reduce((a: number, b) => a + (b as number), 0) || 1
-                        const pct = Math.round(((count as number) / total) * 100)
-                        return (
-                          <div key={label}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                              <span style={{ fontSize: 12, color: '#64748B' }}>{label}</span>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: COLORS[i] }}>{pct}%</span>
-                            </div>
-                            <div style={{ height: 6, background: '#E8EDF8', borderRadius: 100 }}>
-                              <div style={{ height: '100%', width: `${pct}%`, background: COLORS[i], borderRadius: 100 }} />
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                { label: 'Total revenue', value: `€${totalRevenue.toFixed(2)}`, color: '#7C5CFC', bg: '#EDE9FE' },
+                { label: 'Total clients', value: String(totalClients), color: '#059669', bg: '#D1FDF3' },
+                { label: 'Live products', value: String(publishedProducts), color: '#6385FF', bg: '#EEF2FF' },
+              ].map((kpi, i) => (
+                <div key={i} style={{ background: kpi.bg, borderRadius: 10, padding: '12px 14px' }}>
+                  <p className="dash-kpi-label" style={{ fontSize: 10, color: '#64748B', marginBottom: 3, fontWeight: 500 }}>{kpi.label}</p>
+                  <p className="dash-kpi-value" style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 22, fontWeight: 800, color: kpi.color, margin: 0 }}>{kpi.value}</p>
                 </div>
               ))}
             </div>
 
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Top Countries</p>
-              {analytics.topCountries.length === 0 ? (
-                <p style={{ color: '#94A3B8', fontSize: 13 }}>Not enough data — clients need to add their country in Account settings.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {analytics.topCountries.map((c: any, i: number) => (
-                    <div key={c.country}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', minWidth: 18 }}>#{i + 1}</span>
-                          <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{c.country}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 11, color: '#94A3B8' }}>{c.count} client{c.count !== 1 ? 's' : ''}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: COLORS[i % COLORS.length], minWidth: 36, textAlign: 'right' }}>{c.pct}%</span>
-                        </div>
-                      </div>
-                      <div style={{ height: 6, background: '#E8EDF8', borderRadius: 100 }}>
-                        <div style={{ height: '100%', width: `${c.pct}%`, background: COLORS[i % COLORS.length], borderRadius: 100 }} />
-                      </div>
+            {/* Tabs */}
+            <div className="dash-tabs" style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
+              {[
+                { label: 'Overview', value: 'overview', href: '/dashboard' },
+                { label: 'Analytics', value: 'analytics', href: '/dashboard?tab=analytics' },
+                { label: 'My Method', value: 'method', href: '/dashboard?tab=method' },
+                { label: 'Settings', value: 'settings', href: '/dashboard?tab=settings' },
+              ].map(t => (
+                <Link key={t.value} href={t.href} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div className="dash-tab" style={{
+                    padding: '12px 20px', fontSize: 13, fontWeight: 600,
+                    color: activeTab === t.value ? '#7C5CFC' : '#94A3B8',
+                    borderBottom: activeTab === t.value ? '2px solid #7C5CFC' : '2px solid transparent',
+                    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                  }}>
+                    {t.label}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* BODY */}
+        <div className="dash-body" style={{ maxWidth: 1000, margin: '0 auto', padding: '20px 16px 48px' }}>
+
+          {/* OVERVIEW */}
+          {activeTab === 'overview' && (
+            <>
+              {!methodCompleted && (
+                <div className="dash-banner" style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: 13, color: '#92400E', margin: '0 0 2px' }}>Complete your method to start selling</p>
+                      <p style={{ fontSize: 12, color: '#B45309', margin: 0 }}>Upload your PDFs, answer the questions, and create your first product.</p>
+                    </div>
+                  </div>
+                  <Link href="/dashboard?tab=method" style={{ textDecoration: 'none', flexShrink: 0 }} className="dash-banner-btn">
+                    <div style={{ background: '#D97706', color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 14px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                      Go to My Method →
+                    </div>
+                  </Link>
+                </div>
+              )}
+
+              <div style={card}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Revenue last 6 months</p>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 90 }}>
+                  {monthlyData.map((m, i) => (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <span style={{ color: '#7C5CFC', fontSize: 9, fontWeight: 600 }}>{m.value > 0 ? `€${m.value}` : ''}</span>
+                      <div style={{ width: '100%', height: `${Math.max((m.value / maxMonthly) * 70, 4)}px`, background: m.value > 0 ? '#7C5CFC' : '#E8EDF8', borderRadius: '4px 4px 0 0' }} />
+                      <span style={{ color: '#94A3B8', fontSize: 9 }}>{m.label}</span>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+                {totalRevenue === 0 && <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', marginTop: 10 }}>No purchases yet — data will appear when your first clients arrive.</p>}
+              </div>
 
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Product Performance</p>
-              {analytics.productPerformance.length === 0 ? (
-                <p style={{ color: '#94A3B8', fontSize: 13 }}>No products yet.</p>
-              ) : (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 70px 100px 1fr', marginBottom: 8 }}>
-                    {['Product', 'Sales', 'Revenue', 'Check-in Rate'].map(h => (
-                      <div key={h} style={{ fontSize: 10, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.06em', textTransform: 'uppercase', paddingBottom: 8 }}>{h}</div>
+              <div style={card}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Your products ({products.length})</p>
+                {products.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 14 }}>No products yet.</p>
+                    {methodCompleted ? (
+                      <Link href="/create-product" style={{ textDecoration: 'none' }}>
+                        <span style={{ background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, padding: '10px 24px', borderRadius: 100 }}>+ Create your first product</span>
+                      </Link>
+                    ) : (
+                      <Link href="/dashboard?tab=method" style={{ textDecoration: 'none' }}>
+                        <span style={{ background: '#FEF3C7', color: '#D97706', fontWeight: 600, fontSize: 13, padding: '10px 20px', borderRadius: 100, border: '1px solid #FDE68A' }}>⚠️ Complete My Method first</span>
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {products.map((product: any) => {
+                      const questionCount = product.product_questions?.[0]?.count || 0
+                      return (
+                        <div key={product.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#F5F7FA', borderRadius: 10, border: '1px solid #E8EDF8' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>{product.title}</span>
+                              <span style={{ background: product.is_published ? '#D1FDF3' : '#F1F5F9', color: product.is_published ? '#059669' : '#94A3B8', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>
+                                {product.is_published ? '● Live' : '○ Draft'}
+                              </span>
+                            </div>
+                            <p style={{ color: '#94A3B8', fontSize: 11, margin: 0 }}>€{product.price} · {product.pricing_model} · {questionCount} q</p>
+                          </div>
+                          <PublishToggle productId={product.id} isPublished={product.is_published} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div style={card}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Recent purchases ({purchases.length})</p>
+                {purchases.length === 0 ? (
+                  <p style={{ color: '#94A3B8', fontSize: 13 }}>No purchases yet.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {purchases.slice(0, 10).map((purchase: any) => (
+                      <div key={purchase.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#F5F7FA', borderRadius: 8, border: '1px solid #E8EDF8' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <span style={{ fontSize: 12, color: '#0F172A', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 160 }}>{purchase.products?.title || 'Product'}</span>
+                          <span style={{ color: '#94A3B8', fontSize: 10 }}>{new Date(purchase.created_at).toLocaleDateString('en-US')}</span>
+                        </div>
+                        <span style={{ color: '#7C5CFC', fontWeight: 700, fontSize: 13, flexShrink: 0, marginLeft: 8 }}>€{Number(purchase.amount).toFixed(2)}</span>
+                      </div>
                     ))}
                   </div>
-                  {analytics.productPerformance.map((p: any, i: number) => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 70px 100px 1fr', alignItems: 'center', borderTop: '1px solid #E8EDF8', padding: '12px 0' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 4, height: 28, background: COLORS[i % COLORS.length], borderRadius: 2, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{p.name}</span>
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{p.sales}</span>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#7C5CFC' }}>€{p.revenue.toLocaleString()}</span>
-                      <div>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: p.checkinRate >= 70 ? '#059669' : p.checkinRate >= 40 ? '#D97706' : '#EF4444' }}>{p.checkinRate}%</span>
-                        <div style={{ height: 4, background: '#E8EDF8', borderRadius: 100, width: 100, marginTop: 4 }}>
-                          <div style={{ height: '100%', width: `${p.checkinRate}%`, background: p.checkinRate >= 70 ? '#059669' : p.checkinRate >= 40 ? '#D97706' : '#EF4444', borderRadius: 100 }} />
-                        </div>
-                      </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ANALYTICS */}
+          {activeTab === 'analytics' && analytics && (
+            <>
+              <div style={card}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Revenue Trend — Last 6 months</p>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 100 }}>
+                  {monthlyData.map((m, i) => (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <span style={{ color: '#7C5CFC', fontSize: 9, fontWeight: 600 }}>{m.value > 0 ? `€${m.value}` : ''}</span>
+                      <div style={{ width: '100%', height: `${Math.max((m.value / maxMonthly) * 80, 4)}px`, background: i === monthlyData.length - 1 ? 'linear-gradient(180deg,#7C5CFC,#4DFFD2)' : '#7C5CFC', opacity: i === monthlyData.length - 1 ? 1 : 0.35, borderRadius: '4px 4px 0 0' }} />
+                      <span style={{ color: '#94A3B8', fontSize: 9 }}>{m.label}</span>
                     </div>
                   ))}
-                </>
-              )}
-            </div>
-
-            <div style={card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Check-in Drop-off</p>
-                <span style={{ fontSize: 11, color: '#94A3B8' }}>% clients completing each week</span>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 100 }}>
-                {analytics.dropoff.map((w: any, i: number) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: 10, color: '#94A3B8' }}>{w.rate > 0 ? `${w.rate}%` : ''}</span>
-                    <div style={{ width: '100%', height: `${Math.max(w.rate, 4)}%`, background: `rgba(124,92,252,${0.15 + (w.rate / 100) * 0.85})`, borderRadius: '4px 4px 0 0' }} />
-                    <span style={{ fontSize: 10, color: '#94A3B8' }}>{w.week}</span>
+
+              <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                {[
+                  { title: 'Age Distribution', data: analytics.ageBuckets, empty: 'Not enough data yet.' },
+                  { title: 'Gender', data: analytics.sexBuckets, empty: 'Not enough data yet.' },
+                ].map(({ title, data, empty }) => (
+                  <div key={title} style={{ ...card, marginBottom: 0 }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>{title}</p>
+                    {Object.values(data).every(v => v === 0) ? (
+                      <p style={{ color: '#94A3B8', fontSize: 12 }}>{empty}</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {Object.entries(data).map(([label, count], i) => {
+                          const total = Object.values(data).reduce((a: number, b) => a + (b as number), 0) || 1
+                          const pct = Math.round(((count as number) / total) * 100)
+                          return (
+                            <div key={label}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <span style={{ fontSize: 11, color: '#64748B' }}>{label}</span>
+                                <span style={{ fontSize: 11, fontWeight: 600, color: COLORS[i] }}>{pct}%</span>
+                              </div>
+                              <div style={{ height: 5, background: '#E8EDF8', borderRadius: 100 }}>
+                                <div style={{ height: '100%', width: `${pct}%`, background: COLORS[i], borderRadius: 100 }} />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-              {analytics.dropoff.every((w: any) => w.rate === 0) && (
-                <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', marginTop: 12 }}>No check-in data yet.</p>
-              )}
+
+              <div style={card}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Top Countries</p>
+                {analytics.topCountries.length === 0 ? (
+                  <p style={{ color: '#94A3B8', fontSize: 12 }}>Not enough data yet.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {analytics.topCountries.map((c: any, i: number) => (
+                      <div key={c.country}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', minWidth: 16 }}>#{i + 1}</span>
+                            <span style={{ fontSize: 12, color: '#0F172A', fontWeight: 500 }}>{c.country}</span>
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: COLORS[i % COLORS.length] }}>{c.pct}%</span>
+                        </div>
+                        <div style={{ height: 5, background: '#E8EDF8', borderRadius: 100 }}>
+                          <div style={{ height: '100%', width: `${c.pct}%`, background: COLORS[i % COLORS.length], borderRadius: 100 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={card}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Product Performance</p>
+                {analytics.productPerformance.length === 0 ? (
+                  <p style={{ color: '#94A3B8', fontSize: 12 }}>No products yet.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {analytics.productPerformance.map((p: any, i: number) => (
+                      <div key={i} style={{ borderTop: i > 0 ? '1px solid #E8EDF8' : 'none', paddingTop: i > 0 ? 10 : 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 4, height: 24, background: COLORS[i % COLORS.length], borderRadius: 2, flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, color: '#0F172A', fontWeight: 500 }}>{p.name}</span>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#7C5CFC' }}>€{p.revenue.toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, paddingLeft: 12 }}>
+                          <span style={{ fontSize: 11, color: '#94A3B8' }}>{p.sales} sales</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: p.checkinRate >= 70 ? '#059669' : p.checkinRate >= 40 ? '#D97706' : '#EF4444' }}>{p.checkinRate}% check-in</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={card}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Check-in Drop-off</p>
+                  <span style={{ fontSize: 10, color: '#94A3B8' }}>% per week</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
+                  {analytics.dropoff.map((w: any, i: number) => (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
+                      <div style={{ width: '100%', height: `${Math.max(w.rate, 4)}%`, background: `rgba(124,92,252,${0.15 + (w.rate / 100) * 0.85})`, borderRadius: '3px 3px 0 0' }} />
+                      <span style={{ fontSize: 9, color: '#94A3B8' }}>{w.week}</span>
+                    </div>
+                  ))}
+                </div>
+                {analytics.dropoff.every((w: any) => w.rate === 0) && (
+                  <p style={{ color: '#94A3B8', fontSize: 11, textAlign: 'center', marginTop: 10 }}>No check-in data yet.</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* METHOD */}
+          {activeTab === 'method' && (
+            <MethodSection expert={expert} />
+          )}
+
+          {/* SETTINGS */}
+          {activeTab === 'settings' && (
+            <div style={card}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+                Payout settings
+              </p>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
+                Enter your IBAN to receive payments. Payouts are processed manually by the Malyte team within 5 business days.
+              </p>
+              <IbanForm currentIban={expert?.iban || ''} expertId={user.id} />
             </div>
-          </>
-        )}
+          )}
+        </div>
 
-        {/* METHOD */}
-        {activeTab === 'method' && (
-          <MethodSection expert={expert} />
-        )}
-
-        {/* SETTINGS */}
-        {activeTab === 'settings' && (
-          <div style={card}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 20 }}>
-              Payout settings
-            </p>
-            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24, lineHeight: 1.6 }}>
-              Enter your IBAN to receive payments. Payouts are processed manually by the Malyte team within 5 business days.
-            </p>
-            <IbanForm currentIban={expert?.iban || ''} expertId={user.id} />
-          </div>
-        )}
-      </div>
-
-      {/* FOOTER */}
-      <div style={{ borderTop: '1px solid #E8EDF8', padding: '20px 24px', textAlign: 'center' }}>
-        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
-      </div>
-    </main>
+        {/* FOOTER */}
+        <div style={{ borderTop: '1px solid #E8EDF8', padding: '16px', textAlign: 'center' }}>
+          <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
+        </div>
+      </main>
+    </>
   )
 }
