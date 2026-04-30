@@ -139,7 +139,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? await getAnalyticsData(supabase, user.id, purchases, products)
     : null
 
-  const maxMonthly = Math.max(...monthlyData.map(m => m.value), 1)
   const methodCompleted = expert?.method_onboarding_completed === true
 
   const card: React.CSSProperties = {
@@ -158,6 +157,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           .dash-kpi-value { font-size: 18px !important; }
           .dash-kpi-label { font-size: 10px !important; }
           .dash-tabs { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+          .dash-tabs a { flex-shrink: 0 !important; }
           .dash-tab { padding: 10px 14px !important; font-size: 12px !important; white-space: nowrap !important; }
           .dash-body { padding: 16px 12px 48px !important; }
           .dash-banner { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
@@ -169,7 +169,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
 
-        {/* HEADER */}
         <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '0 16px' }}>
           <div style={{ maxWidth: 1000, margin: '0 auto' }}>
             <div className="dash-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
@@ -214,7 +213,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               ))}
             </div>
 
-            <div className="dash-tabs" style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
+            <div className="dash-tabs" style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as any}>
               {[
                 { label: 'Overview', value: 'overview', href: '/dashboard' },
                 { label: 'Analytics', value: 'analytics', href: '/dashboard?tab=analytics' },
@@ -236,10 +235,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         </div>
 
-        {/* BODY */}
         <div className="dash-body" style={{ maxWidth: 1000, margin: '0 auto', padding: '20px 16px 48px' }}>
 
-          {/* OVERVIEW */}
           {activeTab === 'overview' && (
             <>
               {!methodCompleted && (
@@ -259,12 +256,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               )}
 
-              {/* GRAFICO CARTESIANO */}
               <div style={card}>
-                <RevenueChart
-                  monthlyData={monthlyData}
-                  productData={productMonthlyData}
-                />
+                <RevenueChart monthlyData={monthlyData} productData={productMonthlyData} />
               </div>
 
               <div style={card}>
@@ -326,20 +319,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </>
           )}
 
-          {/* ANALYTICS */}
           {activeTab === 'analytics' && analytics && (
             <>
               <div style={card}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Revenue Trend — Last 6 months</p>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 100 }}>
-                  {monthlyData.map((m, i) => (
-                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <span style={{ color: '#7C5CFC', fontSize: 9, fontWeight: 600 }}>{m.value > 0 ? `€${m.value}` : ''}</span>
-                      <div style={{ width: '100%', height: `${Math.max((m.value / maxMonthly) * 80, 4)}px`, background: i === monthlyData.length - 1 ? 'linear-gradient(180deg,#7C5CFC,#4DFFD2)' : '#7C5CFC', opacity: i === monthlyData.length - 1 ? 1 : 0.35, borderRadius: '4px 4px 0 0' }} />
-                      <span style={{ color: '#94A3B8', fontSize: 9 }}>{m.label}</span>
-                    </div>
-                  ))}
-                </div>
+                <RevenueChart monthlyData={monthlyData} productData={productMonthlyData} />
               </div>
 
               <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -443,17 +426,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </>
           )}
 
-          {/* METHOD */}
-          {activeTab === 'method' && (
-            <MethodSection expert={expert} />
-          )}
+          {activeTab === 'method' && <MethodSection expert={expert} />}
 
-          {/* SETTINGS */}
           {activeTab === 'settings' && (
             <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
-                Payout settings
-              </p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Payout settings</p>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
                 Enter your IBAN to receive payments. Payouts are processed manually by the Malyte team within 5 business days.
               </p>
@@ -462,7 +439,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
         </div>
 
-        {/* FOOTER */}
         <div style={{ borderTop: '1px solid #E8EDF8', padding: '16px', textAlign: 'center' }}>
           <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
         </div>
