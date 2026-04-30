@@ -6,6 +6,7 @@ import ShareButton from './ShareButton'
 import ProfileMenu from './ProfileMenu'
 import IbanForm from './IbanForm'
 import MethodSection from './MethodSection'
+import RevenueChart from './RevenueChart'
 
 async function getExpertData(supabase: any, userId: string) {
   const { data: expert } = await supabase.from('experts').select('*').eq('id', userId).single()
@@ -87,12 +88,36 @@ function buildMonthlyData(purchases: any[]) {
   }
   purchases.forEach(p => {
     const d = new Date(p.created_at)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '00')}`
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     if (key in months) months[key] += Number(p.amount || 0)
   })
   return Object.entries(months).map(([key, value]) => ({
     label: new Date(key + '-01').toLocaleDateString('en-US', { month: 'short' }),
     value,
+  }))
+}
+
+function buildProductMonthlyData(purchases: any[], products: any[]) {
+  const now = new Date()
+  const monthKeys: string[] = []
+  const monthLabels: string[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+    monthLabels.push(d.toLocaleDateString('en-US', { month: 'short' }))
+  }
+  return products.map((product: any) => ({
+    name: product.title,
+    data: monthKeys.map((key, i) => {
+      const val = purchases
+        .filter((p: any) => {
+          const d = new Date(p.created_at)
+          const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          return p.product_id === product.id && k === key
+        })
+        .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+      return { label: monthLabels[i], value: val }
+    }),
   }))
 }
 
@@ -107,6 +132,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const { expert, products, purchases, totalRevenue, totalClients, publishedProducts, monthlyData } =
     await getExpertData(supabase, user.id)
+
+  const productMonthlyData = buildProductMonthlyData(purchases, products)
 
   const analytics = activeTab === 'analytics'
     ? await getAnalyticsData(supabase, user.id, purchases, products)
@@ -145,8 +172,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {/* HEADER */}
         <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '0 16px' }}>
           <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-
-            {/* Top row */}
             <div className="dash-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
               <div>
                 <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>
@@ -176,7 +201,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               </div>
             </div>
 
-            {/* KPI Cards */}
             <div className="dash-kpi" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '16px 0 0' }}>
               {[
                 { label: 'Total revenue', value: `€${totalRevenue.toFixed(2)}`, color: '#7C5CFC', bg: '#EDE9FE' },
@@ -190,7 +214,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               ))}
             </div>
 
-            {/* Tabs */}
             <div className="dash-tabs" style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
               {[
                 { label: 'Overview', value: 'overview', href: '/dashboard' },
@@ -236,18 +259,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
               )}
 
+              {/* GRAFICO CARTESIANO */}
               <div style={card}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Revenue last 6 months</p>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 90 }}>
-                  {monthlyData.map((m, i) => (
-                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <span style={{ color: '#7C5CFC', fontSize: 9, fontWeight: 600 }}>{m.value > 0 ? `€${m.value}` : ''}</span>
-                      <div style={{ width: '100%', height: `${Math.max((m.value / maxMonthly) * 70, 4)}px`, background: m.value > 0 ? '#7C5CFC' : '#E8EDF8', borderRadius: '4px 4px 0 0' }} />
-                      <span style={{ color: '#94A3B8', fontSize: 9 }}>{m.label}</span>
-                    </div>
-                  ))}
-                </div>
-                {totalRevenue === 0 && <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', marginTop: 10 }}>No purchases yet — data will appear when your first clients arrive.</p>}
+                <RevenueChart
+                  monthlyData={monthlyData}
+                  productData={productMonthlyData}
+                />
               </div>
 
               <div style={card}>
