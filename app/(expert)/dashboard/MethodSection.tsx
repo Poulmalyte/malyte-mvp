@@ -123,7 +123,6 @@ export default function MethodSection({ expert }: { expert: any }) {
   const allAnswered = questions.every(q => answers[q.key]?.trim().length > 0)
   const enoughPdfs = pdfs.length >= 0
 
-  // Stato completamento step
   const step1Done = pdfs.length >= 5
   const step2Done = saved || expert?.method_onboarding_completed
   const step3Done = savedProduct
@@ -154,7 +153,8 @@ export default function MethodSection({ expert }: { expert: any }) {
       `}</style>
 
       <div>
-        <div style={{ marginBottom: 24 }}>
+        {/* Titolo centrato */}
+        <div style={{ marginBottom: 24, textAlign: 'center' }}>
           <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 22, color: '#0F172A', margin: '0 0 6px' }}>
             My Method
           </h2>
@@ -164,7 +164,7 @@ export default function MethodSection({ expert }: { expert: any }) {
         </div>
 
         {/* Steps */}
-        <div className="method-steps" style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+        <div className="method-steps" style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
           {[
             { label: '1. Upload PDFs', done: step1Done },
             { label: '2. Your method', done: step2Done },
@@ -185,7 +185,7 @@ export default function MethodSection({ expert }: { expert: any }) {
           ))}
         </div>
 
-        {/* STEP 1 — Upload PDFs */}
+        {/* STEP 1 */}
         {step === 1 && (
           <div style={card}>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
@@ -237,7 +237,7 @@ export default function MethodSection({ expert }: { expert: any }) {
           </div>
         )}
 
-        {/* STEP 2 — Method questions */}
+        {/* STEP 2 */}
         {step === 2 && (
           <div>
             <div style={card}>
@@ -313,7 +313,7 @@ export default function MethodSection({ expert }: { expert: any }) {
           </div>
         )}
 
-        {/* STEP 3 — Your product */}
+        {/* STEP 3 */}
         {step === 3 && (
           <div>
             <div style={card}>
