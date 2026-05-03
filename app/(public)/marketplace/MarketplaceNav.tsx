@@ -59,8 +59,8 @@ export default function MarketplaceNav() {
         padding: '0 16px', height: 56,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <Link href="/marketplace" style={{ textDecoration: 'none' }}>
-          <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 20, color: '#0F172A' }}>
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 20, color: '#0F172A', cursor: 'pointer' }}>
             malyte<span style={{ color: '#7C5CFC' }}>.</span>
           </span>
         </Link>

@@ -320,9 +320,11 @@ export default async function MarketplacePage({
 
         {/* FOOTER */}
         <div style={{ padding: '20px 16px', textAlign: 'center', background: '#FFFFFF', borderTop: '1px solid #E8EDF8' }}>
-          <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A' }}>
-            malyte<span style={{ color: '#7C5CFC' }}>.</span>
-          </span>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A', cursor: 'pointer' }}>
+              malyte<span style={{ color: '#7C5CFC' }}>.</span>
+            </span>
+          </Link>
           <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 6 }}>© 2026 Malyte · AI-powered wellness plans</p>
         </div>
       </div>

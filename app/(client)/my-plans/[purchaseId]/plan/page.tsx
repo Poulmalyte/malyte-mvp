@@ -46,9 +46,11 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
             <Link href="/my-plans" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>
               ← My Plans
             </Link>
-            <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A' }}>
-              malyte<span style={{ color: '#7C5CFC' }}>.</span>
-            </span>
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A', cursor: 'pointer' }}>
+                malyte<span style={{ color: '#7C5CFC' }}>.</span>
+              </span>
+            </Link>
             <span style={{ fontSize: 12, color: '#94A3B8' }}>{expert?.name}</span>
           </div>
 

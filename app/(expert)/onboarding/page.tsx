@@ -99,12 +99,13 @@ export default function OnboardingPage() {
         }}>
           {/* Logo */}
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: '24px', color: '#0F172A' }}>
-              malyte<span style={{ color: '#7C5CFC' }}>.</span>
-            </span>
+            <a href="/" style={{ textDecoration: 'none' }}>
+              <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: '24px', color: '#0F172A', cursor: 'pointer' }}>
+                malyte<span style={{ color: '#7C5CFC' }}>.</span>
+              </span>
+            </a>
           </div>
 
-          {/* Progress bar — sempre piena al 100% perché è l'unico step */}
           <div style={{ height: '3px', background: '#E8EDF8', borderRadius: '100px', marginBottom: '32px' }}>
             <div style={{ height: '100%', borderRadius: '100px', background: 'linear-gradient(90deg, #7C5CFC, #4DFFD2)', width: '100%' }} />
           </div>
