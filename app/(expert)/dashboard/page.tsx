@@ -176,9 +176,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <div style={{ maxWidth: 1000, margin: '0 auto' }}>
             <div className="dash-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
               <div>
-                <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>
-                  malyte<span style={{ color: '#7C5CFC' }}>.</span>
-                </span>
+                <Link href="/" style={{ textDecoration: 'none' }}>
+                  <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A', cursor: 'pointer' }}>
+                    malyte<span style={{ color: '#7C5CFC' }}>.</span>
+                  </span>
+                </Link>
                 <h1 className="dash-title" style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 22, color: '#0F172A', margin: '4px 0 2px' }}>
                   Welcome back{expert?.name ? `, ${expert.name.split(' ')[0]}` : ''} 👋
                 </h1>
