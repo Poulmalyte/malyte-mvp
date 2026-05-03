@@ -162,7 +162,7 @@ export default async function MarketplacePage({
 
         {/* CATEGORY TABS */}
         <div style={{ borderBottom: '1px solid #E8EDF8', background: '#FFFFFF', overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as any}>
-          <div className="cat-wrap" style={{ display: 'flex', padding: '0 16px', minWidth: 'max-content' }}>
+          <div className="cat-wrap" style={{ display: 'flex', padding: '0 16px', justifyContent: 'center' }}>
             {CATEGORIES.map(cat => {
               const active = goal === cat.id || (!goal && cat.id === '')
               return (
