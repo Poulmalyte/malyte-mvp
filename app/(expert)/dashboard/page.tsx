@@ -7,6 +7,7 @@ import ProfileMenu from './ProfileMenu'
 import IbanForm from './IbanForm'
 import MethodSection from './MethodSection'
 import RevenueChart from './RevenueChart'
+import AccountSettings from './AccountSettings'
 
 async function getExpertData(supabase: any, userId: string) {
   const { data: expert } = await supabase.from('experts').select('*').eq('id', userId).single()
@@ -129,6 +130,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const isGoogleUser = user.app_metadata?.provider === 'google'
 
   const { expert, products, purchases, totalRevenue, totalClients, publishedProducts, monthlyData } =
     await getExpertData(supabase, user.id)
@@ -429,13 +432,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           {activeTab === 'method' && <MethodSection expert={expert} />}
 
           {activeTab === 'settings' && (
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Payout settings</p>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
-                Enter your IBAN to receive payments. Payouts are processed manually by the Malyte team within 5 business days.
-              </p>
-              <IbanForm currentIban={expert?.iban || ''} expertId={user.id} />
-            </div>
+            <>
+              <AccountSettings email={user.email || ''} isGoogleUser={isGoogleUser} />
+              <div style={card}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Payout settings</p>
+                <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
+                  Enter your IBAN to receive payments. Payouts are processed manually by the Malyte team within 5 business days.
+                </p>
+                <IbanForm currentIban={expert?.iban || ''} expertId={user.id} />
+              </div>
+            </>
           )}
         </div>
 
