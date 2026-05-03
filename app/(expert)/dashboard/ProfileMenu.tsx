@@ -39,9 +39,10 @@ export default function ProfileMenu({ name, email, slug }: Props) {
     : '?'
 
   const menuItems = [
-    { label: 'Dashboard',   href: '/dashboard',      icon: '▦' },
-    { label: 'My profile',  href: `/expert/${slug}`, icon: '◎' },
-    { label: 'My products', href: '/create-product', icon: '◈' },
+    { label: 'Dashboard',   href: '/dashboard',              icon: '▦' },
+    { label: 'My profile',  href: `/expert/${slug}`,         icon: '◎' },
+    { label: 'My products', href: '/create-product',         icon: '◈' },
+    { label: 'Settings',    href: '/dashboard?tab=settings', icon: '⚙' },
   ]
 
   return (
