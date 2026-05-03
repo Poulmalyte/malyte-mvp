@@ -47,6 +47,24 @@ export default function ProfileMenu({ name, email, slug }: Props) {
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .profile-dropdown {
+          position: absolute;
+          top: calc(100% + 10px);
+          right: 0;
+          width: 230px;
+        }
+        @media (max-width: 600px) {
+          .profile-dropdown {
+            right: auto;
+            left: 0;
+          }
+        }
+      `}</style>
 
       <button
         onClick={() => setOpen(o => !o)}
@@ -64,9 +82,8 @@ export default function ProfileMenu({ name, email, slug }: Props) {
       </button>
 
       {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 10px)', right: 0,
-          width: 230, background: '#14182A',
+        <div className="profile-dropdown" style={{
+          background: '#14182A',
           border: '1px solid rgba(99,130,255,0.15)',
           borderRadius: 16, overflow: 'hidden',
           boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
@@ -145,13 +162,6 @@ export default function ProfileMenu({ name, email, slug }: Props) {
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-6px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   )
 }
