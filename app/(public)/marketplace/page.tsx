@@ -87,14 +87,32 @@ export default async function MarketplacePage({
   const query = q?.trim() || ''
   const goal  = goalParam?.trim() || ''
 
+  // Cerca expert per nome se c'è una query
+  let expertIds: string[] = []
+  if (query) {
+    const { data: matchingExperts } = await supabase
+      .from('experts')
+      .select('id')
+      .ilike('name', `%${query}%`)
+    expertIds = matchingExperts?.map((e: any) => e.id) || []
+  }
+
   let productQuery = supabase
     .from('products')
     .select(`id, title, price, duration_months, experts!inner(name, slug, category)`)
     .eq('is_published', true)
     .order('created_at', { ascending: false })
 
-  if (goal)  productQuery = productQuery.eq('experts.category', goal)
-  if (query) productQuery = productQuery.or(`title.ilike.%${query}%,experts.name.ilike.%${query}%`)
+  if (goal) productQuery = productQuery.eq('experts.category', goal)
+
+  if (query) {
+    if (expertIds.length > 0) {
+      productQuery = productQuery.or(`title.ilike.%${query}%,expert_id.in.(${expertIds.join(',')})`)
+    } else {
+      productQuery = productQuery.ilike('title', `%${query}%`)
+    }
+  }
+
   const { data: productsRaw } = await productQuery
 
   const { data: allPurchases } = await supabase.from('purchases').select('product_id, client_id')
