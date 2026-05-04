@@ -87,7 +87,7 @@ export default async function MarketplacePage({
   const query = q?.trim() || ''
   const goal  = goalParam?.trim() || ''
 
-  // Cerca expert per nome se c'è una query
+  // Step 1 — cerca expert per nome
   let expertIds: string[] = []
   if (query) {
     const { data: matchingExperts } = await supabase
@@ -97,23 +97,49 @@ export default async function MarketplacePage({
     expertIds = matchingExperts?.map((e: any) => e.id) || []
   }
 
-  let productQuery = supabase
+  // Step 2 — query per titolo prodotto
+  let byTitleQuery = supabase
     .from('products')
     .select(`id, title, price, duration_months, experts!inner(name, slug, category)`)
     .eq('is_published', true)
     .order('created_at', { ascending: false })
+  if (goal) byTitleQuery = byTitleQuery.eq('experts.category', goal)
+  if (query) byTitleQuery = byTitleQuery.ilike('title', `%${query}%`)
+  const { data: byTitle } = await byTitleQuery
 
-  if (goal) productQuery = productQuery.eq('experts.category', goal)
-
-  if (query) {
-    if (expertIds.length > 0) {
-      productQuery = productQuery.or(`title.ilike.%${query}%,expert_id.in.(${expertIds.join(',')})`)
-    } else {
-      productQuery = productQuery.ilike('title', `%${query}%`)
-    }
+  // Step 3 — query separata per expert name
+  let byExpert: any[] = []
+  if (query && expertIds.length > 0) {
+    let byExpertQuery = supabase
+      .from('products')
+      .select(`id, title, price, duration_months, experts!inner(name, slug, category)`)
+      .eq('is_published', true)
+      .in('expert_id', expertIds)
+      .order('created_at', { ascending: false })
+    if (goal) byExpertQuery = byExpertQuery.eq('experts.category', goal)
+    const { data } = await byExpertQuery
+    byExpert = data || []
   }
 
-  const { data: productsRaw } = await productQuery
+  // Step 4 — unisci deduplicando
+  const seen = new Set<string>()
+  const productsRaw: any[] = []
+  for (const p of [...(byTitle || []), ...byExpert]) {
+    if (!seen.has(p.id)) { seen.add(p.id); productsRaw.push(p) }
+  }
+
+  // Se nessuna query, fetch normale di tutto
+  let finalRaw = productsRaw
+  if (!query) {
+    let baseQuery = supabase
+      .from('products')
+      .select(`id, title, price, duration_months, experts!inner(name, slug, category)`)
+      .eq('is_published', true)
+      .order('created_at', { ascending: false })
+    if (goal) baseQuery = baseQuery.eq('experts.category', goal)
+    const { data } = await baseQuery
+    finalRaw = data || []
+  }
 
   const { data: allPurchases } = await supabase.from('purchases').select('product_id, client_id')
   const clientsByProduct: Record<string, Set<string>> = {}
@@ -122,7 +148,7 @@ export default async function MarketplacePage({
     clientsByProduct[p.product_id].add(p.client_id)
   }
 
-  const products: Product[] = (productsRaw || []).map((p: any) => ({
+  const products: Product[] = finalRaw.map((p: any) => ({
     id: p.id, title: p.title, price: p.price,
     duration_months: p.duration_months,
     expert_name: p.experts?.name ?? '',
