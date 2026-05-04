@@ -32,9 +32,10 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
   const expert = (product as any)?.experts
 
   const mealColors: Record<string, string> = {
-    colazione: '#F59E0B', breakfast: '#F59E0B',
-    pranzo: '#059669', lunch: '#059669',
-    cena: '#7C5CFC', dinner: '#7C5CFC',
+    breakfast: '#F59E0B',
+    lunch: '#059669',
+    dinner: '#7C5CFC',
+    snack: '#6385FF',
   }
 
   return (
@@ -44,11 +45,9 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '0 24px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0 0' }}>
-            <Link href="/my-plans" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>
-              ← My Plans
-            </Link>
+            <Link href="/my-plans" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>← My Plans</Link>
             <Link href="/" style={{ textDecoration: 'none' }}>
-              <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A', cursor: 'pointer' }}>
+              <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A' }}>
                 malyte<span style={{ color: '#7C5CFC' }}>.</span>
               </span>
             </Link>
@@ -63,7 +62,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               {currentWeekData?.plan_title || `Week ${currentWeek}`}
             </p>
 
-            {/* Progress */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: '#94A3B8' }}>Week {currentWeek} of {totalWeeks}</span>
@@ -74,7 +72,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               </div>
             </div>
 
-            {/* Week pills */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingBottom: 16 }}>
               {weeks.map((w: any) => (
                 <Link key={w.week_number} href={`/my-plans/${purchaseId}/plan?week=${w.week_number}`} style={{ textDecoration: 'none' }}>
@@ -83,7 +80,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
                     background: w.week_number === currentWeek ? '#7C5CFC' : '#F5F7FA',
                     color: w.week_number === currentWeek ? '#fff' : '#94A3B8',
                     border: w.week_number === currentWeek ? 'none' : '1px solid #E8EDF8',
-                    cursor: 'pointer',
                   }}>
                     W{w.week_number}
                   </div>
@@ -98,45 +94,117 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '24px 24px 80px' }}>
         {currentWeekData ? (
           <>
+            {/* Welcome + stats */}
+            {currentWeekData.welcome_message && (
+              <div style={{ background: 'linear-gradient(135deg, #7C5CFC, #6385FF)', borderRadius: 14, padding: '20px 24px', marginBottom: 12 }}>
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: '0 0 16px' }}>
+                  {currentWeekData.welcome_message}
+                </p>
+                {currentWeekData.client_stats && (
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'Calories', value: `${currentWeekData.client_stats.daily_calories} kcal` },
+                      { label: 'Protein', value: `${currentWeekData.client_stats.daily_protein_g}g` },
+                      { label: 'Carbs', value: `${currentWeekData.client_stats.daily_carbs_g}g` },
+                      { label: 'Fats', value: `${currentWeekData.client_stats.daily_fats_g}g` },
+                    ].map((stat) => (
+                      <div key={stat.label} style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '8px 14px', textAlign: 'center' }}>
+                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', margin: '0 0 2px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{stat.label}</p>
+                        <p style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0 }}>{stat.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Weekly goal */}
+            {currentWeekData.weekly_goal && (
+              <div style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '16px 20px', marginBottom: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 18 }}>🎯</span>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Weekly Goal</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', margin: 0 }}>{currentWeekData.weekly_goal}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Days */}
             {currentWeekData.days?.map((day: any, dayIdx: number) => (
               <div key={dayIdx} style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 12 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
+                <p style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
                   {day.day || `Day ${dayIdx + 1}`}
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {day.meals?.map((meal: any, mealIdx: number) => {
-                    const mealKey = (meal.type || '').toLowerCase()
+                    const mealKey = (meal.meal || meal.type || '').toLowerCase()
                     const color = mealColors[mealKey] || '#7C5CFC'
                     return (
-                      <div key={mealIdx} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, marginTop: 5, flexShrink: 0 }} />
-                        <div>
-                          <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color, textTransform: 'capitalize' }}>{meal.type}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#334155', lineHeight: 1.5 }}>{meal.description}</p>
+                      <div key={mealIdx} style={{ borderLeft: `3px solid ${color}`, paddingLeft: 14 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                              {meal.meal || meal.type}
+                            </span>
+                            {meal.time && (
+                              <span style={{ fontSize: 11, color: '#94A3B8' }}>{meal.time}</span>
+                            )}
+                          </div>
                           {meal.calories && (
-                            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#94A3B8' }}>{meal.calories} kcal</p>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B', background: '#F5F7FA', padding: '2px 8px', borderRadius: 100 }}>
+                              {meal.calories} kcal
+                            </span>
                           )}
                         </div>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: '0 0 6px' }}>
+                          {meal.name || meal.description}
+                        </p>
+                        {meal.ingredients && meal.ingredients.length > 0 && (
+                          <div style={{ marginBottom: 6 }}>
+                            {meal.ingredients.map((ing: string, i: number) => (
+                              <p key={i} style={{ fontSize: 12, color: '#64748B', margin: '0 0 2px' }}>· {ing}</p>
+                            ))}
+                          </div>
+                        )}
+                        {meal.preparation && (
+                          <p style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic', margin: '4px 0 0', lineHeight: 1.5 }}>
+                            {meal.preparation}
+                          </p>
+                        )}
+                        {(meal.protein_g || meal.carbs_g || meal.fats_g) && (
+                          <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+                            {meal.protein_g && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600 }}>P: {meal.protein_g}g</span>}
+                            {meal.carbs_g && <span style={{ fontSize: 10, color: '#F59E0B', fontWeight: 600 }}>C: {meal.carbs_g}g</span>}
+                            {meal.fats_g && <span style={{ fontSize: 10, color: '#6385FF', fontWeight: 600 }}>F: {meal.fats_g}g</span>}
+                          </div>
+                        )}
                       </div>
                     )
                   })}
                 </div>
+                {day.daily_tip && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F1F5F9' }}>
+                    <p style={{ fontSize: 12, color: '#7C5CFC', fontWeight: 600, margin: '0 0 2px' }}>💡 Daily tip</p>
+                    <p style={{ fontSize: 12, color: '#64748B', margin: 0, lineHeight: 1.5 }}>{day.daily_tip}</p>
+                  </div>
+                )}
               </div>
             ))}
 
-            {(currentWeekData.common_mistakes || currentWeekData.success_metrics || currentWeekData.tips) && (
+            {/* Expert tip */}
+            {currentWeekData.expert_tip && (
               <div style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 12 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
-                  Weekly Wisdom
-                </p>
-                {currentWeekData.tips && (
-                  <div style={{ marginBottom: 12 }}>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: '#7C5CFC', marginBottom: 4 }}>Expert tip</p>
-                    <p style={{ fontSize: 13, color: '#334155', lineHeight: 1.6, margin: 0 }}>{currentWeekData.tips}</p>
-                  </div>
-                )}
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Expert Tip</p>
+                <p style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, margin: 0 }}>{currentWeekData.expert_tip}</p>
+              </div>
+            )}
+
+            {/* Common mistakes + success metrics */}
+            {(currentWeekData.common_mistakes?.length > 0 || currentWeekData.success_metrics?.length > 0) && (
+              <div style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 12 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Weekly Wisdom</p>
                 {currentWeekData.common_mistakes?.length > 0 && (
-                  <div style={{ marginBottom: 12 }}>
+                  <div style={{ marginBottom: 14 }}>
                     <p style={{ fontSize: 12, fontWeight: 600, color: '#EF4444', marginBottom: 6 }}>Common mistakes</p>
                     {currentWeekData.common_mistakes.map((m: string, i: number) => (
                       <p key={i} style={{ fontSize: 13, color: '#334155', margin: '0 0 4px' }}>· {m}</p>
@@ -145,7 +213,7 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
                 )}
                 {currentWeekData.success_metrics?.length > 0 && (
                   <div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: '#059669', marginBottom: 6 }}>Success metrics</p>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: '#059669', marginBottom: 6 }}>Signs it's working</p>
                     {currentWeekData.success_metrics.map((m: string, i: number) => (
                       <p key={i} style={{ fontSize: 13, color: '#334155', margin: '0 0 4px' }}>✓ {m}</p>
                     ))}
@@ -154,6 +222,7 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               </div>
             )}
 
+            {/* Check-in / complete */}
             <div style={{ marginTop: 20 }}>
               {currentWeek < totalWeeks ? (
                 <WeeklyCheckinButton purchaseId={purchaseId} weekNumber={currentWeek} />
