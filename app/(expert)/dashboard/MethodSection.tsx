@@ -121,7 +121,7 @@ export default function MethodSection({ expert }: { expert: any }) {
   }
 
   const allAnswered = questions.every(q => answers[q.key]?.trim().length > 0)
-  const enoughPdfs = pdfs.length >= 0
+  const enoughPdfs = pdfs.length >= 5
 
   const step1Done = pdfs.length >= 5
   const step2Done = saved || expert?.method_onboarding_completed

@@ -23,6 +23,46 @@ async function getExpertData(supabase: any, userId: string) {
   return { expert, products: products || [], purchases: purchases || [], totalRevenue, totalClients, publishedProducts, monthlyData }
 }
 
+async function getClientsData(supabase: any, purchases: any[]) {
+  const clientIds = [...new Set(purchases.map((p: any) => p.client_id))] as string[]
+  if (clientIds.length === 0) return []
+
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, country, birth_date, sex')
+    .in('id', clientIds)
+
+  const { data: clientPlans } = await supabase
+    .from('client_plans')
+    .select('id, purchase_id, current_week')
+    .in('purchase_id', purchases.map((p: any) => p.id))
+
+  const profileMap: Record<string, any> = {}
+  profiles?.forEach((p: any) => { profileMap[p.id] = p })
+
+  const planMap: Record<string, any> = {}
+  clientPlans?.forEach((cp: any) => { planMap[cp.purchase_id] = cp })
+
+  return clientIds.map((clientId) => {
+    const profile = profileMap[clientId] || {}
+    const clientPurchases = purchases.filter((p: any) => p.client_id === clientId)
+    const totalSpent = clientPurchases.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+    const latestPurchase = clientPurchases[0]
+    const plan = planMap[latestPurchase?.id]
+    return {
+      clientId,
+      name: profile.full_name || null,
+      email: profile.email || null,
+      country: profile.country || null,
+      purchases: clientPurchases,
+      totalSpent,
+      latestProduct: latestPurchase?.products?.title || '—',
+      latestPurchaseDate: latestPurchase?.created_at || null,
+      currentWeek: plan?.current_week || null,
+    }
+  })
+}
+
 async function getAnalyticsData(supabase: any, userId: string, purchases: any[], products: any[]) {
   const clientIds = [...new Set(purchases.map((p: any) => p.client_id))]
   const { data: profiles } = clientIds.length > 0
@@ -126,7 +166,12 @@ const COLORS = ['#7C5CFC', '#4DFFD2', '#A78BFA', '#6385FF', '#F59E0B']
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams
-  const activeTab = tab === 'analytics' ? 'analytics' : tab === 'settings' ? 'settings' : tab === 'method' ? 'method' : 'overview'
+  const activeTab = tab === 'analytics' ? 'analytics'
+    : tab === 'settings' ? 'settings'
+    : tab === 'method' ? 'method'
+    : tab === 'clients' ? 'clients'
+    : 'overview'
+
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -140,6 +185,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const analytics = activeTab === 'analytics'
     ? await getAnalyticsData(supabase, user.id, purchases, products)
+    : null
+
+  const clients = activeTab === 'clients'
+    ? await getClientsData(supabase, purchases)
     : null
 
   const methodCompleted = expert?.method_onboarding_completed === true
@@ -221,6 +270,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <div className="dash-tabs" style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as any}>
               {[
                 { label: 'Overview', value: 'overview', href: '/dashboard' },
+                { label: 'Clients', value: 'clients', href: '/dashboard?tab=clients' },
                 { label: 'Analytics', value: 'analytics', href: '/dashboard?tab=analytics' },
                 { label: 'My Method', value: 'method', href: '/dashboard?tab=method' },
                 { label: 'Settings', value: 'settings', href: '/dashboard?tab=settings' },
@@ -322,6 +372,90 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 )}
               </div>
             </>
+          )}
+
+          {/* ── CLIENTS TAB ── */}
+          {activeTab === 'clients' && (
+            <div style={card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>
+                  Your clients ({clients?.length || 0})
+                </p>
+                {(clients?.length || 0) > 0 && (
+                  <span style={{ fontSize: 11, color: '#94A3B8' }}>
+                    €{clients!.reduce((s, c) => s + c.totalSpent, 0).toFixed(2)} total revenue
+                  </span>
+                )}
+              </div>
+
+              {!clients || clients.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                  <div style={{ fontSize: 36, marginBottom: 12 }}>👥</div>
+                  <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 6 }}>No clients yet.</p>
+                  <p style={{ color: '#CBD5E1', fontSize: 12 }}>Your clients will appear here once they purchase a plan.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {clients.map((client) => {
+                    const initials = client.name
+                      ? client.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+                      : '?'
+                    const shortId = client.clientId.slice(0, 8)
+                    return (
+                      <div key={client.clientId} style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '14px 16px', background: '#F8FAFC',
+                        borderRadius: 12, border: '1px solid #E8EDF8',
+                      }}>
+                        {/* Avatar */}
+                        <div style={{
+                          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                          background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 700, fontSize: 14, color: '#fff',
+                        }}>
+                          {initials}
+                        </div>
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                            <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>
+                              {client.name || `Client #${shortId}`}
+                            </span>
+                            {client.country && (
+                              <span style={{ fontSize: 10, color: '#94A3B8', background: '#F1F5F9', padding: '1px 6px', borderRadius: 4 }}>
+                                {client.country}
+                              </span>
+                            )}
+                            {client.currentWeek && (
+                              <span style={{ fontSize: 10, fontWeight: 600, color: '#7C5CFC', background: '#EDE9FE', padding: '1px 6px', borderRadius: 4 }}>
+                                Week {client.currentWeek}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 11, color: '#64748B' }}>{client.latestProduct}</span>
+                            {client.latestPurchaseDate && (
+                              <span style={{ fontSize: 11, color: '#94A3B8' }}>
+                                · {new Date(client.latestPurchaseDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                            )}
+                            {client.purchases.length > 1 && (
+                              <span style={{ fontSize: 11, color: '#94A3B8' }}>· {client.purchases.length} purchases</span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Revenue */}
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <p style={{ fontWeight: 700, fontSize: 14, color: '#7C5CFC', margin: '0 0 2px' }}>€{client.totalSpent.toFixed(2)}</p>
+                          <p style={{ fontSize: 10, color: '#94A3B8', margin: 0 }}>total spent</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'analytics' && analytics && (
