@@ -11,6 +11,9 @@ export default function SignupPage() {
   const [role, setRole] = useState<Role | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [consentTerms, setConsentTerms] = useState(false)
+  const [consentHealth, setConsentHealth] = useState(false)
+  const [consentMarketing, setConsentMarketing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -23,6 +26,8 @@ export default function SignupPage() {
   const handleSignup = async () => {
     if (!role) { setError('Please select an account type before continuing.'); return }
     if (!email || !password) { setError('Please enter your email and password.'); return }
+    if (!consentTerms) { setError('You must accept the Terms & Conditions to continue.'); return }
+    if (!consentHealth) { setError('You must consent to data processing to use Malyte.'); return }
     setLoading(true); setError('')
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email, password,
@@ -35,6 +40,10 @@ export default function SignupPage() {
         id: signUpData.session.user.id,
         name: signUpData.session.user.email?.split('@')[0] || '',
         role: r,
+        consent_terms: true,
+        consent_health: true,
+        consent_marketing: consentMarketing,
+        consent_timestamp: new Date().toISOString(),
       }, { onConflict: 'id' })
       router.push(r === 'expert' ? '/dashboard' : '/client-onboarding')
       return
@@ -44,7 +53,15 @@ export default function SignupPage() {
 
   const handleGoogleSignup = async () => {
     if (!role) { setError('Please select an account type first.'); return }
+    if (!consentTerms) { setError('You must accept the Terms & Conditions to continue.'); return }
+    if (!consentHealth) { setError('You must consent to data processing to use Malyte.'); return }
     localStorage.setItem('pending_role', role)
+    localStorage.setItem('pending_consent', JSON.stringify({
+      consent_terms: true,
+      consent_health: true,
+      consent_marketing: consentMarketing,
+      consent_timestamp: new Date().toISOString(),
+    }))
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -75,6 +92,11 @@ export default function SignupPage() {
     color: '#0F172A', fontFamily: "'Inter', sans-serif",
     fontSize: '15px', outline: 'none', boxSizing: 'border-box',
     transition: 'border-color 0.2s',
+  }
+
+  const checkboxRowStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'flex-start', gap: '10px',
+    fontSize: '12px', color: '#4A4A6A', lineHeight: 1.5,
   }
 
   return (
@@ -133,7 +155,7 @@ export default function SignupPage() {
           </div>
 
           {/* Form */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
             <input type="email" placeholder="Email" value={email}
               onChange={e => setEmail(e.target.value)} style={inputStyle}
               onFocus={e => (e.target.style.borderColor = '#7C5CFC')}
@@ -144,6 +166,66 @@ export default function SignupPage() {
               onFocus={e => (e.target.style.borderColor = '#7C5CFC')}
               onBlur={e  => (e.target.style.borderColor = '#E8EDF8')}
             />
+          </div>
+
+          {/* Consent Block */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: '12px',
+            padding: '16px', marginBottom: '16px',
+            background: 'rgba(124,92,252,0.04)',
+            border: '1px solid rgba(124,92,252,0.15)',
+            borderRadius: '10px',
+          }}>
+            {/* Checkbox 1 — T&C obbligatoria */}
+            <div style={checkboxRowStyle}>
+              <input
+                type="checkbox"
+                id="consent-terms"
+                checked={consentTerms}
+                onChange={e => setConsentTerms(e.target.checked)}
+                style={{ width: 15, height: 15, minWidth: 15, marginTop: 2, cursor: 'pointer', accentColor: '#7C5CFC' }}
+              />
+              <label htmlFor="consent-terms" style={{ cursor: 'pointer' }}>
+                I have read and agree to the{' '}
+                <Link href="/terms" target="_blank" style={{ color: '#7C5CFC', fontWeight: 600, textDecoration: 'none' }}>Terms & Conditions</Link>
+                {' '}and the{' '}
+                <Link href="/privacy" target="_blank" style={{ color: '#7C5CFC', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</Link>,
+                including the processing of my personal data as described therein.{' '}
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#7C5CFC', textTransform: 'uppercase', letterSpacing: '0.08em', background: 'rgba(124,92,252,0.08)', padding: '2px 6px', borderRadius: 4 }}>Required</span>
+              </label>
+            </div>
+
+            {/* Checkbox 2 — Dati sensibili obbligatoria */}
+            <div style={checkboxRowStyle}>
+              <input
+                type="checkbox"
+                id="consent-health"
+                checked={consentHealth}
+                onChange={e => setConsentHealth(e.target.checked)}
+                style={{ width: 15, height: 15, minWidth: 15, marginTop: 2, cursor: 'pointer', accentColor: '#7C5CFC' }}
+              />
+              <label htmlFor="consent-health" style={{ cursor: 'pointer' }}>
+                I explicitly consent to the collection and processing of my personal data,
+                including health-related and physical information, for the purpose of generating
+                personalised wellness plans.{' '}
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#7C5CFC', textTransform: 'uppercase', letterSpacing: '0.08em', background: 'rgba(124,92,252,0.08)', padding: '2px 6px', borderRadius: 4 }}>Required</span>
+              </label>
+            </div>
+
+            {/* Checkbox 3 — Marketing opzionale */}
+            <div style={checkboxRowStyle}>
+              <input
+                type="checkbox"
+                id="consent-marketing"
+                checked={consentMarketing}
+                onChange={e => setConsentMarketing(e.target.checked)}
+                style={{ width: 15, height: 15, minWidth: 15, marginTop: 2, cursor: 'pointer', accentColor: '#7C5CFC' }}
+              />
+              <label htmlFor="consent-marketing" style={{ cursor: 'pointer' }}>
+                I agree to receive occasional updates and promotional communications from Malyte.
+                I can unsubscribe at any time.
+              </label>
+            </div>
           </div>
 
           {error && (
