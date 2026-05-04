@@ -340,9 +340,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>{product.title}</span>
-                              <span style={{ background: product.is_published ? '#D1FDF3' : '#F1F5F9', color: product.is_published ? '#059669' : '#94A3B8', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>
-                                {product.is_published ? '● Published' : '○ Hidden'}
-                              </span>
                             </div>
                             <p style={{ color: '#94A3B8', fontSize: 11, margin: 0 }}>€{product.price} · {product.pricing_model} · {questionCount} q</p>
                           </div>
@@ -375,7 +372,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </>
           )}
 
-          {/* ── CLIENTS TAB ── */}
           {activeTab === 'clients' && (
             <div style={card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -388,7 +384,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   </span>
                 )}
               </div>
-
               {!clients || clients.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
                   <div style={{ fontSize: 36, marginBottom: 12 }}>👥</div>
@@ -403,17 +398,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       : '?'
                     const shortId = client.clientId.slice(0, 8)
                     return (
-                      <div key={client.clientId} style={{
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '14px 16px', background: '#F8FAFC',
-                        borderRadius: 12, border: '1px solid #E8EDF8',
-                      }}>
-                        <div style={{
-                          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                          background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 700, fontSize: 14, color: '#fff',
-                        }}>
+                      <div key={client.clientId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: '#fff' }}>
                           {initials}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -422,22 +408,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                               {client.name || `Client #${shortId}`}
                             </span>
                             {client.country && (
-                              <span style={{ fontSize: 10, color: '#94A3B8', background: '#F1F5F9', padding: '1px 6px', borderRadius: 4 }}>
-                                {client.country}
-                              </span>
+                              <span style={{ fontSize: 10, color: '#94A3B8', background: '#F1F5F9', padding: '1px 6px', borderRadius: 4 }}>{client.country}</span>
                             )}
                             {client.currentWeek && (
-                              <span style={{ fontSize: 10, fontWeight: 600, color: '#7C5CFC', background: '#EDE9FE', padding: '1px 6px', borderRadius: 4 }}>
-                                Week {client.currentWeek}
-                              </span>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: '#7C5CFC', background: '#EDE9FE', padding: '1px 6px', borderRadius: 4 }}>Week {client.currentWeek}</span>
                             )}
                           </div>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 11, color: '#64748B' }}>{client.latestProduct}</span>
                             {client.latestPurchaseDate && (
-                              <span style={{ fontSize: 11, color: '#94A3B8' }}>
-                                · {new Date(client.latestPurchaseDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              </span>
+                              <span style={{ fontSize: 11, color: '#94A3B8' }}>· {new Date(client.latestPurchaseDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                             )}
                             {client.purchases.length > 1 && (
                               <span style={{ fontSize: 11, color: '#94A3B8' }}>· {client.purchases.length} purchases</span>
@@ -461,7 +441,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <div style={card}>
                 <RevenueChart monthlyData={monthlyData} productData={productMonthlyData} />
               </div>
-
               <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 {[
                   { title: 'Age Distribution', data: analytics.ageBuckets, empty: 'Not enough data yet.' },
@@ -493,7 +472,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   </div>
                 ))}
               </div>
-
               <div style={card}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Top Countries</p>
                 {analytics.topCountries.length === 0 ? (
@@ -517,7 +495,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   </div>
                 )}
               </div>
-
               <div style={card}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Product Performance</p>
                 {analytics.productPerformance.length === 0 ? (
@@ -542,7 +519,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   </div>
                 )}
               </div>
-
               <div style={card}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                   <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Check-in Drop-off</p>
