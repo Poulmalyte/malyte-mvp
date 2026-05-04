@@ -41,7 +41,6 @@ export async function middleware(req: NextRequest) {
     const isClientRoute = CLIENT_ROUTES.some(r => pathname.startsWith(r))
     const isOnboardingClient = pathname === '/client-onboarding'
 
-    // Client senza profilo completo → onboarding obbligatorio
     if (!isAuthRoute && !isOnboardingClient) {
       const { data: profile } = await supabase
         .from('profiles')
@@ -51,6 +50,7 @@ export async function middleware(req: NextRequest) {
 
       const role = profile?.role || 'client'
 
+      // Client senza profilo completo → onboarding obbligatorio
       if (role === 'client' && (!profile?.name || !profile?.country)) {
         return NextResponse.redirect(new URL('/client-onboarding', req.url))
       }
@@ -62,7 +62,7 @@ export async function middleware(req: NextRequest) {
 
       // Client che prova ad accedere a route expert
       if (role === 'client' && isExpertRoute) {
-        return NextResponse.redirect(new URL('/marketplace', req.url))
+        return NextResponse.redirect(new URL('/my-plans', req.url))
       }
     }
 
@@ -74,7 +74,7 @@ export async function middleware(req: NextRequest) {
         .eq('id', session.user.id)
         .single()
       const role = profile?.role || 'client'
-      return NextResponse.redirect(new URL(role === 'expert' ? '/dashboard' : '/marketplace', req.url))
+      return NextResponse.redirect(new URL(role === 'expert' ? '/dashboard' : '/my-plans', req.url))
     }
   }
 
