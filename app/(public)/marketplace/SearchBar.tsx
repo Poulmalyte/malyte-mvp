@@ -29,13 +29,14 @@ export default function SearchBar() {
       style={{
         display: 'flex',
         alignItems: 'center',
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(99,130,255,0.2)',
+        background: '#FFFFFF',
+        border: '1.5px solid #E8EDF8',
         borderRadius: '14px',
         padding: '6px 6px 6px 20px',
         width: '100%',
         maxWidth: '560px',
         gap: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
       }}
     >
       <span style={{ fontSize: '16px', opacity: 0.4 }}>🔍</span>
@@ -49,7 +50,7 @@ export default function SearchBar() {
           background: 'transparent',
           border: 'none',
           outline: 'none',
-          color: '#E8EDF8',
+          color: '#0F172A',
           fontSize: '15px',
           fontFamily: 'Inter, sans-serif',
         }}

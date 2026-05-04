@@ -94,7 +94,7 @@ export default async function MarketplacePage({
     .order('created_at', { ascending: false })
 
   if (goal)  productQuery = productQuery.eq('experts.category', goal)
-  if (query) productQuery = productQuery.ilike('title', `%${query}%`)
+  if (query) productQuery = productQuery.or(`title.ilike.%${query}%,experts.name.ilike.%${query}%`)
   const { data: productsRaw } = await productQuery
 
   const { data: allPurchases } = await supabase.from('purchases').select('product_id, client_id')
