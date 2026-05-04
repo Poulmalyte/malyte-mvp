@@ -21,7 +21,11 @@ async function getExpertData(supabase: any, userId: string) {
   const totalClients = new Set(purchases?.map((p: any) => p.client_id)).size
   const publishedProducts = products?.filter((p: any) => p.is_published).length || 0
   const monthlyData = buildMonthlyData(purchases || [])
-  return { expert, products: products || [], purchases: purchases || [], totalRevenue, totalClients, publishedProducts, monthlyData }
+  const soldByProduct: Record<string, number> = {}
+  for (const p of purchases || []) {
+    soldByProduct[p.product_id] = (soldByProduct[p.product_id] || 0) + 1
+  }
+  return { expert, products: products || [], purchases: purchases || [], totalRevenue, totalClients, publishedProducts, monthlyData, soldByProduct }
 }
 
 async function getClientsData(supabase: any, purchases: any[]) {
@@ -179,7 +183,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const isGoogleUser = user.app_metadata?.provider === 'google'
 
-  const { expert, products, purchases, totalRevenue, totalClients, publishedProducts, monthlyData } =
+  const { expert, products, purchases, totalRevenue, totalClients, publishedProducts, monthlyData, soldByProduct } =
     await getExpertData(supabase, user.id)
 
   const productMonthlyData = buildProductMonthlyData(purchases, products)
@@ -335,13 +339,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {products.map((product: any) => {
                       const questionCount = product.product_questions?.[0]?.count || 0
+                      const sold = soldByProduct[product.id] || 0
                       return (
                         <div key={product.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#F5F7FA', borderRadius: 10, border: '1px solid #E8EDF8' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>{product.title}</span>
+                              {sold > 0 && (
+                                <span style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #A7F3D0', padding: '2px 8px', borderRadius: 100 }}>
+                                  {sold} sold
+                                </span>
+                              )}
                             </div>
-                            <p style={{ color: '#94A3B8', fontSize: 11, margin: 0 }}>€{product.price} · {product.pricing_model} · {questionCount} q</p>
+                            <p style={{ color: '#94A3B8', fontSize: 11, margin: 0 }}>
+                              €{product.price} · {product.pricing_model} · {questionCount} q
+                            </p>
                           </div>
                           <PublishToggle productId={product.id} isPublished={product.is_published} />
                         </div>
