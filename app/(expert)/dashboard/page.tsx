@@ -341,7 +341,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>{product.title}</span>
                               <span style={{ background: product.is_published ? '#D1FDF3' : '#F1F5F9', color: product.is_published ? '#059669' : '#94A3B8', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>
-                                {product.is_published ? '● Live' : '○ Draft'}
+                                {product.is_published ? '● Published' : '○ Hidden'}
                               </span>
                             </div>
                             <p style={{ color: '#94A3B8', fontSize: 11, margin: 0 }}>€{product.price} · {product.pricing_model} · {questionCount} q</p>
