@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import MarketplaceNav from './MarketplaceNav'
 import SearchBar from './SearchBar'
+import Footer from '@/components/Footer'
 
 type Product = {
   id: string
@@ -87,7 +88,6 @@ export default async function MarketplacePage({
   const query = q?.trim() || ''
   const goal  = goalParam?.trim() || ''
 
-  // Step 1 — cerca expert per nome
   let expertIds: string[] = []
   if (query) {
     const { data: matchingExperts } = await supabase
@@ -97,7 +97,6 @@ export default async function MarketplacePage({
     expertIds = matchingExperts?.map((e: any) => e.id) || []
   }
 
-  // Step 2 — query per titolo prodotto
   let byTitleQuery = supabase
     .from('products')
     .select(`id, title, price, duration_months, experts!inner(name, slug, category)`)
@@ -107,7 +106,6 @@ export default async function MarketplacePage({
   if (query) byTitleQuery = byTitleQuery.ilike('title', `%${query}%`)
   const { data: byTitle } = await byTitleQuery
 
-  // Step 3 — query separata per expert name
   let byExpert: any[] = []
   if (query && expertIds.length > 0) {
     let byExpertQuery = supabase
@@ -121,14 +119,12 @@ export default async function MarketplacePage({
     byExpert = data || []
   }
 
-  // Step 4 — unisci deduplicando
   const seen = new Set<string>()
   const productsRaw: any[] = []
   for (const p of [...(byTitle || []), ...byExpert]) {
     if (!seen.has(p.id)) { seen.add(p.id); productsRaw.push(p) }
   }
 
-  // Se nessuna query, fetch normale di tutto
   let finalRaw = productsRaw
   if (!query) {
     let baseQuery = supabase
@@ -362,15 +358,7 @@ export default async function MarketplacePage({
           </div>
         </div>
 
-        {/* FOOTER */}
-        <div style={{ padding: '20px 16px', textAlign: 'center', background: '#FFFFFF', borderTop: '1px solid #E8EDF8' }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A', cursor: 'pointer' }}>
-              malyte<span style={{ color: '#7C5CFC' }}>.</span>
-            </span>
-          </Link>
-          <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 6 }}>© 2026 Malyte · AI-powered wellness plans</p>
-        </div>
+        <Footer />
       </div>
     </>
   )

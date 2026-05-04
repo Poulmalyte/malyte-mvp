@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ClientProfileMenu from './ClientProfileMenu'
 import ReviewForm from './ReviewForm'
+import Footer from '@/components/Footer'
 
 export default async function MyPlansPage() {
   const supabase = await createServerSupabaseClient()
@@ -100,10 +101,7 @@ export default async function MyPlansPage() {
         )}
       </div>
 
-      {/* FOOTER */}
-      <div style={{ borderTop: '1px solid #E8EDF8', padding: '20px 24px', textAlign: 'center', background: '#FFFFFF' }}>
-        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
-      </div>
+      <Footer />
     </main>
   )
 }

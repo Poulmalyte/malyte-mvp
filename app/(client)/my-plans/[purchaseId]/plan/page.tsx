@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import WeeklyCheckinButton from './WeeklyCheckinButton'
 import GenerateNextWeekButton from './GenerateNextWeekButton'
+import Footer from '@/components/Footer'
 
 export default async function PlanPage({ params }: { params: Promise<{ purchaseId: string }> }) {
   const { purchaseId } = await params
@@ -171,10 +172,7 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
         )}
       </div>
 
-      {/* FOOTER */}
-      <div style={{ borderTop: '1px solid #E8EDF8', padding: '16px 24px', textAlign: 'center', background: '#FFFFFF' }}>
-        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
-      </div>
+      <Footer />
     </main>
   )
 }

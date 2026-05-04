@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Footer from '@/components/Footer'
 
 export default async function ExpertPublicPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -292,13 +293,10 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
         {reviewCount > 0 && (
           <div style={{ marginTop: 32 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
-              <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 22, color: '#0F172A', margin: 0 }}>
-                Reviews
-              </h2>
+              <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 22, color: '#0F172A', margin: 0 }}>Reviews</h2>
               <span style={{ fontSize: 14, color: '#F59E0B', fontWeight: 700 }}>★ {avgRating}</span>
               <span style={{ fontSize: 13, color: '#94A3B8' }}>({reviewCount})</span>
             </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {reviews!.map((review: any) => {
                 const name = review.profiles?.full_name
@@ -361,10 +359,7 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
         </div>
       )}
 
-      {/* FOOTER */}
-      <div style={{ borderTop: '1px solid #E8EDF8', padding: '20px 24px', textAlign: 'center', background: '#FFFFFF' }}>
-        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
-      </div>
+      <Footer />
     </main>
   )
 }

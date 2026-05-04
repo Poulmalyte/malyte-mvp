@@ -8,6 +8,7 @@ import IbanForm from './IbanForm'
 import MethodSection from './MethodSection'
 import RevenueChart from './RevenueChart'
 import AccountSettings from './AccountSettings'
+import Footer from '@/components/Footer'
 
 async function getExpertData(supabase: any, userId: string) {
   const { data: expert } = await supabase.from('experts').select('*').eq('id', userId).single()
@@ -407,7 +408,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         padding: '14px 16px', background: '#F8FAFC',
                         borderRadius: 12, border: '1px solid #E8EDF8',
                       }}>
-                        {/* Avatar */}
                         <div style={{
                           width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
                           background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)',
@@ -416,7 +416,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         }}>
                           {initials}
                         </div>
-                        {/* Info */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
                             <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>
@@ -445,7 +444,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                             )}
                           </div>
                         </div>
-                        {/* Revenue */}
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <p style={{ fontWeight: 700, fontSize: 14, color: '#7C5CFC', margin: '0 0 2px' }}>€{client.totalSpent.toFixed(2)}</p>
                           <p style={{ fontSize: 10, color: '#94A3B8', margin: 0 }}>total spent</p>
@@ -581,9 +579,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
         </div>
 
-        <div style={{ borderTop: '1px solid #E8EDF8', padding: '16px', textAlign: 'center' }}>
-          <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
-        </div>
+        <Footer />
       </main>
     </>
   )
