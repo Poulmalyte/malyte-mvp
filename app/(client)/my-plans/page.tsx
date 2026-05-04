@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ClientProfileMenu from './ClientProfileMenu'
+import ReviewForm from './ReviewForm'
 
 export default async function MyPlansPage() {
   const supabase = await createServerSupabaseClient()
@@ -13,6 +14,14 @@ export default async function MyPlansPage() {
     .select(`*, products ( title, description, duration_months, experts ( name, category ) )`)
     .eq('client_id', user.id)
     .order('created_at', { ascending: false })
+
+  const purchaseIds = purchases?.map((p: any) => p.id) || []
+  const { data: reviews } = purchaseIds.length > 0
+    ? await supabase.from('reviews').select('purchase_id, rating, comment').in('purchase_id', purchaseIds)
+    : { data: [] }
+
+  const reviewMap: Record<string, { rating: number; comment: string | null }> = {}
+  reviews?.forEach((r: any) => { reviewMap[r.purchase_id] = r })
 
   return (
     <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>
@@ -56,32 +65,34 @@ export default async function MyPlansPage() {
             {purchases.map((purchase: any) => {
               const product = purchase.products
               const expert = product?.experts
+              const existingReview = reviewMap[purchase.id] || null
               return (
                 <div key={purchase.id} style={{
                   background: '#FFFFFF', borderRadius: 14, padding: '20px 24px',
                   border: '1px solid #E8EDF8',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: 16, flexWrap: 'wrap',
                 }}>
-                  <div>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#7C5CFC', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                      {expert?.category} · {expert?.name}
-                    </p>
-                    <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700, fontSize: 17, color: '#0F172A', marginBottom: 4 }}>
-                      {product?.title}
-                    </h2>
-                    <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>
-                      {product?.duration_months} month program
-                    </p>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: existingReview || true ? 12 : 0 }}>
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: '#7C5CFC', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                        {expert?.category} · {expert?.name}
+                      </p>
+                      <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700, fontSize: 17, color: '#0F172A', marginBottom: 4 }}>
+                        {product?.title}
+                      </h2>
+                      <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>
+                        {product?.duration_months} month program
+                      </p>
+                    </div>
+                    <Link href={`/my-plans/${purchase.id}/plan`} style={{
+                      background: '#7C5CFC', color: '#fff',
+                      fontWeight: 600, fontSize: 13, padding: '10px 20px',
+                      borderRadius: 100, textDecoration: 'none',
+                      whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>
+                      Open plan →
+                    </Link>
                   </div>
-                  <Link href={`/my-plans/${purchase.id}/plan`} style={{
-                    background: '#7C5CFC', color: '#fff',
-                    fontWeight: 600, fontSize: 13, padding: '10px 20px',
-                    borderRadius: 100, textDecoration: 'none',
-                    whiteSpace: 'nowrap', flexShrink: 0,
-                  }}>
-                    Open plan →
-                  </Link>
+                  <ReviewForm purchaseId={purchase.id} existingReview={existingReview} />
                 </div>
               )
             })}
