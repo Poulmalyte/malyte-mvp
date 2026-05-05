@@ -122,7 +122,6 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
                 <span style={{ background: '#EDE9FE', color: '#7C5CFC', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 100, letterSpacing: '0.04em' }}>
                   {categoryIcon[expert.category] || '⭐'} {categoryLabel[expert.category] || expert.category}
                 </span>
-                {/* SHORT BIO */}
                 {expert.short_bio && (
                   <span style={{ background: '#F1F5F9', color: '#475569', fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 100, border: '1px solid #E2E8F0' }}>
                     {expert.short_bio}
@@ -206,7 +205,6 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
       {/* BODY */}
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px 120px' }}>
 
-        {/* LONG BIO — priorità su expert.bio se presente */}
         {expert.long_bio ? (
           <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
             <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 16, color: '#0F172A', margin: '0 0 12px' }}>
