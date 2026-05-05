@@ -67,10 +67,11 @@ export default function MethodSection({ expert }: { expert: any }) {
       setInterviewStarted(true)
       startInterview()
     }
-  }, [step])
+  }, [step, interviewStarted, methodSaved])
 
   async function startInterview() {
     setChatLoading(true)
+    setChatMessages([])
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setChatLoading(false); return }
 
@@ -94,6 +95,16 @@ export default function MethodSection({ expert }: { expert: any }) {
       setChatMessages([{ role: 'assistant', content: "Hi! I'm ready to help you structure your method. Let's start: what does your method do that a generic practitioner wouldn't?" }])
     }
     setChatLoading(false)
+  }
+
+  async function handleRedoInterview() {
+    setMethodSaved(false)
+    setInterviewDone(false)
+    setStructuredMethod(null)
+    setChatMessages([])
+    setChatInput('')
+    setInterviewStarted(true)
+    await startInterview()
   }
 
   async function handleSend() {
@@ -270,7 +281,7 @@ export default function MethodSection({ expert }: { expert: any }) {
                 <p style={{ fontWeight: 700, fontSize: 16, color: '#059669', margin: '0 0 8px' }}>Method already structured</p>
                 <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 20px' }}>Your method has been saved. You can redo the interview to update it, or go directly to your product.</p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button onClick={() => { setMethodSaved(false); setInterviewStarted(false); setInterviewDone(false); setChatMessages([]); setStructuredMethod(null) }}
+                  <button onClick={handleRedoInterview}
                     style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #E8EDF8', background: '#F8FAFC', color: '#64748B', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                     Redo interview
                   </button>
