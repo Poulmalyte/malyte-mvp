@@ -241,7 +241,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <p style={{ color: '#94A3B8', fontSize: 12, margin: 0 }}>{user.email}</p>
               </div>
               <div className="dash-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ShareButton slug={expert?.slug || ''} />
+                <ShareButton url={`https://malyte.com/expert/${expert?.slug || ''}`} />
                 {methodCompleted ? (
                   <Link href="/create-product" style={{ textDecoration: 'none' }}>
                     <div style={{ background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 12, padding: '9px 18px', borderRadius: 100, whiteSpace: 'nowrap' }}>
