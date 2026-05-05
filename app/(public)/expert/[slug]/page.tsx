@@ -9,7 +9,7 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
   const supabase = await createServerSupabaseClient()
 
   const { data: expert } = await supabase
-    .from('experts').select('*').eq('slug', slug).eq('is_published', true).single()
+    .from('experts').select('*').eq('slug', slug).single()
   if (!expert) notFound()
 
   const { data: products } = await supabase
