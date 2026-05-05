@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Footer from '@/components/Footer'
+import ShareButton from './ShareButton'
 
 export default async function ExpertPublicPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -65,6 +66,7 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
   ]
 
   const firstName = expert.name?.split(' ')[0] || 'this expert'
+  const profileUrl = `https://malyte.com/expert/${slug}`
 
   function StarDisplay({ rating, size = 16 }: { rating: number; size?: number }) {
     return (
@@ -87,9 +89,12 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
               malyte<span style={{ color: '#7C5CFC' }}>.</span>
             </span>
           </Link>
-          <Link href="/marketplace" style={{ color: '#64748B', textDecoration: 'none', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            ← Back to Marketplace
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <Link href="/marketplace" style={{ color: '#64748B', textDecoration: 'none', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              ← Back to Marketplace
+            </Link>
+            <ShareButton url={profileUrl} />
+          </div>
         </div>
       </div>
 
@@ -117,6 +122,12 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
                 <span style={{ background: '#EDE9FE', color: '#7C5CFC', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 100, letterSpacing: '0.04em' }}>
                   {categoryIcon[expert.category] || '⭐'} {categoryLabel[expert.category] || expert.category}
                 </span>
+                {/* SHORT BIO */}
+                {expert.short_bio && (
+                  <span style={{ background: '#F1F5F9', color: '#475569', fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 100, border: '1px solid #E2E8F0' }}>
+                    {expert.short_bio}
+                  </span>
+                )}
                 {totalClients > 0 && (
                   <span style={{ background: '#D1FDF3', color: '#059669', fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 100 }}>
                     {totalClients} client{totalClients !== 1 ? 's' : ''} on Malyte
@@ -195,6 +206,23 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
       {/* BODY */}
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px 120px' }}>
 
+        {/* LONG BIO — priorità su expert.bio se presente */}
+        {expert.long_bio ? (
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
+            <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 16, color: '#0F172A', margin: '0 0 12px' }}>
+              About {firstName}
+            </h2>
+            <p style={{ color: '#64748B', fontSize: 15, lineHeight: 1.8, margin: 0, whiteSpace: 'pre-wrap' }}>
+              {expert.long_bio}
+            </p>
+          </div>
+        ) : expert.bio ? (
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
+            <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 16, color: '#0F172A', margin: '0 0 12px' }}>About {firstName}</h2>
+            <p style={{ color: '#64748B', fontSize: 15, lineHeight: 1.8, margin: 0 }}>{expert.bio}</p>
+          </div>
+        ) : null}
+
         {expert.methodology_name && (
           <div style={{ background: '#FFFFFF', border: '1px solid #E8EDF8', borderRadius: 16, padding: '24px 28px', marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
@@ -207,13 +235,6 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
                 <p style={{ color: '#64748B', fontSize: 14, lineHeight: 1.7, margin: 0 }}>{expert.methodology_description}</p>
               )}
             </div>
-          </div>
-        )}
-
-        {expert.bio && (
-          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
-            <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 16, color: '#0F172A', margin: '0 0 12px' }}>About {firstName}</h2>
-            <p style={{ color: '#64748B', fontSize: 15, lineHeight: 1.8, margin: 0 }}>{expert.bio}</p>
           </div>
         )}
 

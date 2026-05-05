@@ -7,9 +7,7 @@ export default function ShareButton({ url }: { url: string }) {
 
   const handleShare = async () => {
     if (navigator.share) {
-      try {
-        await navigator.share({ url })
-      } catch {}
+      try { await navigator.share({ url }) } catch {}
       return
     }
     await navigator.clipboard.writeText(url)
