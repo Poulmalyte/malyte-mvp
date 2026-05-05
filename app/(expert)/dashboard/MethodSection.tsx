@@ -313,7 +313,14 @@ export default function MethodSection({ expert }: { expert: any }) {
                       {msg.role === 'assistant' && (
                         <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>✦</div>
                       )}
-                      <div className={msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}>{msg.content}</div>
+                      <div
+  className={msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}
+  dangerouslySetInnerHTML={{
+    __html: msg.content
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br/>')
+  }}
+/>
                     </div>
                   ))}
 
