@@ -70,6 +70,14 @@ export default function MethodSection({ expert }: { expert: any }) {
   }, [step, interviewStarted, methodSaved])
 
   async function startInterview() {
+    if (pdfs.length === 0) {
+      setChatMessages([{
+        role: 'assistant',
+        content: "⚠️ Before we start, you need to upload at least 5 PDFs of your real plans.\n\nGo back to **Step 1** and upload them — I'll read them carefully before asking you any questions.",
+      }])
+      return
+    }
+
     setChatLoading(true)
     setChatMessages([])
     const { data: { session } } = await supabase.auth.getSession()
@@ -314,13 +322,13 @@ export default function MethodSection({ expert }: { expert: any }) {
                         <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>✦</div>
                       )}
                       <div
-  className={msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}
-  dangerouslySetInnerHTML={{
-    __html: msg.content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br/>')
-  }}
-/>
+                        className={msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}
+                        dangerouslySetInnerHTML={{
+                          __html: msg.content
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/\n/g, '<br/>')
+                        }}
+                      />
                     </div>
                   ))}
 
@@ -343,11 +351,11 @@ export default function MethodSection({ expert }: { expert: any }) {
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                       placeholder="Type your answer and press Enter…"
-                      disabled={chatLoading}
-                      style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E8EDF8', fontSize: 13, color: '#0F172A', background: '#fff', fontFamily: 'inherit', outline: 'none', opacity: chatLoading ? 0.6 : 1 }}
+                      disabled={chatLoading || pdfs.length === 0}
+                      style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E8EDF8', fontSize: 13, color: '#0F172A', background: '#fff', fontFamily: 'inherit', outline: 'none', opacity: chatLoading || pdfs.length === 0 ? 0.6 : 1 }}
                     />
-                    <button onClick={handleSend} disabled={chatLoading || !chatInput.trim()}
-                      style={{ padding: '12px 20px', borderRadius: 12, border: 'none', background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 14, cursor: chatLoading || !chatInput.trim() ? 'not-allowed' : 'pointer', opacity: chatLoading || !chatInput.trim() ? 0.5 : 1, transition: 'all 0.15s', flexShrink: 0 }}>
+                    <button onClick={handleSend} disabled={chatLoading || !chatInput.trim() || pdfs.length === 0}
+                      style={{ padding: '12px 20px', borderRadius: 12, border: 'none', background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 14, cursor: chatLoading || !chatInput.trim() || pdfs.length === 0 ? 'not-allowed' : 'pointer', opacity: chatLoading || !chatInput.trim() || pdfs.length === 0 ? 0.5 : 1, transition: 'all 0.15s', flexShrink: 0 }}>
                       →
                     </button>
                   </div>
