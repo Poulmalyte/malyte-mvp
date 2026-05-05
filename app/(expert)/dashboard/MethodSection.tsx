@@ -219,7 +219,7 @@ export default function MethodSection({ expert }: { expert: any }) {
         <div className="method-steps" style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
           {[{ label: '1. Upload PDFs', done: step1Done }, { label: '2. Your method', done: step2Done }, { label: '3. Your product', done: step3Done }].map((s, i) => (
             <div key={i} className="method-step-btn"
-              onClick={() => { if (i === 0) setStep(1); if (i === 1 && enoughPdfs) setStep(2); if (i === 2 && step2Done) setStep(3) }}
+              onClick={() => { if (i === 0) setStep(1); if (i === 1 && (enoughPdfs || step2Done)) setStep(2); if (i === 2 && step2Done) setStep(3) }}
               style={stepStyle(i, s.done)}>
               {s.done ? `✓ ${s.label}` : s.label}
             </div>
