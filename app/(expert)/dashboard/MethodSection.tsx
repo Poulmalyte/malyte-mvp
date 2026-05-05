@@ -39,6 +39,7 @@ export default function MethodSection({ expert }: { expert: any }) {
   const [pdfs, setPdfs] = useState<string[]>(existingPdfs)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [deletingPdf, setDeletingPdf] = useState<string | null>(null)
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
@@ -48,6 +49,7 @@ export default function MethodSection({ expert }: { expert: any }) {
   const [structuredMethod, setStructuredMethod] = useState<any>(null)
   const [savingMethod, setSavingMethod] = useState(false)
   const [methodSaved, setMethodSaved] = useState(alreadyCompleted)
+  const [pdfChangedWarning, setPdfChangedWarning] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const [productTitle, setProductTitle] = useState('')
@@ -68,6 +70,16 @@ export default function MethodSection({ expert }: { expert: any }) {
       startInterview()
     }
   }, [step, interviewStarted, methodSaved])
+
+  function resetInterview() {
+    setMethodSaved(false)
+    setInterviewDone(false)
+    setStructuredMethod(null)
+    setChatMessages([])
+    setChatInput('')
+    setInterviewStarted(false)
+    setPdfChangedWarning(false)
+  }
 
   async function startInterview() {
     if (pdfs.length === 0) {
@@ -106,13 +118,72 @@ export default function MethodSection({ expert }: { expert: any }) {
   }
 
   async function handleRedoInterview() {
-    setMethodSaved(false)
-    setInterviewDone(false)
-    setStructuredMethod(null)
-    setChatMessages([])
-    setChatInput('')
+    resetInterview()
     setInterviewStarted(true)
     await startInterview()
+  }
+
+  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    setUploading(true); setUploadError('')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setUploadError('Session expired. Please log in again.'); setUploading(false); return }
+
+    let addedCount = 0
+    for (const file of Array.from(files)) {
+      if (file.type !== 'application/pdf') { setUploadError('Only PDF files are accepted.'); continue }
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/upload-method-pdf', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+      })
+      const json = await res.json()
+      if (json.success) {
+        setPdfs(prev => [...prev, json.fileName])
+        addedCount++
+      } else {
+        setUploadError(json.error || 'Upload error. Please try again.')
+      }
+    }
+
+    // If interview was already done or saved, reset it — new PDFs must be reviewed
+    if (addedCount > 0 && (interviewStarted || methodSaved)) {
+      resetInterview()
+      setPdfChangedWarning(true)
+    }
+
+    setUploading(false)
+  }
+
+  async function handleDeletePdf(pdfPath: string) {
+    setDeletingPdf(pdfPath)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setDeletingPdf(null); return }
+
+    // Remove from Supabase Storage
+    const { error } = await supabase.storage.from('method-pdfs').remove([pdfPath])
+    if (error) { setDeletingPdf(null); return }
+
+    // Update DB
+    const newPdfs = pdfs.filter(p => p !== pdfPath)
+    await supabase.from('experts').update({ method_pdfs_urls: newPdfs }).eq('id', expert.id)
+    setPdfs(newPdfs)
+
+    // Reset interview if it was started
+    if (interviewStarted || methodSaved) {
+      resetInterview()
+      setPdfChangedWarning(true)
+    }
+
+    setDeletingPdf(null)
+  }
+
+  async function handleOpenPdf(pdfPath: string) {
+    const { data } = await supabase.storage.from('method-pdfs').createSignedUrl(pdfPath, 60)
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
 
   async function handleSend() {
@@ -169,28 +240,6 @@ export default function MethodSection({ expert }: { expert: any }) {
     if (!error) { setMethodSaved(true); setStep(3) }
   }
 
-  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-    setUploading(true); setUploadError('')
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { setUploadError('Session expired. Please log in again.'); setUploading(false); return }
-    for (const file of Array.from(files)) {
-      if (file.type !== 'application/pdf') { setUploadError('Only PDF files are accepted.'); continue }
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await fetch('/api/upload-method-pdf', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: formData,
-      })
-      const json = await res.json()
-      if (json.success) setPdfs(prev => [...prev, json.fileName])
-      else setUploadError(json.error || 'Upload error. Please try again.')
-    }
-    setUploading(false)
-  }
-
   async function handleSaveProduct() {
     if (!productTitle || !productDesc || !price || !pricingModel) { setProductError('Please fill in all fields'); return }
     setSavingProduct(true); setProductError('')
@@ -227,6 +276,7 @@ export default function MethodSection({ expert }: { expert: any }) {
         .chat-bubble-assistant { background: #F1F5F9; color: #0F172A; border-radius: 16px 16px 16px 4px; padding: 12px 16px; font-size: 13px; line-height: 1.6; max-width: 85%; align-self: flex-start; white-space: pre-wrap; }
         .chat-input:focus { border-color: #7C5CFC !important; outline: none; }
         @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+        .pdf-action-btn:hover { opacity: 0.75 !important; }
       `}</style>
 
       <div>
@@ -252,27 +302,68 @@ export default function MethodSection({ expert }: { expert: any }) {
             <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
               Upload at least <strong>5 PDFs</strong> of your real plans. The AI reads them before asking you questions.
             </p>
-            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #E8EDF8', borderRadius: 12, padding: '32px 16px', cursor: 'pointer', background: '#F8FAFC', marginBottom: 16 }}>
-              <input type="file" accept=".pdf" multiple onChange={handlePdfUpload} style={{ display: 'none' }} />
-              <div style={{ fontSize: 28, marginBottom: 8 }}>📄</div>
-              <p style={{ fontWeight: 600, color: '#0F172A', fontSize: 14, margin: '0 0 4px', textAlign: 'center' }}>{uploading ? 'Uploading...' : 'Click to select PDFs'}</p>
-              <p style={{ color: '#94A3B8', fontSize: 12, margin: 0, textAlign: 'center' }}>You can select multiple files · PDF only</p>
-            </label>
-            {uploadError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 12 }}>{uploadError}</p>}
+
+            {/* PDF list */}
             {pdfs.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>Uploaded PDFs: <span style={{ color: pdfs.length >= 5 ? '#059669' : '#D97706' }}>{pdfs.length}/5 minimum</span></p>
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>
+                  Uploaded PDFs: <span style={{ color: pdfs.length >= 5 ? '#059669' : '#D97706' }}>{pdfs.length}/5 minimum</span>
+                </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {pdfs.map((pdf, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#F1F5F9', borderRadius: 8 }}>
                       <span style={{ fontSize: 14 }}>📄</span>
-                      <span style={{ fontSize: 12, color: '#0F172A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pdf.split('/').pop()?.replace(/^\d+_/, '') || pdf}</span>
-                      <span style={{ color: '#059669', fontSize: 11, fontWeight: 600 }}>✓</span>
+                      <span style={{ fontSize: 12, color: '#0F172A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {pdf.split('/').pop()?.replace(/^\d+_/, '') || pdf}
+                      </span>
+                      {/* Open button */}
+                      <button
+                        className="pdf-action-btn"
+                        onClick={() => handleOpenPdf(pdf)}
+                        title="Open PDF"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '2px 4px', color: '#7C5CFC', transition: 'opacity 0.15s' }}>
+                        👁
+                      </button>
+                      {/* Delete button */}
+                      <button
+                        className="pdf-action-btn"
+                        onClick={() => handleDeletePdf(pdf)}
+                        disabled={deletingPdf === pdf}
+                        title="Delete PDF"
+                        style={{ background: 'none', border: 'none', cursor: deletingPdf === pdf ? 'not-allowed' : 'pointer', fontSize: 15, padding: '2px 4px', color: '#EF4444', opacity: deletingPdf === pdf ? 0.4 : 1, transition: 'opacity 0.15s' }}>
+                        {deletingPdf === pdf ? '…' : '🗑'}
+                      </button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+
+            {/* Warning when PDFs changed after interview */}
+            {pdfChangedWarning && (
+              <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+                <p style={{ fontSize: 13, color: '#C2410C', margin: 0, fontWeight: 600 }}>
+                  ⚠️ Your PDFs have changed — you'll need to redo the interview in Step 2 so the AI can re-read your updated plans.
+                </p>
+              </div>
+            )}
+
+            {uploadError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 12 }}>{uploadError}</p>}
+
+            {/* Upload area — always visible */}
+            <label style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              border: '2px dashed #E8EDF8', borderRadius: 12, padding: '24px 16px', cursor: 'pointer',
+              background: '#F8FAFC', marginBottom: 16,
+            }}>
+              <input type="file" accept=".pdf" multiple onChange={handlePdfUpload} style={{ display: 'none' }} />
+              <div style={{ fontSize: 24, marginBottom: 6 }}>📄</div>
+              <p style={{ fontWeight: 600, color: '#0F172A', fontSize: 13, margin: '0 0 2px', textAlign: 'center' }}>
+                {uploading ? 'Uploading...' : pdfs.length > 0 ? '+ Add more PDFs' : 'Click to select PDFs'}
+              </p>
+              <p style={{ color: '#94A3B8', fontSize: 12, margin: 0, textAlign: 'center' }}>Multiple files · PDF only</p>
+            </label>
+
             <button onClick={() => setStep(2)} disabled={!enoughPdfs}
               style={{ width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: enoughPdfs ? '#7C5CFC' : '#E8EDF8', color: enoughPdfs ? '#fff' : '#94A3B8', border: 'none', cursor: enoughPdfs ? 'pointer' : 'not-allowed' }}>
               {enoughPdfs ? 'Continue →' : `Upload ${5 - pdfs.length} more PDFs to continue`}
