@@ -8,6 +8,7 @@ import IbanForm from './IbanForm'
 import MethodSection from './MethodSection'
 import RevenueChart from './RevenueChart'
 import AccountSettings from './AccountSettings'
+import ProfileSection from './ProfileSection'
 import Footer from '@/components/Footer'
 
 async function getExpertData(supabase: any, userId: string) {
@@ -175,6 +176,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     : tab === 'settings' ? 'settings'
     : tab === 'method' ? 'method'
     : tab === 'clients' ? 'clients'
+    : tab === 'profile' ? 'profile'
     : 'overview'
 
   const supabase = await createServerSupabaseClient()
@@ -278,6 +280,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 { label: 'Clients', value: 'clients', href: '/dashboard?tab=clients' },
                 { label: 'Analytics', value: 'analytics', href: '/dashboard?tab=analytics' },
                 { label: 'My Method', value: 'method', href: '/dashboard?tab=method' },
+                { label: 'Profile', value: 'profile', href: '/dashboard?tab=profile' },
                 { label: 'Settings', value: 'settings', href: '/dashboard?tab=settings' },
               ].map(t => (
                 <Link key={t.value} href={t.href} style={{ textDecoration: 'none', flexShrink: 0 }}>
@@ -552,6 +555,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
 
           {activeTab === 'method' && <MethodSection expert={expert} />}
+
+          {activeTab === 'profile' && (
+            <div style={card}>
+              <ProfileSection />
+            </div>
+          )}
 
           {activeTab === 'settings' && (
             <>
