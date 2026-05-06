@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-export default function ShareButton({ url }: { url: string }) {
+export default function ShareButton({ url, label = 'Share profile' }: { url: string; label?: string }) {
   const [copied, setCopied] = useState(false)
 
   const handleShare = async () => {
@@ -48,7 +48,7 @@ export default function ShareButton({ url }: { url: string }) {
             <polyline points="16 6 12 2 8 6" />
             <line x1="12" y1="2" x2="12" y2="15" />
           </svg>
-          Share profile
+          {label}
         </>
       )}
     </button>

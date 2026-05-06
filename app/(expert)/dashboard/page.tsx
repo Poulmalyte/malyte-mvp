@@ -358,7 +358,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                               €{product.price} · {product.pricing_model} · {questionCount} q
                             </p>
                           </div>
-                          <PublishToggle productId={product.id} isPublished={product.is_published} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                            <ShareButton url={`https://malyte.com/product/${product.id}`} label="Share" />
+                            <PublishToggle productId={product.id} isPublished={product.is_published} />
+                          </div>
                         </div>
                       )
                     })}

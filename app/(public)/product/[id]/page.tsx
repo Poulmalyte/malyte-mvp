@@ -80,6 +80,15 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
           {/* LEFT */}
           <div>
+
+            {/* DESCRIPTION */}
+            {product.description && (
+              <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 16 }}>
+                <p style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>About this program</p>
+                <p style={{ fontSize: 14, color: '#334155', lineHeight: 1.8, margin: 0, whiteSpace: 'pre-wrap' }}>{product.description}</p>
+              </div>
+            )}
+
             {expert?.methodology_name && (
               <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 16 }}>
                 <p style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>Methodology</p>
