@@ -264,7 +264,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <div className="dash-kpi" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '16px 0 0' }}>
               {[
                 { label: 'Total revenue', value: `€${totalRevenue.toFixed(2)}`, color: '#7C5CFC', bg: '#EDE9FE' },
-                { label: 'Total clients', value: String(totalClients), color: '#059669', bg: '#D1FDF3' },
+                { label: 'Total customers', value: String(totalClients), color: '#059669', bg: '#D1FDF3' },
                 { label: 'Live products', value: String(publishedProducts), color: '#6385FF', bg: '#EEF2FF' },
               ].map((kpi, i) => (
                 <div key={i} style={{ background: kpi.bg, borderRadius: 10, padding: '12px 14px' }}>
@@ -277,7 +277,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <div className="dash-tabs" style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto', WebkitOverflowScrolling: 'touch' } as any}>
               {[
                 { label: 'Overview', value: 'overview', href: '/dashboard' },
-                { label: 'Clients', value: 'clients', href: '/dashboard?tab=clients' },
+                { label: 'Customers', value: 'clients', href: '/dashboard?tab=clients' },
                 { label: 'Analytics', value: 'analytics', href: '/dashboard?tab=analytics' },
                 { label: 'My Method', value: 'method', href: '/dashboard?tab=method' },
                 { label: 'Profile', value: 'profile', href: '/dashboard?tab=profile' },
@@ -394,7 +394,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <div style={card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>
-                  Your clients ({clients?.length || 0})
+                  Your customers ({clients?.length || 0})
                 </p>
                 {(clients?.length || 0) > 0 && (
                   <span style={{ fontSize: 11, color: '#94A3B8' }}>
@@ -405,8 +405,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {!clients || clients.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
                   <div style={{ fontSize: 36, marginBottom: 12 }}>👥</div>
-                  <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 6 }}>No clients yet.</p>
-                  <p style={{ color: '#CBD5E1', fontSize: 12 }}>Your clients will appear here once they purchase a plan.</p>
+                  <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 6 }}>No customers yet.</p>
+                  <p style={{ color: '#CBD5E1', fontSize: 12 }}>Your customers will appear here once they purchase a plan.</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -423,7 +423,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
                             <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>
-                              {client.name || `Client #${shortId}`}
+                              {client.name || `Customer #${shortId}`}
                             </span>
                             {client.country && (
                               <span style={{ fontSize: 10, color: '#94A3B8', background: '#F1F5F9', padding: '1px 6px', borderRadius: 4 }}>{client.country}</span>
