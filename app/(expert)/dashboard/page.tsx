@@ -1,7 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import PublishToggle from './PublishToggle'
 import ShareButton from './ShareButton'
 import ProfileMenu from './ProfileMenu'
 import IbanForm from './IbanForm'
@@ -10,6 +9,7 @@ import RevenueChart from './RevenueChart'
 import AccountSettings from './AccountSettings'
 import ProfileSection from './ProfileSection'
 import Footer from '@/components/Footer'
+import ProductRow from './ProductRow'
 
 async function getExpertData(supabase: any, userId: string) {
   const { data: expert } = await supabase.from('experts').select('*').eq('id', userId).single()
@@ -340,31 +340,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {products.map((product: any) => {
-                      const questionCount = product.product_questions?.[0]?.count || 0
-                      const sold = soldByProduct[product.id] || 0
-                      return (
-                        <div key={product.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#F5F7FA', borderRadius: 10, border: '1px solid #E8EDF8' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>{product.title}</span>
-                              {sold > 0 && (
-                                <span style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #A7F3D0', padding: '2px 8px', borderRadius: 100 }}>
-                                  {sold} sold
-                                </span>
-                              )}
-                            </div>
-                            <p style={{ color: '#94A3B8', fontSize: 11, margin: 0 }}>
-                              €{product.price} · {product.pricing_model} · {questionCount} q
-                            </p>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                            <ShareButton url={`https://malyte.com/product/${product.id}`} label="Share" />
-                            <PublishToggle productId={product.id} isPublished={product.is_published} />
-                          </div>
-                        </div>
-                      )
-                    })}
+                    {products.map((product: any) => (
+                      <ProductRow
+                        key={product.id}
+                        product={product}
+                        sold={soldByProduct[product.id] || 0}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
