@@ -26,6 +26,19 @@ const PRICING_MODELS = [
   { id: 'bundle', label: '📦 Bundle', desc: 'Offer base + premium at different price points' },
 ]
 
+const QUESTION_TYPES = [
+  { id: 'number', label: '🔢 Number', desc: 'e.g. revenue, sessions, kg' },
+  { id: 'text', label: '✏️ Text', desc: 'e.g. main blocker this week' },
+  { id: 'slider', label: '🎚️ Slider 1–5', desc: 'e.g. energy level, motivation' },
+  { id: 'yesno', label: '✅ Yes / No', desc: 'e.g. did you complete the task?' },
+]
+
+interface CheckinQuestion {
+  id: string
+  label: string
+  type: string
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
@@ -59,6 +72,14 @@ export default function MethodSection({ expert }: { expert: any }) {
   const [savingProduct, setSavingProduct] = useState(false)
   const [savedProduct, setSavedProduct] = useState(false)
   const [productError, setProductError] = useState('')
+
+  // Check-in questions
+  const [checkinQuestions, setCheckinQuestions] = useState<CheckinQuestion[]>([])
+  const [newQuestionLabel, setNewQuestionLabel] = useState('')
+  const [newQuestionType, setNewQuestionType] = useState('number')
+
+  // Auto-calibration
+  const [autoCalibration, setAutoCalibration] = useState<boolean | null>(null)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -149,7 +170,6 @@ export default function MethodSection({ expert }: { expert: any }) {
       }
     }
 
-    // If interview was already done or saved, reset it — new PDFs must be reviewed
     if (addedCount > 0 && (interviewStarted || methodSaved)) {
       resetInterview()
       setPdfChangedWarning(true)
@@ -163,16 +183,13 @@ export default function MethodSection({ expert }: { expert: any }) {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setDeletingPdf(null); return }
 
-    // Remove from Supabase Storage
     const { error } = await supabase.storage.from('method-pdfs').remove([pdfPath])
     if (error) { setDeletingPdf(null); return }
 
-    // Update DB
     const newPdfs = pdfs.filter(p => p !== pdfPath)
     await supabase.from('experts').update({ method_pdfs_urls: newPdfs }).eq('id', expert.id)
     setPdfs(newPdfs)
 
-    // Reset interview if it was started
     if (interviewStarted || methodSaved) {
       resetInterview()
       setPdfChangedWarning(true)
@@ -240,8 +257,36 @@ export default function MethodSection({ expert }: { expert: any }) {
     if (!error) { setMethodSaved(true); setStep(3) }
   }
 
+  function handleAddQuestion() {
+    if (!newQuestionLabel.trim()) return
+    if (checkinQuestions.length >= 5) return
+    setCheckinQuestions(prev => [...prev, {
+      id: Date.now().toString(),
+      label: newQuestionLabel.trim(),
+      type: newQuestionType,
+    }])
+    setNewQuestionLabel('')
+    setNewQuestionType('number')
+  }
+
+  function handleRemoveQuestion(id: string) {
+    setCheckinQuestions(prev => prev.filter(q => q.id !== id))
+  }
+
   async function handleSaveProduct() {
-    if (!productTitle || !productDesc || !price || !pricingModel) { setProductError('Please fill in all fields'); return }
+    if (!productTitle || !productDesc || !price || !pricingModel) {
+      setProductError('Please fill in all fields')
+      return
+    }
+    if (checkinQuestions.length === 0) {
+      setProductError('Please add at least one check-in question for your clients')
+      return
+    }
+    if (autoCalibration === null) {
+      setProductError('Please choose whether to enable auto-calibration')
+      return
+    }
+
     setSavingProduct(true); setProductError('')
     const { error } = await supabase.from('products').insert({
       expert_id: expert.id,
@@ -249,6 +294,8 @@ export default function MethodSection({ expert }: { expert: any }) {
       description: productDesc,
       price: parseFloat(price),
       pricing_model: pricingModel,
+      checkin_questions: checkinQuestions,
+      auto_calibration: autoCalibration,
       is_published: false,
     })
     setSavingProduct(false)
@@ -277,6 +324,7 @@ export default function MethodSection({ expert }: { expert: any }) {
         .chat-input:focus { border-color: #7C5CFC !important; outline: none; }
         @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
         .pdf-action-btn:hover { opacity: 0.75 !important; }
+        .calibration-option:hover { border-color: #7C5CFC !important; }
       `}</style>
 
       <div>
@@ -303,7 +351,6 @@ export default function MethodSection({ expert }: { expert: any }) {
               Upload at least <strong>5 PDFs</strong> of your real plans. The AI reads them before asking you questions.
             </p>
 
-            {/* PDF list */}
             {pdfs.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>
@@ -316,20 +363,9 @@ export default function MethodSection({ expert }: { expert: any }) {
                       <span style={{ fontSize: 12, color: '#0F172A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {pdf.split('/').pop()?.replace(/^\d+_/, '') || pdf}
                       </span>
-                      {/* Open button */}
-                      <button
-                        className="pdf-action-btn"
-                        onClick={() => handleOpenPdf(pdf)}
-                        title="Open PDF"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '2px 4px', color: '#7C5CFC', transition: 'opacity 0.15s' }}>
-                        👁
-                      </button>
-                      {/* Delete button */}
-                      <button
-                        className="pdf-action-btn"
-                        onClick={() => handleDeletePdf(pdf)}
-                        disabled={deletingPdf === pdf}
-                        title="Delete PDF"
+                      <button className="pdf-action-btn" onClick={() => handleOpenPdf(pdf)} title="Open PDF"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '2px 4px', color: '#7C5CFC', transition: 'opacity 0.15s' }}>👁</button>
+                      <button className="pdf-action-btn" onClick={() => handleDeletePdf(pdf)} disabled={deletingPdf === pdf} title="Delete PDF"
                         style={{ background: 'none', border: 'none', cursor: deletingPdf === pdf ? 'not-allowed' : 'pointer', fontSize: 15, padding: '2px 4px', color: '#EF4444', opacity: deletingPdf === pdf ? 0.4 : 1, transition: 'opacity 0.15s' }}>
                         {deletingPdf === pdf ? '…' : '🗑'}
                       </button>
@@ -339,7 +375,6 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             )}
 
-            {/* Warning when PDFs changed after interview */}
             {pdfChangedWarning && (
               <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: '#C2410C', margin: 0, fontWeight: 600 }}>
@@ -350,7 +385,6 @@ export default function MethodSection({ expert }: { expert: any }) {
 
             {uploadError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 12 }}>{uploadError}</p>}
 
-            {/* Upload area — always visible */}
             <label style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               border: '2px dashed #E8EDF8', borderRadius: 12, padding: '24px 16px', cursor: 'pointer',
@@ -472,6 +506,8 @@ export default function MethodSection({ expert }: { expert: any }) {
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 3 — Your product</p>
               <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>Define your first digital product. You can create more from the dashboard at any time.</p>
             </div>
+
+            {/* Product basics */}
             <div style={card}>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.04em' }}>PRODUCT NAME</label>
@@ -498,7 +534,90 @@ export default function MethodSection({ expert }: { expert: any }) {
                 </div>
               </div>
             </div>
-            {productError && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{productError}</div>}
+
+            {/* Check-in questions */}
+            <div style={card}>
+              <p style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 4, fontWeight: 600, letterSpacing: '0.04em' }}>WEEKLY CHECK-IN QUESTIONS</p>
+              <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 16, lineHeight: 1.6 }}>
+                Define what you want to measure each week. Your clients will answer these before the AI generates their next plan. <strong>Max 5 questions.</strong>
+              </p>
+
+              {checkinQuestions.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {checkinQuestions.map((q, i) => (
+                    <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E8EDF8' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#7C5CFC', minWidth: 20 }}>{i + 1}.</span>
+                      <span style={{ fontSize: 13, color: '#0F172A', flex: 1 }}>{q.label}</span>
+                      <span style={{ fontSize: 11, color: '#94A3B8', background: '#F1F5F9', padding: '2px 8px', borderRadius: 6, whiteSpace: 'nowrap' }}>
+                        {QUESTION_TYPES.find(t => t.id === q.type)?.label}
+                      </span>
+                      <button onClick={() => handleRemoveQuestion(q.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: 16, padding: '0 4px', lineHeight: 1 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {checkinQuestions.length < 5 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={newQuestionLabel}
+                    onChange={e => setNewQuestionLabel(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddQuestion() } }}
+                    placeholder="e.g. How many calls did you make this week?"
+                    style={input}
+                  />
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {QUESTION_TYPES.map(t => (
+                      <button key={t.id} onClick={() => setNewQuestionType(t.id)}
+                        style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1.5px solid ${newQuestionType === t.id ? '#7C5CFC' : '#E8EDF8'}`, background: newQuestionType === t.id ? '#EDE9FE' : '#F8FAFC', color: newQuestionType === t.id ? '#7C5CFC' : '#64748B', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={handleAddQuestion} disabled={!newQuestionLabel.trim()}
+                    style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: newQuestionLabel.trim() ? '#7C5CFC' : '#E8EDF8', color: newQuestionLabel.trim() ? '#fff' : '#94A3B8', fontWeight: 600, fontSize: 13, cursor: newQuestionLabel.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.15s' }}>
+                    + Add question ({checkinQuestions.length}/5)
+                  </button>
+                </div>
+              )}
+
+              {checkinQuestions.length >= 5 && (
+                <p style={{ fontSize: 12, color: '#059669', fontWeight: 600, margin: '8px 0 0' }}>✓ Maximum 5 questions reached</p>
+              )}
+            </div>
+
+            {/* Auto-calibration */}
+            <div style={card}>
+              <p style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 4, fontWeight: 600, letterSpacing: '0.04em' }}>🔄 AUTO-CALIBRATION</p>
+              <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 16, lineHeight: 1.6 }}>
+                Do you want the plan to automatically adapt to your client's weekly results?
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button className="calibration-option" onClick={() => setAutoCalibration(true)}
+                  style={{ padding: '16px', borderRadius: 12, textAlign: 'left', border: `1.5px solid ${autoCalibration === true ? '#7C5CFC' : '#E8EDF8'}`, background: autoCalibration === true ? '#EDE9FE' : '#F8FAFC', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: autoCalibration === true ? '#7C5CFC' : '#0F172A', marginBottom: 4 }}>✅ Yes — adapt automatically</div>
+                  <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6 }}>
+                    If the client is doing great, the plan gradually increases in intensity. If they're struggling, the AI slows down and consolidates before moving forward. <strong>Ideal if you want each client to progress at their own natural pace.</strong>
+                  </div>
+                </button>
+                <button className="calibration-option" onClick={() => setAutoCalibration(false)}
+                  style={{ padding: '16px', borderRadius: 12, textAlign: 'left', border: `1.5px solid ${autoCalibration === false ? '#7C5CFC' : '#E8EDF8'}`, background: autoCalibration === false ? '#EDE9FE' : '#F8FAFC', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: autoCalibration === false ? '#7C5CFC' : '#0F172A', marginBottom: 4 }}>❌ No — follow my structure</div>
+                  <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6 }}>
+                    The plan follows the fixed progression of your method, the same for all clients. <strong>Ideal if you have a structured path with fixed milestones you don't want to change.</strong>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {productError && (
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>
+                {productError}
+              </div>
+            )}
+
             {savedProduct ? (
               <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 12, padding: '20px', textAlign: 'center' }}>
                 <p style={{ color: '#059669', fontWeight: 700, fontSize: 16, margin: '0 0 6px' }}>🎉 You&apos;re all set!</p>
