@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
@@ -148,7 +148,7 @@ function QuestionBuilder({
   )
 }
 
-export default function CreateProductPage() {
+function CreateProductInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const productId = searchParams.get('productId')
@@ -169,28 +169,21 @@ export default function CreateProductPage() {
   const [loadingData, setLoadingData] = useState(isEditMode)
   const [error, setError] = useState('')
 
-  // Load existing product data in edit mode
   useEffect(() => {
     if (!isEditMode) return
-
     async function loadProduct() {
       setLoadingData(true)
       const { data: product } = await supabase.from('products').select('*').eq('id', productId).single()
       if (!product) { router.push('/dashboard'); return }
-
       setTitle(product.title || '')
       setDescription(product.description || '')
       setPrice(String(product.price || ''))
       setPricingModel(product.pricing_model || '')
       setDurationMonths(product.duration_months || 1)
-
-      // Load progress indicators
       const indicators = product.progress_indicators || []
       const presetIds = PRESET_INDICATORS.map(p => p.id)
       setSelectedIndicators(indicators.filter((i: any) => presetIds.includes(i.id)).map((i: any) => i.id))
       setCustomIndicators(indicators.filter((i: any) => !presetIds.includes(i.id)).map((i: any) => ({ ...i, custom: true })))
-
-      // Load initial questions
       const { data: iq } = await supabase.from('product_questions').select('*').eq('product_id', productId).order('order_index')
       setInitialQuestions((iq || []).map((q: any) => ({
         id: q.id, question_text: q.question_text,
@@ -198,8 +191,6 @@ export default function CreateProductPage() {
         allow_multiple: q.allow_multiple || false,
         options: q.options || [],
       })))
-
-      // Load checkin questions
       const { data: cq } = await supabase.from('product_checkin_questions').select('*').eq('product_id', productId).order('order_index')
       setCheckinQuestions((cq || []).map((q: any) => ({
         id: q.id, question_text: q.question_text,
@@ -207,10 +198,8 @@ export default function CreateProductPage() {
         allow_multiple: false,
         options: q.options || [],
       })))
-
       setLoadingData(false)
     }
-
     loadProduct()
   }, [productId])
 
@@ -251,31 +240,22 @@ export default function CreateProductPage() {
       if (!q.question_text.trim()) { setError('All questions must have text'); return }
       if (q.question_type === 'select' && q.options.filter(o => o.trim()).length < 2) { setError('Multiple choice questions need at least 2 options'); return }
     }
-
     setLoading(true); setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-
       const allIndicators = [
         ...PRESET_INDICATORS.filter(p => selectedIndicators.includes(p.id)),
         ...customIndicators.map(c => ({ id: c.id, label: c.label })),
       ]
-
       if (isEditMode) {
-        // UPDATE existing product
         await supabase.from('products').update({
-          title, description,
-          price: parseFloat(price),
-          pricing_model: pricingModel,
-          duration_months: durationMonths,
+          title, description, price: parseFloat(price),
+          pricing_model: pricingModel, duration_months: durationMonths,
           progress_indicators: allIndicators,
         }).eq('id', productId)
-
-        // Replace questions
         await supabase.from('product_questions').delete().eq('product_id', productId)
         await supabase.from('product_checkin_questions').delete().eq('product_id', productId)
-
         await supabase.from('product_questions').insert(
           initialQuestions.map((q, i) => ({
             product_id: productId, question_text: q.question_text,
@@ -291,7 +271,6 @@ export default function CreateProductPage() {
           }))
         )
       } else {
-        // CREATE new product
         const { data: product, error: productError } = await supabase.from('products').insert({
           expert_id: user.id, title, description,
           price: parseFloat(price), pricing_model: pricingModel,
@@ -299,7 +278,6 @@ export default function CreateProductPage() {
           progress_indicators: allIndicators,
         }).select().single()
         if (productError) throw productError
-
         await supabase.from('product_questions').insert(
           initialQuestions.map((q, i) => ({
             product_id: product.id, question_text: q.question_text,
@@ -315,7 +293,6 @@ export default function CreateProductPage() {
           }))
         )
       }
-
       router.push('/dashboard')
     } catch (err: any) {
       setError(err.message || 'Unexpected error. Please try again.')
@@ -336,12 +313,10 @@ export default function CreateProductPage() {
 
   return (
     <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
-
-      {/* HEADER */}
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '16px 24px' }}>
         <div style={{ maxWidth: 700, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button onClick={() => router.push('/dashboard')}
-            style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 13, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+            style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 13, cursor: 'pointer', padding: 0 }}>
             ← Back to dashboard
           </button>
           <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 18, color: '#0F172A' }}>
@@ -360,60 +335,39 @@ export default function CreateProductPage() {
           </p>
         </div>
 
-        {/* Product details */}
         <div style={card}>
-          <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 20px' }}>
-            Product details
-          </h2>
+          <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 20px' }}>Product details</h2>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 8, fontWeight: 500 }}>Product name</label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)}
-              placeholder="e.g. 3-Month Weight Loss Plan" style={inputStyle} />
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. 3-Month Weight Loss Plan" style={inputStyle} />
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 8, fontWeight: 500 }}>Description</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)}
-              placeholder="Describe what the client will receive..." rows={3}
-              style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6, fontFamily: "'Inter', sans-serif" }}
-            />
+            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe what the client will receive..." rows={3}
+              style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6, fontFamily: "'Inter', sans-serif" }} />
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 8, fontWeight: 500 }}>Price (€)</label>
-            <input type="number" value={price} onChange={e => setPrice(e.target.value)}
-              placeholder="e.g. 49" min="1"
-              style={{ ...inputStyle, width: 160 }} />
+            <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 49" min="1" style={{ ...inputStyle, width: 160 }} />
           </div>
           <div style={{ marginBottom: 20 }}>
             <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 12, fontWeight: 500 }}>Program duration</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {DURATION_OPTIONS.map(opt => (
                 <button key={opt.value} type="button" onClick={() => setDurationMonths(opt.value)}
-                  style={{
-                    padding: '8px 18px', borderRadius: 100, fontSize: 13, fontWeight: 600,
-                    border: `1px solid ${durationMonths === opt.value ? '#7C5CFC' : '#E8EDF8'}`,
-                    background: durationMonths === opt.value ? '#EDE9FE' : '#F5F7FA',
-                    color: durationMonths === opt.value ? '#7C5CFC' : '#94A3B8',
-                    cursor: 'pointer',
-                  }}>
+                  style={{ padding: '8px 18px', borderRadius: 100, fontSize: 13, fontWeight: 600, border: `1px solid ${durationMonths === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: durationMonths === opt.value ? '#EDE9FE' : '#F5F7FA', color: durationMonths === opt.value ? '#7C5CFC' : '#94A3B8', cursor: 'pointer' }}>
                   {opt.label}
                 </button>
               ))}
             </div>
-            <p style={{ color: '#94A3B8', fontSize: 12, marginTop: 8 }}>
-              A new weekly plan is generated every 6 days, adapting to the client&apos;s progress.
-            </p>
+            <p style={{ color: '#94A3B8', fontSize: 12, marginTop: 8 }}>A new weekly plan is generated every 6 days, adapting to the client&apos;s progress.</p>
           </div>
           <div>
             <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 12, fontWeight: 500 }}>Sales model</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {pricingModels.map(model => (
                 <button key={model.id} type="button" onClick={() => setPricingModel(model.id)}
-                  style={{
-                    padding: '14px 18px', borderRadius: 12, textAlign: 'left',
-                    border: `1px solid ${pricingModel === model.id ? '#7C5CFC' : '#E8EDF8'}`,
-                    background: pricingModel === model.id ? '#EDE9FE' : '#F5F7FA',
-                    cursor: 'pointer',
-                  }}>
+                  style={{ padding: '14px 18px', borderRadius: 12, textAlign: 'left', border: `1px solid ${pricingModel === model.id ? '#7C5CFC' : '#E8EDF8'}`, background: pricingModel === model.id ? '#EDE9FE' : '#F5F7FA', cursor: 'pointer' }}>
                   <div style={{ fontWeight: 600, fontSize: 14, color: pricingModel === model.id ? '#7C5CFC' : '#0F172A', marginBottom: 2 }}>{model.label}</div>
                   <div style={{ fontSize: 12, color: '#94A3B8' }}>{model.desc}</div>
                 </button>
@@ -422,19 +376,12 @@ export default function CreateProductPage() {
           </div>
         </div>
 
-        {/* Progress indicators */}
         <div style={card}>
-          <h2 style={{ color: '#D97706', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-            Progress indicators
-          </h2>
-          <p style={{ color: '#64748B', fontSize: 13, marginBottom: 12 }}>
-            Choose up to 4 metrics to track weekly. <strong style={{ color: '#0F172A' }}>Select {4 - totalIndicators} more.</strong>
-          </p>
+          <h2 style={{ color: '#D97706', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Progress indicators</h2>
+          <p style={{ color: '#64748B', fontSize: 13, marginBottom: 12 }}>Choose up to 4 metrics to track weekly. <strong style={{ color: '#0F172A' }}>Select {4 - totalIndicators} more.</strong></p>
           <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
             <p style={{ fontSize: 12, color: '#D97706', fontWeight: 600, marginBottom: 4 }}>💡 Why progress indicators matter</p>
-            <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
-              After each weekly check-in, the AI automatically scores your client&apos;s progress on these dimensions (1–10). The client sees a chart that updates every week, showing their improvement over time.
-            </p>
+            <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6, margin: 0 }}>After each weekly check-in, the AI automatically scores your client&apos;s progress on these dimensions (1–10). The client sees a chart that updates every week, showing their improvement over time.</p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
             {PRESET_INDICATORS.map(ind => {
@@ -442,14 +389,7 @@ export default function CreateProductPage() {
               const disabled = !selected && totalIndicators >= 4
               return (
                 <button key={ind.id} type="button" onClick={() => togglePresetIndicator(ind.id)} disabled={disabled}
-                  style={{
-                    padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 500,
-                    border: `1px solid ${selected ? '#D97706' : '#E8EDF8'}`,
-                    background: selected ? '#FEF3C7' : '#F5F7FA',
-                    color: selected ? '#D97706' : disabled ? '#C7D2F0' : '#64748B',
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                    opacity: disabled ? 0.5 : 1,
-                  }}>
+                  style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 500, border: `1px solid ${selected ? '#D97706' : '#E8EDF8'}`, background: selected ? '#FEF3C7' : '#F5F7FA', color: selected ? '#D97706' : disabled ? '#C7D2F0' : '#64748B', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
                   {selected ? '✓ ' : ''}{ind.label}
                 </button>
               )
@@ -458,29 +398,15 @@ export default function CreateProductPage() {
           <div>
             <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 8 }}>Or add a custom indicator:</label>
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              <input type="text" value={newCustomLabel} onChange={e => setNewCustomLabel(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addCustomIndicator()}
-                placeholder="e.g. Back pain level, Glowing skin score..."
-                disabled={totalIndicators >= 4}
-                style={{ ...inputStyle, flex: 1, opacity: totalIndicators >= 4 ? 0.5 : 1 }}
-              />
-              <button type="button" onClick={addCustomIndicator} disabled={totalIndicators >= 4 || !newCustomLabel.trim()}
-                style={{
-                  padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600,
-                  background: '#FEF3C7', border: '1px solid #FDE68A',
-                  color: '#D97706', cursor: 'pointer', whiteSpace: 'nowrap',
-                  opacity: totalIndicators >= 4 || !newCustomLabel.trim() ? 0.4 : 1,
-                }}>
-                + Add
-              </button>
+              <input type="text" value={newCustomLabel} onChange={e => setNewCustomLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomIndicator()} placeholder="e.g. Back pain level..." disabled={totalIndicators >= 4} style={{ ...inputStyle, flex: 1, opacity: totalIndicators >= 4 ? 0.5 : 1 }} />
+              <button type="button" onClick={addCustomIndicator} disabled={totalIndicators >= 4 || !newCustomLabel.trim()} style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#FEF3C7', border: '1px solid #FDE68A', color: '#D97706', cursor: 'pointer', whiteSpace: 'nowrap', opacity: totalIndicators >= 4 || !newCustomLabel.trim() ? 0.4 : 1 }}>+ Add</button>
             </div>
             {customIndicators.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {customIndicators.map(ind => (
                   <div key={ind.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 100, background: '#FEF3C7', border: '1px solid #FDE68A' }}>
                     <span style={{ fontSize: 12, color: '#D97706' }}>✦ {ind.label}</span>
-                    <button type="button" onClick={() => removeCustomIndicator(ind.id)}
-                      style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', padding: 0 }}>✕</button>
+                    <button type="button" onClick={() => removeCustomIndicator(ind.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', padding: 0 }}>✕</button>
                   </div>
                 ))}
               </div>
@@ -488,42 +414,24 @@ export default function CreateProductPage() {
           </div>
         </div>
 
-        {/* Initial questions */}
         <div style={card}>
-          <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-            Initial questions
-          </h2>
-          <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>
-            Asked once after purchase. The AI uses these to generate the Week 1 plan.
-          </p>
+          <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Initial questions</h2>
+          <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>Asked once after purchase. The AI uses these to generate the Week 1 plan.</p>
           <QuestionBuilder questions={initialQuestions} setQuestions={setInitialQuestions} placeholder="e.g. What is your main goal?" />
         </div>
 
-        {/* Weekly check-in questions */}
         <div style={card}>
-          <h2 style={{ color: '#059669', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-            Weekly check-in questions
-          </h2>
-          <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>
-            Shown to the client at day 6 of each week. The AI uses their answers to adapt the next week&apos;s plan.
-          </p>
+          <h2 style={{ color: '#059669', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Weekly check-in questions</h2>
+          <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>Shown to the client at day 6 of each week. The AI uses their answers to adapt the next week&apos;s plan.</p>
           <QuestionBuilder questions={checkinQuestions} setQuestions={setCheckinQuestions} placeholder="e.g. How much weight did you lose this week?" />
         </div>
 
         {error && (
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>
-            {error}
-          </div>
+          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{error}</div>
         )}
 
         <button type="button" onClick={handleSave} disabled={loading}
-          style={{
-            width: '100%', padding: '16px', borderRadius: 12,
-            background: loading ? '#C4B5FD' : '#7C5CFC',
-            color: '#fff', fontWeight: 700, fontSize: 16, border: 'none',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontFamily: "'Inter', sans-serif",
-          }}>
+          style={{ width: '100%', padding: '16px', borderRadius: 12, background: loading ? '#C4B5FD' : '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 16, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: "'Inter', sans-serif" }}>
           {loading ? 'Saving...' : isEditMode ? '💾 Save changes' : '🚀 Publish product'}
         </button>
       </div>
@@ -532,5 +440,17 @@ export default function CreateProductPage() {
         <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
       </div>
     </main>
+  )
+}
+
+export default function CreateProductPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', background: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>Loading…</p>
+      </div>
+    }>
+      <CreateProductInner />
+    </Suspense>
   )
 }
