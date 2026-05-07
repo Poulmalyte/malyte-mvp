@@ -21,6 +21,7 @@ export default function WeeklyCheckinPage() {
 
   const [questions, setQuestions] = useState<CheckinQuestion[]>([])
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [freeNote, setFreeNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
 
@@ -46,13 +47,18 @@ export default function WeeklyCheckinPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       const { error: checkinError } = await supabase.from('weekly_checkins').insert({
-        purchase_id: purchaseId, client_id: user.id, week_number: weekNumber, answers,
+        purchase_id: purchaseId, client_id: user.id, week_number: weekNumber,
+        answers, free_note: freeNote.trim() || null,
       })
       if (checkinError) throw checkinError
       const res = await fetch('/api/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ purchaseId, weekNumber: weekNumber + 1, questionnaireAnswers: {}, checkinAnswers: answers }),
+        body: JSON.stringify({
+          purchaseId, weekNumber: weekNumber + 1,
+          questionnaireAnswers: {}, checkinAnswers: answers,
+          freeNote: freeNote.trim() || null,
+        }),
       })
       if (!res.ok) throw new Error('Error generating next week')
       router.push(`/my-plans/${purchaseId}/plan`)
@@ -110,7 +116,7 @@ export default function WeeklyCheckinPage() {
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 12 }}>
               {questions.map((q, i) => (
                 <div key={q.id} style={{ background: '#FFFFFF', borderRadius: 14, padding: '16px 20px', border: '1px solid #E8EDF8' }}>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0F172A', marginBottom: 12 }}>
@@ -153,6 +159,31 @@ export default function WeeklyCheckinPage() {
                   )}
                 </div>
               ))}
+            </div>
+
+            {/* NOTA LIBERA */}
+            <div style={{ background: '#FFFFFF', borderRadius: 14, padding: '16px 20px', border: '1px solid #E8EDF8', marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0F172A', marginBottom: 4 }}>
+                💬 Anything else your coach should know?
+              </label>
+              <p style={{ fontSize: 12, color: '#94A3B8', margin: '0 0 10px' }}>
+                Optional — share anything that might affect your next week: events, how you're feeling, requests.
+              </p>
+              <textarea
+                rows={3}
+                placeholder="e.g. I have a wedding on Saturday, I can only train Monday and Wednesday..."
+                value={freeNote}
+                onChange={e => setFreeNote(e.target.value)}
+                style={{
+                  width: '100%', borderRadius: 10, padding: '10px 14px',
+                  fontSize: 13, resize: 'none', outline: 'none',
+                  background: '#F5F7FA', border: '1px solid #E8EDF8',
+                  color: '#0F172A', fontFamily: 'Inter, sans-serif',
+                  boxSizing: 'border-box', transition: 'border-color 0.2s',
+                }}
+                onFocus={e => (e.target.style.borderColor = '#7C5CFC')}
+                onBlur={e => (e.target.style.borderColor = '#E8EDF8')}
+              />
             </div>
 
             <button onClick={handleSubmit} disabled={!allAnswered || loading}
