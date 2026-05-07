@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 type QuestionType = 'text' | 'select'
@@ -150,6 +150,9 @@ function QuestionBuilder({
 
 export default function CreateProductPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const productId = searchParams.get('productId')
+  const isEditMode = !!productId
   const supabase = createClient()
 
   const [title, setTitle] = useState('')
@@ -163,7 +166,53 @@ export default function CreateProductPage() {
   const [customIndicators, setCustomIndicators] = useState<ProgressIndicator[]>([])
   const [newCustomLabel, setNewCustomLabel] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingData, setLoadingData] = useState(isEditMode)
   const [error, setError] = useState('')
+
+  // Load existing product data in edit mode
+  useEffect(() => {
+    if (!isEditMode) return
+
+    async function loadProduct() {
+      setLoadingData(true)
+      const { data: product } = await supabase.from('products').select('*').eq('id', productId).single()
+      if (!product) { router.push('/dashboard'); return }
+
+      setTitle(product.title || '')
+      setDescription(product.description || '')
+      setPrice(String(product.price || ''))
+      setPricingModel(product.pricing_model || '')
+      setDurationMonths(product.duration_months || 1)
+
+      // Load progress indicators
+      const indicators = product.progress_indicators || []
+      const presetIds = PRESET_INDICATORS.map(p => p.id)
+      setSelectedIndicators(indicators.filter((i: any) => presetIds.includes(i.id)).map((i: any) => i.id))
+      setCustomIndicators(indicators.filter((i: any) => !presetIds.includes(i.id)).map((i: any) => ({ ...i, custom: true })))
+
+      // Load initial questions
+      const { data: iq } = await supabase.from('product_questions').select('*').eq('product_id', productId).order('order_index')
+      setInitialQuestions((iq || []).map((q: any) => ({
+        id: q.id, question_text: q.question_text,
+        question_type: q.question_type as QuestionType,
+        allow_multiple: q.allow_multiple || false,
+        options: q.options || [],
+      })))
+
+      // Load checkin questions
+      const { data: cq } = await supabase.from('product_checkin_questions').select('*').eq('product_id', productId).order('order_index')
+      setCheckinQuestions((cq || []).map((q: any) => ({
+        id: q.id, question_text: q.question_text,
+        question_type: q.question_type as QuestionType,
+        allow_multiple: false,
+        options: q.options || [],
+      })))
+
+      setLoadingData(false)
+    }
+
+    loadProduct()
+  }, [productId])
 
   const pricingModels = [
     { id: 'one_time', label: '💳 One-time payment', desc: 'Client pays once and gets lifetime access' },
@@ -202,35 +251,71 @@ export default function CreateProductPage() {
       if (!q.question_text.trim()) { setError('All questions must have text'); return }
       if (q.question_type === 'select' && q.options.filter(o => o.trim()).length < 2) { setError('Multiple choice questions need at least 2 options'); return }
     }
+
     setLoading(true); setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+
       const allIndicators = [
         ...PRESET_INDICATORS.filter(p => selectedIndicators.includes(p.id)),
         ...customIndicators.map(c => ({ id: c.id, label: c.label })),
       ]
-      const { data: product, error: productError } = await supabase.from('products').insert({
-        expert_id: user.id, title, description,
-        price: parseFloat(price), pricing_model: pricingModel,
-        duration_months: durationMonths, is_published: true,
-        progress_indicators: allIndicators,
-      }).select().single()
-      if (productError) throw productError
-      await supabase.from('product_questions').insert(
-        initialQuestions.map((q, i) => ({
-          product_id: product.id, question_text: q.question_text,
-          question_type: q.question_type, options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null,
-          allow_multiple: q.question_type === 'select' ? q.allow_multiple : false, order_index: i,
-        }))
-      )
-      await supabase.from('product_checkin_questions').insert(
-        checkinQuestions.map((q, i) => ({
-          product_id: product.id, question_text: q.question_text,
-          question_type: q.question_type === 'select' ? 'select' : 'text',
-          options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null, order_index: i,
-        }))
-      )
+
+      if (isEditMode) {
+        // UPDATE existing product
+        await supabase.from('products').update({
+          title, description,
+          price: parseFloat(price),
+          pricing_model: pricingModel,
+          duration_months: durationMonths,
+          progress_indicators: allIndicators,
+        }).eq('id', productId)
+
+        // Replace questions
+        await supabase.from('product_questions').delete().eq('product_id', productId)
+        await supabase.from('product_checkin_questions').delete().eq('product_id', productId)
+
+        await supabase.from('product_questions').insert(
+          initialQuestions.map((q, i) => ({
+            product_id: productId, question_text: q.question_text,
+            question_type: q.question_type, options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null,
+            allow_multiple: q.question_type === 'select' ? q.allow_multiple : false, order_index: i,
+          }))
+        )
+        await supabase.from('product_checkin_questions').insert(
+          checkinQuestions.map((q, i) => ({
+            product_id: productId, question_text: q.question_text,
+            question_type: q.question_type === 'select' ? 'select' : 'text',
+            options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null, order_index: i,
+          }))
+        )
+      } else {
+        // CREATE new product
+        const { data: product, error: productError } = await supabase.from('products').insert({
+          expert_id: user.id, title, description,
+          price: parseFloat(price), pricing_model: pricingModel,
+          duration_months: durationMonths, is_published: true,
+          progress_indicators: allIndicators,
+        }).select().single()
+        if (productError) throw productError
+
+        await supabase.from('product_questions').insert(
+          initialQuestions.map((q, i) => ({
+            product_id: product.id, question_text: q.question_text,
+            question_type: q.question_type, options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null,
+            allow_multiple: q.question_type === 'select' ? q.allow_multiple : false, order_index: i,
+          }))
+        )
+        await supabase.from('product_checkin_questions').insert(
+          checkinQuestions.map((q, i) => ({
+            product_id: product.id, question_text: q.question_text,
+            question_type: q.question_type === 'select' ? 'select' : 'text',
+            options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null, order_index: i,
+          }))
+        )
+      }
+
       router.push('/dashboard')
     } catch (err: any) {
       setError(err.message || 'Unexpected error. Please try again.')
@@ -242,6 +327,12 @@ export default function CreateProductPage() {
     background: '#FFFFFF', borderRadius: 16, padding: 28,
     marginBottom: 20, border: '1px solid #E8EDF8',
   }
+
+  if (loadingData) return (
+    <div style={{ minHeight: '100vh', background: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>Loading product…</p>
+    </div>
+  )
 
   return (
     <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
@@ -262,10 +353,10 @@ export default function CreateProductPage() {
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '28px 24px 0' }}>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 26, color: '#0F172A', margin: '0 0 6px' }}>
-            Create a new product
+            {isEditMode ? 'Edit product' : 'Create a new product'}
           </h1>
           <p style={{ color: '#94A3B8', fontSize: 13, margin: 0 }}>
-            Define your product, the initial questions and the weekly check-in questions.
+            {isEditMode ? 'Update your product details, questions and settings.' : 'Define your product, the initial questions and the weekly check-in questions.'}
           </p>
         </div>
 
@@ -433,11 +524,10 @@ export default function CreateProductPage() {
             cursor: loading ? 'not-allowed' : 'pointer',
             fontFamily: "'Inter', sans-serif",
           }}>
-          {loading ? 'Saving...' : '🚀 Publish product'}
+          {loading ? 'Saving...' : isEditMode ? '💾 Save changes' : '🚀 Publish product'}
         </button>
       </div>
 
-      {/* FOOTER */}
       <div style={{ borderTop: '1px solid #E8EDF8', padding: '20px 24px', textAlign: 'center', marginTop: 40, background: '#FFFFFF' }}>
         <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>© 2026 Malyte · AI-powered wellness programs</p>
       </div>

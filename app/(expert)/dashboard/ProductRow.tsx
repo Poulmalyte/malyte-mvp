@@ -18,7 +18,7 @@ export default function ProductRow({ product, sold }: ProductRowProps) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px' }}>
         <div
           style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
-          onClick={() => router.push(`/dashboard/product/${product.id}`)}>
+          onClick={() => router.push(`/create-product?productId=${product.id}`)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>{product.title}</span>
             {sold > 0 && (
