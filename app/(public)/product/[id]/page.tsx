@@ -2,6 +2,31 @@ import BuyNowButton from './BuyNowButton'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
+
+async function getExchangeRate(currency: string): Promise<number> {
+  if (currency === 'EUR') return 1
+  try {
+    const res = await fetch(
+      `https://api.frankfurter.app/latest?from=EUR&to=${currency}`,
+      { next: { revalidate: 3600 } }
+    )
+    if (!res.ok) return 1
+    const data = await res.json()
+    return data.rates?.[currency] ?? 1
+  } catch {
+    return 1
+  }
+}
+
+function formatPrice(amount: number, currency: string, rate: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount * rate)
+}
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -18,6 +43,12 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   const expert = product.experts as any
   const duration = product.duration_months
+
+  // Currency
+  const cookieStore = await cookies()
+  const currency = cookieStore.get('user_currency')?.value || 'EUR'
+  const rate = await getExchangeRate(currency)
+  const displayPrice = formatPrice(product.price, currency, rate)
 
   return (
     <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
@@ -60,7 +91,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
             <div>
               <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, fontWeight: 500 }}>Price</p>
-              <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 28, fontWeight: 800, color: '#7C5CFC', margin: 0 }}>€{product.price}</p>
+              <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 28, fontWeight: 800, color: '#7C5CFC', margin: 0 }}>{displayPrice}</p>
             </div>
             <div>
               <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, fontWeight: 500 }}>Expert</p>
@@ -81,7 +112,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           {/* LEFT */}
           <div>
 
-            {/* DESCRIPTION */}
             {product.description && (
               <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 16 }}>
                 <p style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>About this program</p>
@@ -145,7 +175,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
           {/* RIGHT — purchase box */}
           <div style={{ background: '#FFFFFF', borderRadius: 16, border: '2px solid #7C5CFC', padding: '24px', position: 'sticky', top: 24, boxShadow: '0 4px 24px rgba(124,92,252,0.10)' }}>
-            <p style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 36, color: '#7C5CFC', marginBottom: 4 }}>€{product.price}</p>
+            <p style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 36, color: '#7C5CFC', marginBottom: 4 }}>{displayPrice}</p>
             <p style={{ fontSize: 12, color: '#94A3B8', marginBottom: 20 }}>
               {product.pricing_model === 'one_time' ? 'One-time payment · lifetime access' : 'Monthly subscription'}
             </p>

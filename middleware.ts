@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getCurrencyFromCountry } from '@/lib/currency'
 
 const EXPERT_ROUTES = ['/dashboard', '/onboarding', '/profile']
 const CLIENT_ROUTES = ['/my-plans', '/account']
@@ -9,6 +10,15 @@ const AUTH_ROUTES = ['/login', '/signup']
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const pathname = req.nextUrl.pathname
+
+  // — Currency detection —
+  const country = req.geo?.country ?? req.headers.get('x-vercel-ip-country') ?? null
+  const currency = getCurrencyFromCountry(country)
+  res.cookies.set('user_currency', currency, {
+    path: '/',
+    maxAge: 60 * 60 * 24,
+    sameSite: 'lax',
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import MarketplaceNav from './MarketplaceNav'
@@ -17,7 +18,7 @@ type Product = {
 }
 
 function getBadge(clientCount: number) {
-  if (clientCount >= 20) return { label: 'Top Rated', bg: '#FEF3C7', color: '#D97706' }
+  if (clientCount >= 20) return { label: 'Top Rated',  bg: '#FEF3C7', color: '#D97706' }
   if (clientCount >= 10) return { label: 'Bestseller', bg: '#FEF3C7', color: '#D97706' }
   if (clientCount >= 3)  return { label: 'Popular',    bg: '#D1FDF3', color: '#059669' }
   return null
@@ -78,6 +79,31 @@ const TRUST_POINTS = [
   { icon: '✅', text: 'Real client results' },
 ]
 
+// Fetch tasso di cambio da frankfurter (cached 1h da Next.js)
+async function getExchangeRate(currency: string): Promise<number> {
+  if (currency === 'EUR') return 1
+  try {
+    const res = await fetch(
+      `https://api.frankfurter.app/latest?from=EUR&to=${currency}`,
+      { next: { revalidate: 3600 } }
+    )
+    if (!res.ok) return 1
+    const data = await res.json()
+    return data.rates?.[currency] ?? 1
+  } catch {
+    return 1
+  }
+}
+
+function formatPrice(amount: number, currency: string, rate: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount * rate)
+}
+
 export default async function MarketplacePage({
   searchParams,
 }: {
@@ -87,6 +113,11 @@ export default async function MarketplacePage({
   const { q, goal: goalParam } = await searchParams
   const query = q?.trim() || ''
   const goal  = goalParam?.trim() || ''
+
+  // Currency dal cookie impostato dal middleware
+  const cookieStore = await cookies()
+  const currency = cookieStore.get('user_currency')?.value || 'EUR'
+  const rate = await getExchangeRate(currency)
 
   let expertIds: string[] = []
   if (query) {
@@ -102,7 +133,7 @@ export default async function MarketplacePage({
     .select(`id, title, price, duration_months, experts!inner(name, slug, category)`)
     .eq('is_published', true)
     .order('created_at', { ascending: false })
-  if (goal) byTitleQuery = byTitleQuery.eq('experts.category', goal)
+  if (goal)  byTitleQuery = byTitleQuery.eq('experts.category', goal)
   if (query) byTitleQuery = byTitleQuery.ilike('title', `%${query}%`)
   const { data: byTitle } = await byTitleQuery
 
@@ -242,6 +273,7 @@ export default async function MarketplacePage({
                 const gradient = categoryGradients[product.expert_category] || 'linear-gradient(135deg, #EDE9FE, #C4B5FD)'
                 const emoji    = categoryEmoji[product.expert_category] || '⭐'
                 const username = product.expert_name.toLowerCase().replace(/\s+/g, '')
+                const displayPrice = formatPrice(product.price, currency, rate)
                 return (
                   <Link key={product.id} href={`/product/${product.id}`} style={{ textDecoration: 'none' }}>
                     <div style={{
@@ -273,7 +305,7 @@ export default async function MarketplacePage({
                         </p>
                         <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: 10, color: '#94A3B8' }}>Starting at</span>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>€{Number(product.price).toFixed(0)}</span>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{displayPrice}</span>
                         </div>
                       </div>
                     </div>
