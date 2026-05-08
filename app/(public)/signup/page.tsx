@@ -55,13 +55,16 @@ export default function SignupPage() {
     if (!role) { setError('Please select an account type first.'); return }
     if (!consentTerms) { setError('You must accept the Terms & Conditions to continue.'); return }
     if (!consentHealth) { setError('You must consent to data processing to use Malyte.'); return }
-    localStorage.setItem('pending_role', role)
-    localStorage.setItem('pending_consent', JSON.stringify({
+
+    const pendingData = JSON.stringify({
+      role,
       consent_terms: true,
       consent_health: true,
       consent_marketing: consentMarketing,
       consent_timestamp: new Date().toISOString(),
-    }))
+    })
+    document.cookie = `pending_signup=${encodeURIComponent(pendingData)}; path=/; max-age=300; SameSite=Lax`
+
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -176,7 +179,6 @@ export default function SignupPage() {
             border: '1px solid rgba(124,92,252,0.15)',
             borderRadius: '10px',
           }}>
-            {/* Checkbox 1 — T&C obbligatoria */}
             <div style={checkboxRowStyle}>
               <input
                 type="checkbox"
@@ -195,7 +197,6 @@ export default function SignupPage() {
               </label>
             </div>
 
-            {/* Checkbox 2 — Dati sensibili obbligatoria */}
             <div style={checkboxRowStyle}>
               <input
                 type="checkbox"
@@ -212,7 +213,6 @@ export default function SignupPage() {
               </label>
             </div>
 
-            {/* Checkbox 3 — Marketing opzionale */}
             <div style={checkboxRowStyle}>
               <input
                 type="checkbox"

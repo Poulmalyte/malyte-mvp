@@ -29,6 +29,22 @@ export async function GET(request: NextRequest) {
     if (session?.user) {
       const userId = session.user.id
 
+      // Legge il cookie dei consensi impostato prima del redirect OAuth
+      const pendingCookie = cookieStore.get('pending_signup')?.value
+      let pendingData: {
+        role?: string
+        consent_terms?: boolean
+        consent_health?: boolean
+        consent_marketing?: boolean
+        consent_timestamp?: string
+      } | null = null
+      if (pendingCookie) {
+        try { pendingData = JSON.parse(decodeURIComponent(pendingCookie)) } catch {}
+      }
+
+      // Cancella subito il cookie
+      cookieStore.set('pending_signup', '', { path: '/', maxAge: 0 })
+
       // Controlla se il profilo esiste già
       const { data: existingProfile } = await supabase
         .from('profiles')
@@ -37,8 +53,7 @@ export async function GET(request: NextRequest) {
         .single()
 
       if (existingProfile?.role) {
-        // Expert già esistente con onboarding completato → dashboard
-        // Expert nuovo → onboarding
+        // Utente già registrato → login normale
         if (existingProfile.role === 'expert') {
           const { data: expertProfile } = await supabase
             .from('experts')
@@ -48,16 +63,21 @@ export async function GET(request: NextRequest) {
           const redirectPath = expertProfile?.slug ? '/dashboard' : '/onboarding'
           return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
         }
-        return NextResponse.redirect(new URL('/marketplace', requestUrl.origin))
+        // Client esistente → my-plans
+        return NextResponse.redirect(new URL('/my-plans', requestUrl.origin))
       }
 
-      // Nuovo utente — legge role da user_metadata
-      const role = (session.user.user_metadata?.role as string) || 'client'
+      // Nuovo utente — usa role dal cookie, fallback a user_metadata
+      const role = pendingData?.role || (session.user.user_metadata?.role as string) || 'client'
 
       await supabase.from('profiles').upsert({
         id: userId,
         name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
         role,
+        consent_terms: pendingData?.consent_terms ?? false,
+        consent_health: pendingData?.consent_health ?? false,
+        consent_marketing: pendingData?.consent_marketing ?? false,
+        consent_timestamp: pendingData?.consent_timestamp ?? new Date().toISOString(),
       }, { onConflict: 'id' })
 
       const redirectPath = role === 'expert' ? '/onboarding' : '/client-onboarding'
