@@ -12,7 +12,7 @@ export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname
 
   // — Currency detection —
-  const country = req.geo?.country ?? req.headers.get('x-vercel-ip-country') ?? null
+  const country = req.headers.get('x-vercel-ip-country') ?? null
   const currency = getCurrencyFromCountry(country)
   res.cookies.set('user_currency', currency, {
     path: '/',
@@ -39,12 +39,10 @@ export async function middleware(req: NextRequest) {
 
   const isProtected = [...EXPERT_ROUTES, ...CLIENT_ROUTES].some(r => pathname.startsWith(r))
 
-  // Non autenticato → login
   if (!session && isProtected) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // Autenticato → logica redirect basata sul role
   if (session) {
     const isAuthRoute = AUTH_ROUTES.some(r => pathname.startsWith(r))
     const isExpertRoute = EXPERT_ROUTES.some(r => pathname.startsWith(r))
@@ -60,23 +58,19 @@ export async function middleware(req: NextRequest) {
 
       const role = profile?.role || 'client'
 
-      // Client senza profilo completo → onboarding obbligatorio
       if (role === 'client' && (!profile?.name || !profile?.country)) {
         return NextResponse.redirect(new URL('/client-onboarding', req.url))
       }
 
-      // Expert che prova ad accedere a route client
       if (role === 'expert' && isClientRoute) {
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
 
-      // Client che prova ad accedere a route expert
       if (role === 'client' && isExpertRoute) {
         return NextResponse.redirect(new URL('/my-plans', req.url))
       }
     }
 
-    // Redirect da login/signup se già loggato
     if (isAuthRoute) {
       const { data: profile } = await supabase
         .from('profiles')
