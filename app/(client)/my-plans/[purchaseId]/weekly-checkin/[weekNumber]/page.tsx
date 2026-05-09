@@ -93,10 +93,21 @@ export default function WeeklyCheckinPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <style>{`
+        .ci-header-inner { max-width: 640px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .ci-hero-inner { max-width: 640px; margin: 0 auto; }
+        .ci-body { flex: 1; max-width: 640px; margin: 0 auto; width: 100%; padding: 24px 24px 40px; }
+
+        @media (max-width: 640px) {
+          .ci-header-inner { padding: 0 4px; }
+          .ci-hero-inner h1 { font-size: 22px !important; }
+          .ci-body { padding: 16px 16px 40px; }
+        }
+      `}</style>
 
       {/* HEADER */}
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '16px 24px' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="ci-header-inner">
           <Link href={`/my-plans/${purchaseId}/plan`} style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>
             ← Back to my plan
           </Link>
@@ -108,7 +119,7 @@ export default function WeeklyCheckinPage() {
 
       {/* HERO */}
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '28px 24px' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+        <div className="ci-hero-inner">
           <div style={{ fontSize: 36, marginBottom: 12 }}>📊</div>
           <h1 style={{ fontFamily: 'Satoshi, sans-serif', fontSize: 26, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>
             Week {weekNumber} Check-in
@@ -120,7 +131,7 @@ export default function WeeklyCheckinPage() {
       </div>
 
       {/* BODY */}
-      <div style={{ flex: 1, maxWidth: 640, margin: '0 auto', width: '100%', padding: '24px 24px 40px' }}>
+      <div className="ci-body">
         {questions.length === 0 ? (
           <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '32px 24px', textAlign: 'center', border: '1px solid #E8EDF8' }}>
             <p style={{ color: '#94A3B8', marginBottom: 16 }}>No check-in questions defined for this product.</p>
