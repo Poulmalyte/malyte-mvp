@@ -75,11 +75,24 @@ export default function QuestionnairePage() {
         body: JSON.stringify({ purchaseId, questionnaireAnswers: normalizedAnswers, weekNumber: 1 }),
       })
       if (!res.ok) throw new Error('Error generating plan')
-      router.push(`/my-plans/${purchaseId}/plan`)
+
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const lines = decoder.decode(value).split('\n')
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const data = JSON.parse(line.slice(6))
+          if (data.error) throw new Error(data.error)
+          if (data.done) router.push(`/my-plans/${purchaseId}/plan`)
+        }
+      }
     } catch (err) {
       console.error(err)
       alert('Error generating plan. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
@@ -104,10 +117,21 @@ export default function QuestionnairePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>
+      <style>{`
+        .q-header-inner { max-width: 640px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .q-hero-inner { max-width: 640px; margin: 0 auto; }
+        .q-body { flex: 1; max-width: 640px; margin: 0 auto; width: 100%; padding: 24px 24px 40px; }
+
+        @media (max-width: 640px) {
+          .q-header-inner { padding: 0 4px; }
+          .q-hero-inner h1 { font-size: 22px !important; }
+          .q-body { padding: 16px 16px 40px; }
+        }
+      `}</style>
 
       {/* HEADER */}
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '16px 24px' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="q-header-inner">
           <Link href="/my-plans" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>← My plans</Link>
           <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A' }}>
             malyte<span style={{ color: '#7C5CFC' }}>.</span>
@@ -117,7 +141,7 @@ export default function QuestionnairePage() {
 
       {/* HERO */}
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '28px 24px' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+        <div className="q-hero-inner">
           <p style={{ fontSize: 11, color: '#7C5CFC', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
             Step 1 of 2
           </p>
@@ -131,7 +155,7 @@ export default function QuestionnairePage() {
       </div>
 
       {/* BODY */}
-      <div style={{ flex: 1, maxWidth: 640, margin: '0 auto', width: '100%', padding: '24px 24px 40px' }}>
+      <div className="q-body">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
           {questions.map((q, i) => (
             <div key={q.id} style={{ background: '#FFFFFF', borderRadius: 14, padding: '16px 20px', border: '1px solid #E8EDF8' }}>
