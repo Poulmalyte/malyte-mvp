@@ -34,7 +34,6 @@ function buildMethodContext(expert: any): string {
   const structured = expert.method_structured || {}
   const answers = expert.method_questions_answers || {}
 
-  // New universal method_structured fields (from new 7-question interview)
   if (structured.primo_passo) {
     return `
 === EXPERT METHOD — ${(expert.category || 'PROFESSIONAL').toUpperCase()} ===
@@ -53,7 +52,6 @@ ADDITIONAL NOTES: ${structured.note_aggiuntive || 'none'}
 =================================`
   }
 
-  // Fallback: legacy nutrition format
   const category = expert.category?.toLowerCase() || ''
   const isNutritionist = category.includes('nutri')
 
@@ -174,9 +172,8 @@ export async function POST(request: NextRequest) {
   const expert = product.experts as any
   const totalMonths = product.duration_months || 1
   const totalWeeks = totalMonths * 4
-  const autoCalibration = product.auto_calibration !== false // default true
+  const autoCalibration = product.auto_calibration !== false
 
-  // Fetch last 4 check-ins for history
   const { data: recentCheckins } = await supabase
     .from('weekly_checkins')
     .select('week_number, answers, free_note')
@@ -186,7 +183,6 @@ export async function POST(request: NextRequest) {
 
   const checkinHistory = buildCheckinHistory(recentCheckins || [])
 
-  // Fetch PDFs
   const pdfPaths: string[] = expert.method_pdfs_urls || []
   const pdfBase64List = pdfPaths.length > 0 ? await fetchPdfsAsBase64(pdfPaths) : []
 
@@ -194,12 +190,10 @@ export async function POST(request: NextRequest) {
   const patternDetection = buildPatternDetection(autoCalibration)
   const doubleCheck = buildDoubleCheckInstructions()
 
-  // Current week check-in
   const checkinContext = checkinAnswers && Object.keys(checkinAnswers).length > 0
     ? `\nLAST WEEK CHECK-IN:\n${Object.entries(checkinAnswers).map(([k, v]) => `${k}: ${v}`).join('\n')}`
     : ''
 
-  // Free note from client
   const freeNoteContext = freeNote
     ? `\nCLIENT NOTE FOR THIS WEEK: "${freeNote}"\n→ Take this into account when generating the plan.`
     : ''
@@ -301,7 +295,6 @@ Reply ONLY with valid JSON, no markdown:
 
 CRITICAL: "days" must have exactly 7 items (Monday to Sunday). Each day must have at least 1 and max 4 items in "meals" (adapt count to category). Vary content across days.`
 
-  // Build message content
   const messageContent: any[] = []
   for (const base64 of pdfBase64List) {
     messageContent.push({
@@ -311,83 +304,122 @@ CRITICAL: "days" must have exactly 7 items (Monday to Sunday). Each day must hav
   }
   messageContent.push({ type: 'text', text: userPrompt })
 
-  let aiWeek
-  try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8192,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: messageContent }],
-    })
+  // ── STREAMING RESPONSE ──────────────────────────────────────────────────────
+  const encoder = new TextEncoder()
 
-    const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
-    const cleanJson = rawText.replace(/```json|```/g, '').trim()
-    aiWeek = JSON.parse(cleanJson)
-  } catch (aiError) {
-    console.error('AI ERROR:', aiError)
-    return NextResponse.json({ error: 'AI generation failed', details: String(aiError) }, { status: 500 })
-  }
+  const readableStream = new ReadableStream({
+    async start(controller) {
+      const send = (data: object) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+      }
 
-  const { data: existingPlan } = await supabase
-    .from('client_plans')
-    .select('id, ai_generated_plan')
-    .eq('purchase_id', purchaseId)
-    .eq('client_id', user.id)
-    .single()
+      let fullText = ''
 
-  let savedPlan
+      try {
+        const stream = anthropic.messages.stream({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 8192,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: messageContent }],
+        })
 
-  if (existingPlan) {
-    const existingWeeks = existingPlan.ai_generated_plan?.weeks || []
-    const updatedWeeks = [
-      ...existingWeeks.filter((w: any) => w.week_number !== currentWeek),
-      { ...aiWeek, week_number: currentWeek }
-    ]
+        // Stream each text chunk to the client
+        for await (const event of stream) {
+          if (
+            event.type === 'content_block_delta' &&
+            event.delta.type === 'text_delta'
+          ) {
+            fullText += event.delta.text
+            send({ chunk: event.delta.text })
+          }
+        }
 
-    const { data, error: updateError } = await supabase
-      .from('client_plans')
-      .update({
-        ai_generated_plan: {
-          ...existingPlan.ai_generated_plan,
-          weeks: updatedWeeks,
-          current_week: currentWeek,
-          total_weeks: totalWeeks,
-        },
-        current_week: currentWeek,
-      })
-      .eq('id', existingPlan.id)
-      .select()
-      .single()
+        // Parse full JSON once stream is complete
+        const cleanJson = fullText.replace(/```json|```/g, '').trim()
+        const aiWeek = JSON.parse(cleanJson)
 
-    if (updateError) {
-      return NextResponse.json({ error: 'Error updating plan' }, { status: 500 })
-    }
-    savedPlan = data
-  } else {
-    const { data, error: saveError } = await supabase
-      .from('client_plans')
-      .insert({
-        purchase_id: purchaseId,
-        client_id: user.id,
-        product_id: product.id,
-        questionnaire_answers: questionnaireAnswers,
-        ai_generated_plan: {
-          weeks: [{ ...aiWeek, week_number: currentWeek }],
-          current_week: currentWeek,
-          total_weeks: totalWeeks,
-        },
-        current_week: currentWeek,
-        week_start_date: new Date().toISOString(),
-        total_weeks: totalWeeks,
-      })
-      .select()
-      .single()
+        // Save to Supabase
+        const { data: existingPlan } = await supabase
+          .from('client_plans')
+          .select('id, ai_generated_plan')
+          .eq('purchase_id', purchaseId)
+          .eq('client_id', user.id)
+          .single()
 
-    if (saveError) {
-      return NextResponse.json({ error: 'Error saving plan' }, { status: 500 })
-    }
-    savedPlan = data
-  }
+        let savedPlan
 
-  return NextResponse.json({ plan: savedPlan })
+        if (existingPlan) {
+          const existingWeeks = existingPlan.ai_generated_plan?.weeks || []
+          const updatedWeeks = [
+            ...existingWeeks.filter((w: any) => w.week_number !== currentWeek),
+            { ...aiWeek, week_number: currentWeek },
+          ]
+
+          const { data, error: updateError } = await supabase
+            .from('client_plans')
+            .update({
+              ai_generated_plan: {
+                ...existingPlan.ai_generated_plan,
+                weeks: updatedWeeks,
+                current_week: currentWeek,
+                total_weeks: totalWeeks,
+              },
+              current_week: currentWeek,
+            })
+            .eq('id', existingPlan.id)
+            .select()
+            .single()
+
+          if (updateError) {
+            send({ error: 'Error updating plan' })
+            controller.close()
+            return
+          }
+          savedPlan = data
+        } else {
+          const { data, error: saveError } = await supabase
+            .from('client_plans')
+            .insert({
+              purchase_id: purchaseId,
+              client_id: user.id,
+              product_id: product.id,
+              questionnaire_answers: questionnaireAnswers,
+              ai_generated_plan: {
+                weeks: [{ ...aiWeek, week_number: currentWeek }],
+                current_week: currentWeek,
+                total_weeks: totalWeeks,
+              },
+              current_week: currentWeek,
+              week_start_date: new Date().toISOString(),
+              total_weeks: totalWeeks,
+            })
+            .select()
+            .single()
+
+          if (saveError) {
+            send({ error: 'Error saving plan' })
+            controller.close()
+            return
+          }
+          savedPlan = data
+        }
+
+        // Send final event with saved plan
+        send({ done: true, plan: savedPlan })
+      } catch (error) {
+        console.error('AI STREAM ERROR:', error)
+        send({ error: String(error) })
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(readableStream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  })
 }

@@ -28,12 +28,27 @@ export default function GenerateNextWeekButton({
         }),
       })
       if (!res.ok) throw new Error('Generation failed')
-      router.push(`/my-plans/${purchaseId}/plan`)
-      router.refresh()
+
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const lines = decoder.decode(value).split('\n')
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const data = JSON.parse(line.slice(6))
+          if (data.error) throw new Error(data.error)
+          if (data.done) {
+            router.push(`/my-plans/${purchaseId}/plan`)
+            router.refresh()
+          }
+        }
+      }
     } catch (err) {
       console.error(err)
       alert('Error generating next week. Please try again.')
-    } finally {
       setLoading(false)
     }
   }

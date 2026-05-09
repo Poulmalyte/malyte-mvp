@@ -46,11 +46,13 @@ export default function WeeklyCheckinPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+
       const { error: checkinError } = await supabase.from('weekly_checkins').insert({
         purchase_id: purchaseId, client_id: user.id, week_number: weekNumber,
         answers, free_note: freeNote.trim() || null,
       })
       if (checkinError) throw checkinError
+
       const res = await fetch('/api/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -61,11 +63,24 @@ export default function WeeklyCheckinPage() {
         }),
       })
       if (!res.ok) throw new Error('Error generating next week')
-      router.push(`/my-plans/${purchaseId}/plan`)
+
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const lines = decoder.decode(value).split('\n')
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const data = JSON.parse(line.slice(6))
+          if (data.error) throw new Error(data.error)
+          if (data.done) router.push(`/my-plans/${purchaseId}/plan`)
+        }
+      }
     } catch (err) {
       console.error(err)
       alert('Error saving check-in. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
