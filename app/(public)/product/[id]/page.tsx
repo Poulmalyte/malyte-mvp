@@ -44,7 +44,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const expert = product.experts as any
   const duration = product.duration_months
 
-  // Currency
   const cookieStore = await cookies()
   const currency = cookieStore.get('user_currency')?.value || 'EUR'
   const rate = await getExchangeRate(currency)
@@ -52,10 +51,34 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   return (
     <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        .product-nav-inner { max-width: 900px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .product-hero-inner { max-width: 900px; margin: 0 auto; }
+        .product-body { max-width: 900px; margin: 0 auto; padding: 32px 24px 64px; }
+        .product-grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; }
+        .product-buy-box { background: #FFFFFF; border-radius: 16px; border: 2px solid #7C5CFC; padding: 24px; position: sticky; top: 24px; box-shadow: 0 4px 24px rgba(124,92,252,0.10); }
+        .product-buy-box-mobile { display: none; }
+        .hero-price-row { display: flex; gap: 32px; flex-wrap: wrap; }
+        .product-cta-footer { background: #EDE9FE; border-top: 1px solid #C4B5FD; padding: 48px 24px; }
+
+        @media (max-width: 640px) {
+          .product-nav-inner { padding: 0; }
+          .product-hero-inner { padding: 0; }
+          .product-hero-inner h1 { font-size: 22px !important; margin-bottom: 8px !important; }
+          .product-hero-inner p { font-size: 13px !important; margin-bottom: 16px !important; }
+          .product-body { padding: 16px 16px 100px; }
+          .product-grid { grid-template-columns: 1fr !important; }
+          .product-buy-box { display: none !important; }
+          .product-buy-box-mobile { display: block; background: #FFFFFF; border-radius: 16px; border: 2px solid #7C5CFC; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 24px rgba(124,92,252,0.10); }
+          .hero-price-row { gap: 16px; }
+          .product-cta-footer { padding: 32px 16px; }
+          .product-cta-footer h2 { font-size: 22px !important; }
+        }
+      `}</style>
 
       {/* NAV */}
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '16px 24px' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="product-nav-inner">
           <Link href="/marketplace" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
             ← Back to marketplace
           </Link>
@@ -68,9 +91,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* HERO */}
-      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '40px 24px' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '32px 24px' }}>
+        <div className="product-hero-inner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             <span style={{ background: '#EDE9FE', color: '#7C5CFC', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 100, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               {expert?.category || 'Wellness'}
             </span>
@@ -81,14 +104,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             )}
           </div>
 
-          <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 'clamp(24px, 4vw, 36px)', color: '#0F172A', margin: '0 0 12px', lineHeight: 1.2 }}>
+          <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 'clamp(22px, 4vw, 36px)', color: '#0F172A', margin: '0 0 12px', lineHeight: 1.2 }}>
             {product.title}
           </h1>
-          <p style={{ color: '#64748B', fontSize: 15, lineHeight: 1.7, margin: '0 0 28px', maxWidth: 600 }}>
+          <p style={{ color: '#64748B', fontSize: 15, lineHeight: 1.7, margin: '0 0 24px', maxWidth: 600 }}>
             {product.description}
           </p>
 
-          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+          <div className="hero-price-row">
             <div>
               <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, fontWeight: 500 }}>Price</p>
               <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 28, fontWeight: 800, color: '#7C5CFC', margin: 0 }}>{displayPrice}</p>
@@ -106,11 +129,27 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* BODY */}
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 64px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, alignItems: 'start' }}>
+      <div className="product-body">
+        <div className="product-grid">
 
           {/* LEFT */}
           <div>
+
+            {/* Purchase box — mobile only, shown above content */}
+            <div className="product-buy-box-mobile">
+              <p style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 30, color: '#7C5CFC', marginBottom: 4 }}>{displayPrice}</p>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginBottom: 16 }}>
+                {product.pricing_model === 'one_time' ? 'One-time payment · lifetime access' : 'Monthly subscription'}
+              </p>
+              <BuyNowButton
+                productId={product.id}
+                price={product.price}
+                variantId={product.lemonsqueezy_variant_id}
+              />
+              <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 10 }}>
+                Personalized plan generated after purchase
+              </p>
+            </div>
 
             {product.description && (
               <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 16 }}>
@@ -173,8 +212,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* RIGHT — purchase box */}
-          <div style={{ background: '#FFFFFF', borderRadius: 16, border: '2px solid #7C5CFC', padding: '24px', position: 'sticky', top: 24, boxShadow: '0 4px 24px rgba(124,92,252,0.10)' }}>
+          {/* RIGHT — purchase box (desktop only) */}
+          <div className="product-buy-box">
             <p style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 36, color: '#7C5CFC', marginBottom: 4 }}>{displayPrice}</p>
             <p style={{ fontSize: 12, color: '#94A3B8', marginBottom: 20 }}>
               {product.pricing_model === 'one_time' ? 'One-time payment · lifetime access' : 'Monthly subscription'}
@@ -208,7 +247,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* CTA FOOTER */}
-      <div style={{ background: '#EDE9FE', borderTop: '1px solid #C4B5FD', padding: '48px 24px' }}>
+      <div className="product-cta-footer">
         <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
           <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 28, color: '#0F172A', marginBottom: 10 }}>
             Ready to start?
