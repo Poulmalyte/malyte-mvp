@@ -103,7 +103,17 @@ export default function SignupPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <style>{`
+        .signup-card { padding: 40px 36px; }
+        .signup-role-grid { grid-template-columns: 1fr 1fr; }
+        @media (max-width: 480px) {
+          .signup-card { padding: 24px 16px; }
+          .signup-role-grid { grid-template-columns: 1fr 1fr; }
+          .signup-card h1 { font-size: 20px !important; }
+          .consent-label { font-size: 11px !important; }
+        }
+      `}</style>
       <div style={{ maxWidth: '460px', width: '100%' }}>
 
         {/* Logo */}
@@ -115,7 +125,7 @@ export default function SignupPage() {
           </Link>
         </div>
 
-        <div style={{ background: '#FFFFFF', borderRadius: '24px', padding: '40px 36px', border: '1px solid #E8EDF8' }}>
+        <div className="signup-card" style={{ background: '#FFFFFF', borderRadius: '24px', border: '1px solid #E8EDF8' }}>
 
           <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontSize: '24px', fontWeight: 800, color: '#0F172A', textAlign: 'center', marginBottom: '6px' }}>
             Create your account
@@ -125,7 +135,7 @@ export default function SignupPage() {
           </p>
 
           {/* Role Selector */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '28px' }}>
+          <div className="signup-role-grid" style={{ display: 'grid', gap: '12px', marginBottom: '28px' }}>
             <button onClick={() => setRole('expert')} style={{
               background: role === 'expert' ? '#EDE9FE' : '#F5F7FA',
               border: role === 'expert' ? '2px solid #7C5CFC' : '2px solid #E8EDF8',
@@ -174,7 +184,7 @@ export default function SignupPage() {
           {/* Consent Block */}
           <div style={{
             display: 'flex', flexDirection: 'column', gap: '12px',
-            padding: '16px', marginBottom: '16px',
+            padding: '14px', marginBottom: '16px',
             background: 'rgba(124,92,252,0.04)',
             border: '1px solid rgba(124,92,252,0.15)',
             borderRadius: '10px',
@@ -187,7 +197,7 @@ export default function SignupPage() {
                 onChange={e => setConsentTerms(e.target.checked)}
                 style={{ width: 15, height: 15, minWidth: 15, marginTop: 2, cursor: 'pointer', accentColor: '#7C5CFC' }}
               />
-              <label htmlFor="consent-terms" style={{ cursor: 'pointer' }}>
+              <label className="consent-label" htmlFor="consent-terms" style={{ cursor: 'pointer', fontSize: '12px' }}>
                 I have read and agree to the{' '}
                 <Link href="/terms" target="_blank" style={{ color: '#7C5CFC', fontWeight: 600, textDecoration: 'none' }}>Terms & Conditions</Link>
                 {' '}and the{' '}
@@ -205,7 +215,7 @@ export default function SignupPage() {
                 onChange={e => setConsentHealth(e.target.checked)}
                 style={{ width: 15, height: 15, minWidth: 15, marginTop: 2, cursor: 'pointer', accentColor: '#7C5CFC' }}
               />
-              <label htmlFor="consent-health" style={{ cursor: 'pointer' }}>
+              <label className="consent-label" htmlFor="consent-health" style={{ cursor: 'pointer', fontSize: '12px' }}>
                 I explicitly consent to the collection and processing of my personal data,
                 including health-related and physical information, for the purpose of generating
                 personalised wellness plans.{' '}
@@ -221,7 +231,7 @@ export default function SignupPage() {
                 onChange={e => setConsentMarketing(e.target.checked)}
                 style={{ width: 15, height: 15, minWidth: 15, marginTop: 2, cursor: 'pointer', accentColor: '#7C5CFC' }}
               />
-              <label htmlFor="consent-marketing" style={{ cursor: 'pointer' }}>
+              <label className="consent-label" htmlFor="consent-marketing" style={{ cursor: 'pointer', fontSize: '12px' }}>
                 I agree to receive occasional updates and promotional communications from Malyte.
                 I can unsubscribe at any time.
               </label>
