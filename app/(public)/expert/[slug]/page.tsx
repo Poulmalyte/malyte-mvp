@@ -80,10 +80,37 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
 
   return (
     <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        .ep-nav-inner { max-width: 800px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .ep-hero-inner { max-width: 800px; margin: 0 auto; padding: 40px 24px; }
+        .ep-hero-flex { display: flex; align-items: flex-start; gap: 24px; }
+        .ep-avatar { width: 100px; height: 100px; border-radius: 50%; flex-shrink: 0; }
+        .ep-proof { max-width: 800px; margin: 0 auto; padding: 28px 24px; }
+        .ep-body { max-width: 800px; margin: 0 auto; padding: 32px 24px 120px; }
+        .ep-product-card { background: #FFFFFF; border-radius: 16px; padding: 22px 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px; position: relative; overflow: hidden; }
+        .ep-sticky { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-top: 1px solid #E8EDF8; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+        @media (max-width: 640px) {
+          .ep-nav-inner { padding: 0; }
+          .ep-hero-inner { padding: 24px 16px; }
+          .ep-hero-flex { flex-direction: column; gap: 16px; }
+          .ep-avatar { width: 72px !important; height: 72px !important; }
+          .ep-avatar span { font-size: 26px !important; }
+          .ep-hero-inner h1 { font-size: 24px !important; }
+          .ep-proof { padding: 20px 16px; }
+          .ep-body { padding: 20px 16px 120px; }
+          .ep-product-card { flex-direction: column; align-items: flex-start; gap: 14px; padding: 18px 16px; }
+          .ep-product-price { text-align: left !important; }
+          .ep-product-price > div:last-child { width: 100%; text-align: center; }
+          .ep-sticky { padding: 12px 16px; }
+          .ep-sticky p:last-child { display: none; }
+          .ep-sticky > div:first-child p:first-child { font-size: 13px !important; }
+        }
+      `}</style>
 
       {/* HEADER NAV */}
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '16px 24px' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="ep-nav-inner">
           <Link href="/" style={{ textDecoration: 'none' }}>
             <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 20, color: '#0F172A' }}>
               malyte<span style={{ color: '#7C5CFC' }}>.</span>
@@ -91,7 +118,7 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <Link href="/marketplace" style={{ color: '#64748B', textDecoration: 'none', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              ← Back to Marketplace
+              ← Marketplace
             </Link>
             <ShareButton url={profileUrl} />
           </div>
@@ -100,10 +127,9 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
 
       {/* HERO */}
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24 }}>
-            <div style={{
-              width: 100, height: 100, borderRadius: '50%', flexShrink: 0,
+        <div className="ep-hero-inner">
+          <div className="ep-hero-flex">
+            <div className="ep-avatar" style={{
               background: expert.avatar_url ? 'transparent' : 'linear-gradient(135deg, #7C5CFC, #6385FF)',
               border: '3px solid #E8EDF8', overflow: 'hidden',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -167,7 +193,7 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
           </div>
 
           {products && products.length > 0 && (
-            <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <Link href={`/product/${products[0].id}`} style={{ textDecoration: 'none' }}>
                 <div style={{ background: '#7C5CFC', color: '#fff', fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 15, padding: '13px 28px', borderRadius: 12 }}>
                   Get your personalized plan →
@@ -184,17 +210,17 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
       {/* SOCIAL PROOF */}
       {totalClients > 0 && (
         <div style={{ background: '#EDE9FE', borderBottom: '1px solid #C4B5FD' }}>
-          <div style={{ maxWidth: 800, margin: '0 auto', padding: '28px 24px' }}>
+          <div className="ep-proof">
             <p style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 20px', textAlign: 'center' }}>
               ✦ Trusted by real people
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0 }}>
               {stats.map((s, i) => (
-                <div key={i} style={{ textAlign: 'center', borderRight: i < 2 ? '1px solid #C4B5FD' : 'none', padding: '0 20px' }}>
-                  <div style={{ fontFamily: 'Satoshi, sans-serif', fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 800, color: s.color, lineHeight: 1.1, marginBottom: 6 }}>
+                <div key={i} style={{ textAlign: 'center', borderRight: i < 2 ? '1px solid #C4B5FD' : 'none', padding: '0 12px' }}>
+                  <div style={{ fontFamily: 'Satoshi, sans-serif', fontSize: 'clamp(24px, 5vw, 44px)', fontWeight: 800, color: s.color, lineHeight: 1.1, marginBottom: 6 }}>
                     {s.value}
                   </div>
-                  <div style={{ color: '#64748B', fontSize: 13 }}>{s.label}</div>
+                  <div style={{ color: '#64748B', fontSize: 12 }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -203,10 +229,10 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
       )}
 
       {/* BODY */}
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 24px 120px' }}>
+      <div className="ep-body">
 
         {expert.long_bio ? (
-          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
             <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 16, color: '#0F172A', margin: '0 0 12px' }}>
               About {firstName}
             </h2>
@@ -215,14 +241,14 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
             </p>
           </div>
         ) : expert.bio ? (
-          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
             <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 16, color: '#0F172A', margin: '0 0 12px' }}>About {firstName}</h2>
             <p style={{ color: '#64748B', fontSize: 15, lineHeight: 1.8, margin: 0 }}>{expert.bio}</p>
           </div>
         ) : null}
 
         {expert.methodology_name && (
-          <div style={{ background: '#FFFFFF', border: '1px solid #E8EDF8', borderRadius: 16, padding: '24px 28px', marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <div style={{ background: '#FFFFFF', border: '1px solid #E8EDF8', borderRadius: 16, padding: '24px', marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
               {categoryIcon[expert.category] || '⭐'}
             </div>
@@ -237,7 +263,7 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
         )}
 
         {expert.credentials?.length > 0 && (
-          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: '24px', border: '1px solid #E8EDF8', marginBottom: 16 }}>
             <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 16, color: '#0F172A', margin: '0 0 14px' }}>Credentials</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {expert.credentials.map((c: string, i: number) => (
@@ -264,11 +290,8 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {products.map((product: any, idx: number) => (
                 <Link key={product.id} href={`/product/${product.id}`} style={{ textDecoration: 'none' }}>
-                  <div style={{
-                    background: '#FFFFFF', borderRadius: 16, padding: '22px 24px',
+                  <div className="ep-product-card" style={{
                     border: idx === 0 ? '2px solid #7C5CFC' : '1px solid #E8EDF8',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20,
-                    position: 'relative', overflow: 'hidden',
                     boxShadow: idx === 0 ? '0 4px 20px rgba(124,92,252,0.10)' : 'none',
                   }}>
                     {idx === 0 && products.length > 1 && (
@@ -292,7 +315,7 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
                         ✓ AI-personalized for you
                       </span>
                     </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div className="ep-product-price" style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 26, color: '#7C5CFC', marginBottom: 2 }}>€{product.price}</div>
                       <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 10 }}>{product.pricing_model === 'one_time' ? 'one-time' : 'per month'}</div>
                       <div style={{ background: '#7C5CFC', color: '#fff', fontSize: 13, fontWeight: 700, padding: '9px 18px', borderRadius: 10, whiteSpace: 'nowrap' }}>
@@ -356,12 +379,7 @@ export default async function ExpertPublicPage({ params }: { params: Promise<{ s
 
       {/* CTA STICKY */}
       {products && products.length > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-          background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)',
-          borderTop: '1px solid #E8EDF8', padding: '14px 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-        }}>
+        <div className="ep-sticky">
           <div>
             <p style={{ color: '#0F172A', fontFamily: 'Satoshi, sans-serif', fontWeight: 700, fontSize: 15, margin: 0 }}>
               Ready to start with {firstName}?
