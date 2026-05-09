@@ -84,7 +84,7 @@ export default function ClientOnboardingPage() {
 
           <div>
             <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#334155', marginBottom: 8 }}>Full name *</label>
-            <input type="text" placeholder="e.g. Marco Rossi" value={form.name}
+            <input type="text" placeholder="Your full name" value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })} style={inputStyle}
               onFocus={e => (e.target.style.borderColor = '#7C5CFC')}
               onBlur={e => (e.target.style.borderColor = '#E8EDF8')}
