@@ -79,7 +79,6 @@ const TRUST_POINTS = [
   { icon: '✅', text: 'Real client results' },
 ]
 
-// Fetch tasso di cambio da frankfurter (cached 1h da Next.js)
 async function getExchangeRate(currency: string): Promise<number> {
   if (currency === 'EUR') return 1
   try {
@@ -114,7 +113,6 @@ export default async function MarketplacePage({
   const query = q?.trim() || ''
   const goal  = goalParam?.trim() || ''
 
-  // Currency dal cookie impostato dal middleware
   const cookieStore = await cookies()
   const currency = cookieStore.get('user_currency')?.value || 'EUR'
   const rate = await getExchangeRate(currency)
@@ -188,10 +186,15 @@ export default async function MarketplacePage({
     <>
       <style>{`
         @media (max-width: 600px) {
-          .hero-padding { padding: 32px 16px 24px !important; }
-          .hero-title { font-size: 26px !important; line-height: 1.2 !important; }
-          .hero-sub { font-size: 14px !important; }
-          .cat-wrap { justify-content: flex-start !important; }
+          .hero-padding { padding: 28px 16px 20px !important; }
+          .hero-title { font-size: 24px !important; line-height: 1.2 !important; }
+          .hero-title br { display: none; }
+          .hero-sub { font-size: 13px !important; margin-bottom: 20px !important; }
+          .hero-sub br { display: none; }
+          .hero-chips { gap: 6px !important; }
+          .hero-chips span { font-size: 11px !important; padding: 4px 10px !important; }
+          .cat-wrap { justify-content: flex-start !important; scrollbar-width: none; }
+          .cat-wrap::-webkit-scrollbar { display: none; }
           .product-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
           .how-grid { grid-template-columns: 1fr !important; }
           .how-padding { padding: 36px 16px !important; }
@@ -221,7 +224,7 @@ export default async function MarketplacePage({
             <div style={{ maxWidth: 500, margin: '0 auto 16px' }}>
               <Suspense fallback={null}><SearchBar /></Suspense>
             </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div className="hero-chips" style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               {['Lose weight', 'Build muscle', 'Clear skin', 'Eat better', 'Mental wellness'].map(s => (
                 <span key={s} style={{ fontSize: 12, color: '#7C5CFC', background: '#EDE9FE', padding: '5px 12px', borderRadius: 100, cursor: 'pointer', fontWeight: 500 }}>
                   {s}
