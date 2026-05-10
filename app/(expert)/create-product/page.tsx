@@ -272,22 +272,12 @@ function CreateProductInner() {
           }))
         )
       } else {
-        // 1 — Crea prodotto su Lemon Squeezy
-        const lsRes = await fetch('/api/create-ls-product', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, description, price: parseFloat(price) }),
-        })
-        const lsData = await lsRes.json()
-        if (!lsRes.ok || !lsData.variantId) throw new Error('Failed to create Lemon Squeezy product')
-
-        // 2 — Crea prodotto su Supabase con variant ID
+        // Crea prodotto su Supabase — nessuna chiamata a LS necessaria
         const { data: product, error: productError } = await supabase.from('products').insert({
           expert_id: user.id, title, description,
           price: parseFloat(price), pricing_model: pricingModel,
           duration_months: durationMonths, is_published: true,
           progress_indicators: allIndicators,
-          lemonsqueezy_variant_id: lsData.variantId,
         }).select().single()
         if (productError) throw productError
 

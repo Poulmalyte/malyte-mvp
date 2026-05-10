@@ -1,23 +1,24 @@
 import { lemonSqueezySetup, createCheckout } from '@lemonsqueezy/lemonsqueezy.js'
 
 export async function createLemonSqueezyCheckout({
-  variantId,
   userId,
   userEmail,
   productId,
+  price,
 }: {
-  variantId: string
   userId: string
   userEmail: string
   productId: string
+  price: number
 }) {
   lemonSqueezySetup({
     apiKey: process.env.LEMONSQUEEZY_API_KEY!,
   })
 
   const storeId = process.env.LEMONSQUEEZY_STORE_ID!
+  const variantId = process.env.LEMONSQUEEZY_DEFAULT_VARIANT_ID!
 
-  console.log('🍋 LS Checkout attempt:', { storeId, variantId, userId })
+  console.log('🍋 LS Checkout attempt:', { storeId, variantId, userId, price })
 
   const { data, error } = await createCheckout(
     storeId,
@@ -34,6 +35,7 @@ export async function createLemonSqueezyCheckout({
           product_id: productId,
         },
       },
+      customPrice: Math.round(price * 100),
       productOptions: {
         redirectUrl: `${process.env.NEXTAUTH_URL}/my-plans`,
         receiptButtonText: 'Go to my plans',
