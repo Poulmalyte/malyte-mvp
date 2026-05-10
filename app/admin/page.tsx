@@ -16,7 +16,7 @@ export default function AdminPage() {
   async function loadProducts() {
     const { data } = await supabase
       .from('products')
-      .select('id, title, price, lemonsqueezy_variant_id, experts(name)')
+      .select('id, title, price, lemonsqueezy_variant_id, expert_id, experts(name)')
       .order('created_at', { ascending: false })
     setProducts(data || [])
     const initial: Record<string, string> = {}
@@ -85,7 +85,9 @@ export default function AdminPage() {
           {products.map(p => (
             <div key={p.id} style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid #E8EDF8' }}>
               <div style={{ marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: '#7C5CFC', fontWeight: 600 }}>{(p.experts as any)?.name}</span>
+                <span style={{ fontSize: 11, color: '#7C5CFC', fontWeight: 600 }}>
+                  {(p.experts as any)?.name || p.expert_id}
+                </span>
               </div>
               <p style={{ fontWeight: 700, fontSize: 15, color: '#0F172A', marginBottom: 12 }}>{p.title} — €{p.price}</p>
               <div style={{ display: 'flex', gap: 8 }}>
