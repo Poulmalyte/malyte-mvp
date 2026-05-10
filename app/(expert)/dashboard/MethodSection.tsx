@@ -23,25 +23,144 @@ const input: React.CSSProperties = {
 const PRICING_MODELS = [
   { id: 'one_time', label: '💳 One-time payment', desc: 'Client pays once and gets lifetime access' },
   { id: 'subscription', label: '🔄 Monthly subscription', desc: 'Client pays monthly for continued access' },
-  { id: 'bundle', label: '📦 Bundle', desc: 'Offer base + premium at different price points' },
 ]
 
-const QUESTION_TYPES = [
-  { id: 'number', label: '🔢 Number', desc: 'e.g. revenue, sessions, kg' },
-  { id: 'text', label: '✏️ Text', desc: 'e.g. main blocker this week' },
-  { id: 'slider', label: '🎚️ Slider 1–5', desc: 'e.g. energy level, motivation' },
-  { id: 'yesno', label: '✅ Yes / No', desc: 'e.g. did you complete the task?' },
+const DURATION_OPTIONS = [
+  { value: 1, label: '1 month' },
+  { value: 2, label: '2 months' },
+  { value: 3, label: '3 months' },
+  { value: 6, label: '6 months' },
+  { value: 12, label: '12 months' },
 ]
 
-interface CheckinQuestion {
+const PRESET_INDICATORS = [
+  { id: 'weight_loss', label: 'Weight loss progress' },
+  { id: 'energy', label: 'Energy levels' },
+  { id: 'muscle_gain', label: 'Muscle gain' },
+  { id: 'skin_clarity', label: 'Skin clarity' },
+  { id: 'sleep_quality', label: 'Sleep quality' },
+  { id: 'stress_levels', label: 'Stress levels' },
+  { id: 'mood', label: 'Mood' },
+  { id: 'adherence', label: 'Adherence to plan' },
+  { id: 'digestion', label: 'Digestion' },
+  { id: 'hydration', label: 'Hydration' },
+]
+
+type QuestionType = 'text' | 'select'
+
+interface Question {
+  id: string
+  question_text: string
+  question_type: QuestionType
+  allow_multiple: boolean
+  options: string[]
+}
+
+interface ProgressIndicator {
   id: string
   label: string
-  type: string
+  custom: boolean
 }
 
 interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+}
+
+function QuestionBuilder({
+  questions, setQuestions, placeholder = 'e.g. What is your main goal?',
+}: {
+  questions: Question[]
+  setQuestions: React.Dispatch<React.SetStateAction<Question[]>>
+  placeholder?: string
+}) {
+  function addQuestion() {
+    setQuestions(prev => [...prev, { id: crypto.randomUUID(), question_text: '', question_type: 'text', allow_multiple: false, options: [] }])
+  }
+  function updateQuestion(id: string, field: keyof Question, value: any) {
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, [field]: value } : q))
+  }
+  function addOption(questionId: string) {
+    setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, options: [...q.options, ''] } : q))
+  }
+  function updateOption(questionId: string, index: number, value: string) {
+    setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, options: q.options.map((o, i) => i === index ? value : o) } : q))
+  }
+  function removeOption(questionId: string, index: number) {
+    setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, options: q.options.filter((_, i) => i !== index) } : q))
+  }
+  function removeQuestion(id: string) {
+    setQuestions(prev => prev.filter(q => q.id !== id))
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {questions.map((q, i) => (
+          <div key={q.id} style={{ background: '#F5F7FA', borderRadius: 12, padding: 20, border: '1px solid #E8EDF8' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ color: '#7C5CFC', fontSize: 12, fontWeight: 600 }}>Question {i + 1}</span>
+              <button type="button" onClick={() => removeQuestion(q.id)}
+                style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 13, cursor: 'pointer' }}>Remove</button>
+            </div>
+            <input type="text" value={q.question_text}
+              onChange={e => updateQuestion(q.id, 'question_text', e.target.value)}
+              placeholder={placeholder}
+              style={{ ...input, marginBottom: 12 }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              {(['text', 'select'] as QuestionType[]).map(type => (
+                <button key={type} type="button" onClick={() => updateQuestion(q.id, 'question_type', type)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+                    border: `1px solid ${q.question_type === type ? '#7C5CFC' : '#E8EDF8'}`,
+                    background: q.question_type === type ? '#EDE9FE' : '#FFFFFF',
+                    color: q.question_type === type ? '#7C5CFC' : '#94A3B8', cursor: 'pointer',
+                  }}>
+                  {type === 'text' ? '✏️ Open answer' : '☑️ Multiple choice'}
+                </button>
+              ))}
+            </div>
+            {q.question_type === 'select' && (
+              <div>
+                <div style={{ marginBottom: 12 }}>
+                  <button type="button" onClick={() => updateQuestion(q.id, 'allow_multiple', !q.allow_multiple)}
+                    style={{
+                      padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600,
+                      border: `1px solid ${q.allow_multiple ? '#059669' : '#E8EDF8'}`,
+                      background: q.allow_multiple ? '#D1FDF3' : '#FFFFFF',
+                      color: q.allow_multiple ? '#059669' : '#94A3B8', cursor: 'pointer',
+                    }}>
+                    {q.allow_multiple ? '✓ Multiple selections allowed' : 'Single selection only'}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+                  {q.options.map((opt, j) => (
+                    <div key={j} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="text" value={opt} onChange={e => updateOption(q.id, j, e.target.value)}
+                        placeholder={`Option ${j + 1}`}
+                        style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: '#FFFFFF', border: '1px solid #E8EDF8', color: '#0F172A', fontSize: 13, outline: 'none' }}
+                      />
+                      <button type="button" onClick={() => removeOption(q.id, j)}
+                        style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 13, cursor: 'pointer' }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => addOption(q.id)}
+                  style={{ fontSize: 12, color: '#7C5CFC', background: 'none', border: '1px dashed #C4B5FD', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
+                  + Add option
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={addQuestion}
+        style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 12, border: '1px dashed #C4B5FD', background: 'transparent', color: '#94A3B8', fontSize: 14, cursor: 'pointer' }}>
+        + Add question
+      </button>
+    </div>
+  )
 }
 
 export default function MethodSection({ expert }: { expert: any }) {
@@ -65,21 +184,22 @@ export default function MethodSection({ expert }: { expert: any }) {
   const [pdfChangedWarning, setPdfChangedWarning] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
+  // Product fields
   const [productTitle, setProductTitle] = useState('')
   const [productDesc, setProductDesc] = useState('')
   const [price, setPrice] = useState('')
   const [pricingModel, setPricingModel] = useState('')
+  const [durationMonths, setDurationMonths] = useState<number>(1)
+  const [initialQuestions, setInitialQuestions] = useState<Question[]>([])
+  const [checkinQuestions, setCheckinQuestions] = useState<Question[]>([])
+  const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
+  const [customIndicators, setCustomIndicators] = useState<ProgressIndicator[]>([])
+  const [newCustomLabel, setNewCustomLabel] = useState('')
   const [savingProduct, setSavingProduct] = useState(false)
   const [savedProduct, setSavedProduct] = useState(false)
   const [productError, setProductError] = useState('')
 
-  // Check-in questions
-  const [checkinQuestions, setCheckinQuestions] = useState<CheckinQuestion[]>([])
-  const [newQuestionLabel, setNewQuestionLabel] = useState('')
-  const [newQuestionType, setNewQuestionType] = useState('number')
-
-  // Auto-calibration
-  const [autoCalibration, setAutoCalibration] = useState<boolean | null>(null)
+  const totalIndicators = selectedIndicators.length + customIndicators.length
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -102,33 +222,40 @@ export default function MethodSection({ expert }: { expert: any }) {
     setPdfChangedWarning(false)
   }
 
+  function togglePresetIndicator(id: string) {
+    if (selectedIndicators.includes(id)) {
+      setSelectedIndicators(prev => prev.filter(i => i !== id))
+    } else {
+      if (totalIndicators >= 4) return
+      setSelectedIndicators(prev => [...prev, id])
+    }
+  }
+
+  function addCustomIndicator() {
+    if (!newCustomLabel.trim()) return
+    if (totalIndicators >= 4) return
+    setCustomIndicators(prev => [...prev, { id: crypto.randomUUID(), label: newCustomLabel.trim(), custom: true }])
+    setNewCustomLabel('')
+  }
+
+  function removeCustomIndicator(id: string) {
+    setCustomIndicators(prev => prev.filter(i => i.id !== id))
+  }
+
   async function startInterview() {
     if (pdfs.length === 0) {
-      setChatMessages([{
-        role: 'assistant',
-        content: "⚠️ Before we start, you need to upload at least 5 PDFs of your real plans.\n\nGo back to **Step 1** and upload them — I'll read them carefully before asking you any questions.",
-      }])
+      setChatMessages([{ role: 'assistant', content: "⚠️ Before we start, you need to upload at least 5 PDFs of your real plans.\n\nGo back to **Step 1** and upload them — I'll read them carefully before asking you any questions." }])
       return
     }
-
     setChatLoading(true)
     setChatMessages([])
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setChatLoading(false); return }
-
     try {
       const res = await fetch('/api/method-interview', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'Please analyze my uploaded plans and start the interview.' }],
-          pdf_paths: pdfs,
-          is_first_message: true,
-          category: expert?.category || '',
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Please analyze my uploaded plans and start the interview.' }], pdf_paths: pdfs, is_first_message: true, category: expert?.category || '' }),
       })
       const json = await res.json()
       if (json.message) setChatMessages([{ role: 'assistant', content: json.message }])
@@ -149,32 +276,18 @@ export default function MethodSection({ expert }: { expert: any }) {
     if (!files || files.length === 0) return
     setUploading(true); setUploadError('')
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { setUploadError('Session expired. Please log in again.'); setUploading(false); return }
-
+    if (!session) { setUploadError('Session expired.'); setUploading(false); return }
     let addedCount = 0
     for (const file of Array.from(files)) {
       if (file.type !== 'application/pdf') { setUploadError('Only PDF files are accepted.'); continue }
       const formData = new FormData()
       formData.append('file', file)
-      const res = await fetch('/api/upload-method-pdf', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: formData,
-      })
+      const res = await fetch('/api/upload-method-pdf', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` }, body: formData })
       const json = await res.json()
-      if (json.success) {
-        setPdfs(prev => [...prev, json.fileName])
-        addedCount++
-      } else {
-        setUploadError(json.error || 'Upload error. Please try again.')
-      }
+      if (json.success) { setPdfs(prev => [...prev, json.fileName]); addedCount++ }
+      else setUploadError(json.error || 'Upload error.')
     }
-
-    if (addedCount > 0 && (interviewStarted || methodSaved)) {
-      resetInterview()
-      setPdfChangedWarning(true)
-    }
-
+    if (addedCount > 0 && (interviewStarted || methodSaved)) { resetInterview(); setPdfChangedWarning(true) }
     setUploading(false)
   }
 
@@ -182,19 +295,12 @@ export default function MethodSection({ expert }: { expert: any }) {
     setDeletingPdf(pdfPath)
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setDeletingPdf(null); return }
-
     const { error } = await supabase.storage.from('method-pdfs').remove([pdfPath])
     if (error) { setDeletingPdf(null); return }
-
     const newPdfs = pdfs.filter(p => p !== pdfPath)
     await supabase.from('experts').update({ method_pdfs_urls: newPdfs }).eq('id', expert.id)
     setPdfs(newPdfs)
-
-    if (interviewStarted || methodSaved) {
-      resetInterview()
-      setPdfChangedWarning(true)
-    }
-
+    if (interviewStarted || methodSaved) { resetInterview(); setPdfChangedWarning(true) }
     setDeletingPdf(null)
   }
 
@@ -207,36 +313,22 @@ export default function MethodSection({ expert }: { expert: any }) {
     const text = chatInput.trim()
     if (!text || chatLoading || interviewDone) return
     setChatInput('')
-
     const newMessages: ChatMessage[] = [...chatMessages, { role: 'user', content: text }]
     setChatMessages(newMessages)
     setChatLoading(true)
-
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { setChatLoading(false); return }
-
     try {
       const res = await fetch('/api/method-interview', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          messages: newMessages,
-          pdf_paths: pdfs,
-          is_first_message: false,
-          category: expert?.category || '',
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ messages: newMessages, pdf_paths: pdfs, is_first_message: false, category: expert?.category || '' }),
       })
       const json = await res.json()
       if (json.message) setChatMessages(prev => [...prev, { role: 'assistant', content: json.message }])
-      if (json.isComplete && json.structuredData) {
-        setInterviewDone(true)
-        setStructuredMethod(json.structuredData)
-      }
+      if (json.isComplete && json.structuredData) { setInterviewDone(true); setStructuredMethod(json.structuredData) }
     } catch {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }])
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong.' }])
     }
     setChatLoading(false)
   }
@@ -245,62 +337,61 @@ export default function MethodSection({ expert }: { expert: any }) {
     if (!structuredMethod) return
     setSavingMethod(true)
     const conversationText = chatMessages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')
-    const { error } = await supabase
-      .from('experts')
-      .update({
-        method_structured: structuredMethod,
-        method_interview_conversation: conversationText,
-        method_onboarding_completed: true,
-      })
-      .eq('id', expert.id)
+    const { error } = await supabase.from('experts').update({
+      method_structured: structuredMethod,
+      method_interview_conversation: conversationText,
+      method_onboarding_completed: true,
+    }).eq('id', expert.id)
     setSavingMethod(false)
     if (!error) { setMethodSaved(true); setStep(3) }
   }
 
-  function handleAddQuestion() {
-    if (!newQuestionLabel.trim()) return
-    if (checkinQuestions.length >= 5) return
-    setCheckinQuestions(prev => [...prev, {
-      id: Date.now().toString(),
-      label: newQuestionLabel.trim(),
-      type: newQuestionType,
-    }])
-    setNewQuestionLabel('')
-    setNewQuestionType('number')
-  }
-
-  function handleRemoveQuestion(id: string) {
-    setCheckinQuestions(prev => prev.filter(q => q.id !== id))
-  }
-
   async function handleSaveProduct() {
-    if (!productTitle || !productDesc || !price || !pricingModel) {
-      setProductError('Please fill in all fields')
-      return
+    if (!productTitle || !productDesc || !price || !pricingModel) { setProductError('Please fill in all product fields and select a sales model'); return }
+    if (initialQuestions.length === 0) { setProductError('Add at least one initial question for your clients'); return }
+    if (checkinQuestions.length === 0) { setProductError('Add at least one weekly check-in question'); return }
+    if (totalIndicators === 0) { setProductError('Select at least one progress indicator'); return }
+    for (const q of [...initialQuestions, ...checkinQuestions]) {
+      if (!q.question_text.trim()) { setProductError('All questions must have text'); return }
+      if (q.question_type === 'select' && q.options.filter(o => o.trim()).length < 2) { setProductError('Multiple choice questions need at least 2 options'); return }
     }
-    if (checkinQuestions.length === 0) {
-      setProductError('Please add at least one check-in question for your clients')
-      return
-    }
-    if (autoCalibration === null) {
-      setProductError('Please choose whether to enable auto-calibration')
-      return
-    }
-
     setSavingProduct(true); setProductError('')
-    const { error } = await supabase.from('products').insert({
+
+    const allIndicators = [
+      ...PRESET_INDICATORS.filter(p => selectedIndicators.includes(p.id)),
+      ...customIndicators.map(c => ({ id: c.id, label: c.label })),
+    ]
+
+    const { data: product, error } = await supabase.from('products').insert({
       expert_id: expert.id,
       title: productTitle,
       description: productDesc,
       price: parseFloat(price),
       pricing_model: pricingModel,
-      checkin_questions: checkinQuestions,
-      auto_calibration: autoCalibration,
-      is_published: false,
-    })
+      duration_months: durationMonths,
+      progress_indicators: allIndicators,
+      is_published: true,
+    }).select().single()
+
+    if (error || !product) { setProductError('Error saving product. Please try again.'); setSavingProduct(false); return }
+
+    await supabase.from('product_questions').insert(
+      initialQuestions.map((q, i) => ({
+        product_id: product.id, question_text: q.question_text,
+        question_type: q.question_type, options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null,
+        allow_multiple: q.question_type === 'select' ? q.allow_multiple : false, order_index: i,
+      }))
+    )
+    await supabase.from('product_checkin_questions').insert(
+      checkinQuestions.map((q, i) => ({
+        product_id: product.id, question_text: q.question_text,
+        question_type: q.question_type === 'select' ? 'select' : 'text',
+        options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null, order_index: i,
+      }))
+    )
+
     setSavingProduct(false)
-    if (!error) setSavedProduct(true)
-    else setProductError('Error saving product. Please try again.')
+    setSavedProduct(true)
   }
 
   const enoughPdfs = pdfs.length >= 5
@@ -324,7 +415,6 @@ export default function MethodSection({ expert }: { expert: any }) {
         .chat-input:focus { border-color: #7C5CFC !important; outline: none; }
         @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
         .pdf-action-btn:hover { opacity: 0.75 !important; }
-        .calibration-option:hover { border-color: #7C5CFC !important; }
       `}</style>
 
       <div>
@@ -350,7 +440,6 @@ export default function MethodSection({ expert }: { expert: any }) {
             <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
               Upload at least <strong>5 PDFs</strong> of your real plans. The AI reads them before asking you questions.
             </p>
-
             {pdfs.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>
@@ -363,9 +452,9 @@ export default function MethodSection({ expert }: { expert: any }) {
                       <span style={{ fontSize: 12, color: '#0F172A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {pdf.split('/').pop()?.replace(/^\d+_/, '') || pdf}
                       </span>
-                      <button className="pdf-action-btn" onClick={() => handleOpenPdf(pdf)} title="Open PDF"
+                      <button className="pdf-action-btn" onClick={() => handleOpenPdf(pdf)}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '2px 4px', color: '#7C5CFC', transition: 'opacity 0.15s' }}>👁</button>
-                      <button className="pdf-action-btn" onClick={() => handleDeletePdf(pdf)} disabled={deletingPdf === pdf} title="Delete PDF"
+                      <button className="pdf-action-btn" onClick={() => handleDeletePdf(pdf)} disabled={deletingPdf === pdf}
                         style={{ background: 'none', border: 'none', cursor: deletingPdf === pdf ? 'not-allowed' : 'pointer', fontSize: 15, padding: '2px 4px', color: '#EF4444', opacity: deletingPdf === pdf ? 0.4 : 1, transition: 'opacity 0.15s' }}>
                         {deletingPdf === pdf ? '…' : '🗑'}
                       </button>
@@ -374,22 +463,13 @@ export default function MethodSection({ expert }: { expert: any }) {
                 </div>
               </div>
             )}
-
             {pdfChangedWarning && (
               <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
-                <p style={{ fontSize: 13, color: '#C2410C', margin: 0, fontWeight: 600 }}>
-                  ⚠️ Your PDFs have changed — you'll need to redo the interview in Step 2 so the AI can re-read your updated plans.
-                </p>
+                <p style={{ fontSize: 13, color: '#C2410C', margin: 0, fontWeight: 600 }}>⚠️ Your PDFs have changed — you'll need to redo the interview in Step 2.</p>
               </div>
             )}
-
             {uploadError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 12 }}>{uploadError}</p>}
-
-            <label style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              border: '2px dashed #E8EDF8', borderRadius: 12, padding: '24px 16px', cursor: 'pointer',
-              background: '#F8FAFC', marginBottom: 16,
-            }}>
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #E8EDF8', borderRadius: 12, padding: '24px 16px', cursor: 'pointer', background: '#F8FAFC', marginBottom: 16 }}>
               <input type="file" accept=".pdf" multiple onChange={handlePdfUpload} style={{ display: 'none' }} />
               <div style={{ fontSize: 24, marginBottom: 6 }}>📄</div>
               <p style={{ fontWeight: 600, color: '#0F172A', fontSize: 13, margin: '0 0 2px', textAlign: 'center' }}>
@@ -397,7 +477,6 @@ export default function MethodSection({ expert }: { expert: any }) {
               </p>
               <p style={{ color: '#94A3B8', fontSize: 12, margin: 0, textAlign: 'center' }}>Multiple files · PDF only</p>
             </label>
-
             <button onClick={() => setStep(2)} disabled={!enoughPdfs}
               style={{ width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: enoughPdfs ? '#7C5CFC' : '#E8EDF8', color: enoughPdfs ? '#fff' : '#94A3B8', border: 'none', cursor: enoughPdfs ? 'pointer' : 'not-allowed' }}>
               {enoughPdfs ? 'Continue →' : `Upload ${5 - pdfs.length} more PDFs to continue`}
@@ -405,7 +484,7 @@ export default function MethodSection({ expert }: { expert: any }) {
           </div>
         )}
 
-        {/* STEP 2 — Chat */}
+        {/* STEP 2 */}
         {step === 2 && (
           <div>
             {methodSaved ? (
@@ -414,25 +493,16 @@ export default function MethodSection({ expert }: { expert: any }) {
                 <p style={{ fontWeight: 700, fontSize: 16, color: '#059669', margin: '0 0 8px' }}>Method already structured</p>
                 <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 20px' }}>Your method has been saved. You can redo the interview to update it, or go directly to your product.</p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button onClick={handleRedoInterview}
-                    style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #E8EDF8', background: '#F8FAFC', color: '#64748B', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                    Redo interview
-                  </button>
-                  <button onClick={() => setStep(3)}
-                    style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                    Go to product →
-                  </button>
+                  <button onClick={handleRedoInterview} style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #E8EDF8', background: '#F8FAFC', color: '#64748B', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Redo interview</button>
+                  <button onClick={() => setStep(3)} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#7C5CFC', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Go to product →</button>
                 </div>
               </div>
             ) : (
               <>
                 <div style={card}>
                   <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Step 2 — Structure your method</p>
-                  <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>
-                    I've read your PDFs. Now I'll ask you <strong>7 questions</strong> to capture the logic behind your method — the part no PDF can show.
-                  </p>
+                  <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>I've read your PDFs. Now I'll ask you <strong>7 questions</strong> to capture the logic behind your method.</p>
                 </div>
-
                 <div style={{ background: '#F8FAFC', borderRadius: 16, border: '1px solid #E8EDF8', padding: '16px', marginBottom: 12, minHeight: 320, maxHeight: 480, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {chatMessages.length === 0 && chatLoading && (
                     <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -440,23 +510,15 @@ export default function MethodSection({ expert }: { expert: any }) {
                       <div style={{ background: '#F1F5F9', borderRadius: '16px 16px 16px 4px', padding: '12px 16px', fontSize: 13, color: '#64748B' }}>Analysing your PDFs…</div>
                     </div>
                   )}
-
                   {chatMessages.map((msg, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexDirection: msg.role === 'user' ? 'row-reverse' : 'row' }}>
                       {msg.role === 'assistant' && (
                         <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>✦</div>
                       )}
-                      <div
-                        className={msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}
-                        dangerouslySetInnerHTML={{
-                          __html: msg.content
-                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/\n/g, '<br/>')
-                        }}
-                      />
+                      <div className={msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}
+                        dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />
                     </div>
                   ))}
-
                   {chatLoading && chatMessages.length > 0 && (
                     <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>✦</div>
@@ -467,22 +529,15 @@ export default function MethodSection({ expert }: { expert: any }) {
                   )}
                   <div ref={chatEndRef} />
                 </div>
-
                 {!interviewDone ? (
                   <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input
-                      className="chat-input"
-                      value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
+                    <input className="chat-input" value={chatInput} onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                      placeholder="Type your answer and press Enter…"
-                      disabled={chatLoading || pdfs.length === 0}
+                      placeholder="Type your answer and press Enter…" disabled={chatLoading || pdfs.length === 0}
                       style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E8EDF8', fontSize: 13, color: '#0F172A', background: '#fff', fontFamily: 'inherit', outline: 'none', opacity: chatLoading || pdfs.length === 0 ? 0.6 : 1 }}
                     />
                     <button onClick={handleSend} disabled={chatLoading || !chatInput.trim() || pdfs.length === 0}
-                      style={{ padding: '12px 20px', borderRadius: 12, border: 'none', background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 14, cursor: chatLoading || !chatInput.trim() || pdfs.length === 0 ? 'not-allowed' : 'pointer', opacity: chatLoading || !chatInput.trim() || pdfs.length === 0 ? 0.5 : 1, transition: 'all 0.15s', flexShrink: 0 }}>
-                      →
-                    </button>
+                      style={{ padding: '12px 20px', borderRadius: 12, border: 'none', background: '#7C5CFC', color: '#fff', fontWeight: 700, fontSize: 14, cursor: chatLoading || !chatInput.trim() || pdfs.length === 0 ? 'not-allowed' : 'pointer', opacity: chatLoading || !chatInput.trim() || pdfs.length === 0 ? 0.5 : 1, flexShrink: 0 }}>→</button>
                   </div>
                 ) : (
                   <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 12, padding: '16px', marginBottom: 8 }}>
@@ -499,7 +554,7 @@ export default function MethodSection({ expert }: { expert: any }) {
           </div>
         )}
 
-        {/* STEP 3 */}
+        {/* STEP 3 — identico a create-product */}
         {step === 3 && (
           <div>
             <div style={card}>
@@ -507,27 +562,39 @@ export default function MethodSection({ expert }: { expert: any }) {
               <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>Define your first digital product. You can create more from the dashboard at any time.</p>
             </div>
 
-            {/* Product basics */}
+            {/* Product details */}
             <div style={card}>
+              <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 20px' }}>Product details</h2>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.04em' }}>PRODUCT NAME</label>
-                <input type="text" value={productTitle} onChange={e => setProductTitle(e.target.value)} placeholder="e.g. 12-Week Transformation Plan" style={input} />
+                <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 8, fontWeight: 500 }}>Product name</label>
+                <input type="text" value={productTitle} onChange={e => setProductTitle(e.target.value)} placeholder="e.g. 3-Month Weight Loss Plan" style={input} />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.04em' }}>SHORT DESCRIPTION</label>
-                <textarea value={productDesc} onChange={e => setProductDesc(e.target.value)} placeholder="e.g. A personalized 12-week plan to transform your body..." rows={3} style={{ ...input, resize: 'vertical' }} />
+                <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 8, fontWeight: 500 }}>Description</label>
+                <textarea value={productDesc} onChange={e => setProductDesc(e.target.value)} placeholder="Describe what the client will receive..." rows={3} style={{ ...input, resize: 'vertical' as any }} />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 8, fontWeight: 500 }}>Price (€)</label>
+                <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 49" min="1" style={{ ...input, width: 160 }} />
               </div>
               <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.04em' }}>PRICE (€)</label>
-                <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 49" min="1" style={{ ...input, width: '160px' }} />
+                <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 12, fontWeight: 500 }}>Program duration</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {DURATION_OPTIONS.map(opt => (
+                    <button key={opt.value} type="button" onClick={() => setDurationMonths(opt.value)}
+                      style={{ padding: '8px 18px', borderRadius: 100, fontSize: 13, fontWeight: 600, border: `1px solid ${durationMonths === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: durationMonths === opt.value ? '#EDE9FE' : '#F5F7FA', color: durationMonths === opt.value ? '#7C5CFC' : '#94A3B8', cursor: 'pointer' }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
-                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 10, fontWeight: 600, letterSpacing: '0.04em' }}>SALES MODEL</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 13, color: '#64748B', display: 'block', marginBottom: 12, fontWeight: 500 }}>Sales model</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {PRICING_MODELS.map(model => (
-                    <button key={model.id} onClick={() => setPricingModel(model.id)}
-                      style={{ padding: '12px 16px', borderRadius: 12, textAlign: 'left', border: `1.5px solid ${pricingModel === model.id ? '#7C5CFC' : '#E8EDF8'}`, background: pricingModel === model.id ? '#EDE9FE' : '#F8FAFC', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: pricingModel === model.id ? '#7C5CFC' : '#0F172A', marginBottom: 2 }}>{model.label}</div>
+                    <button key={model.id} type="button" onClick={() => setPricingModel(model.id)}
+                      style={{ padding: '14px 18px', borderRadius: 12, textAlign: 'left', border: `1px solid ${pricingModel === model.id ? '#7C5CFC' : '#E8EDF8'}`, background: pricingModel === model.id ? '#EDE9FE' : '#F5F7FA', cursor: 'pointer' }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: pricingModel === model.id ? '#7C5CFC' : '#0F172A', marginBottom: 2 }}>{model.label}</div>
                       <div style={{ fontSize: 12, color: '#94A3B8' }}>{model.desc}</div>
                     </button>
                   ))}
@@ -535,92 +602,66 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             </div>
 
-            {/* Check-in questions */}
+            {/* Progress indicators */}
             <div style={card}>
-              <p style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 4, fontWeight: 600, letterSpacing: '0.04em' }}>WEEKLY CHECK-IN QUESTIONS</p>
-              <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 16, lineHeight: 1.6 }}>
-                Define what you want to measure each week. Your clients will answer these before the AI generates their next plan. <strong>Max 5 questions.</strong>
-              </p>
-
-              {checkinQuestions.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                  {checkinQuestions.map((q, i) => (
-                    <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E8EDF8' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#7C5CFC', minWidth: 20 }}>{i + 1}.</span>
-                      <span style={{ fontSize: 13, color: '#0F172A', flex: 1 }}>{q.label}</span>
-                      <span style={{ fontSize: 11, color: '#94A3B8', background: '#F1F5F9', padding: '2px 8px', borderRadius: 6, whiteSpace: 'nowrap' }}>
-                        {QUESTION_TYPES.find(t => t.id === q.type)?.label}
-                      </span>
-                      <button onClick={() => handleRemoveQuestion(q.id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: 16, padding: '0 4px', lineHeight: 1 }}>×</button>
-                    </div>
-                  ))}
+              <h2 style={{ color: '#D97706', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Progress indicators</h2>
+              <p style={{ color: '#64748B', fontSize: 13, marginBottom: 12 }}>Choose up to 4 metrics to track weekly. <strong style={{ color: '#0F172A' }}>Select {4 - totalIndicators} more.</strong></p>
+              <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
+                <p style={{ fontSize: 12, color: '#D97706', fontWeight: 600, marginBottom: 4 }}>💡 Why progress indicators matter</p>
+                <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6, margin: 0 }}>After each weekly check-in, the AI automatically scores your client's progress on these dimensions (1–10).</p>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                {PRESET_INDICATORS.map(ind => {
+                  const selected = selectedIndicators.includes(ind.id)
+                  const disabled = !selected && totalIndicators >= 4
+                  return (
+                    <button key={ind.id} type="button" onClick={() => togglePresetIndicator(ind.id)} disabled={disabled}
+                      style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 500, border: `1px solid ${selected ? '#D97706' : '#E8EDF8'}`, background: selected ? '#FEF3C7' : '#F5F7FA', color: selected ? '#D97706' : disabled ? '#C7D2F0' : '#64748B', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
+                      {selected ? '✓ ' : ''}{ind.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 8 }}>Or add a custom indicator:</label>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <input type="text" value={newCustomLabel} onChange={e => setNewCustomLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomIndicator()} placeholder="e.g. Back pain level..." disabled={totalIndicators >= 4} style={{ ...input, flex: 1, opacity: totalIndicators >= 4 ? 0.5 : 1 }} />
+                  <button type="button" onClick={addCustomIndicator} disabled={totalIndicators >= 4 || !newCustomLabel.trim()} style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#FEF3C7', border: '1px solid #FDE68A', color: '#D97706', cursor: 'pointer', whiteSpace: 'nowrap', opacity: totalIndicators >= 4 || !newCustomLabel.trim() ? 0.4 : 1 }}>+ Add</button>
                 </div>
-              )}
-
-              {checkinQuestions.length < 5 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <input
-                    type="text"
-                    value={newQuestionLabel}
-                    onChange={e => setNewQuestionLabel(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddQuestion() } }}
-                    placeholder="e.g. How many calls did you make this week?"
-                    style={input}
-                  />
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {QUESTION_TYPES.map(t => (
-                      <button key={t.id} onClick={() => setNewQuestionType(t.id)}
-                        style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1.5px solid ${newQuestionType === t.id ? '#7C5CFC' : '#E8EDF8'}`, background: newQuestionType === t.id ? '#EDE9FE' : '#F8FAFC', color: newQuestionType === t.id ? '#7C5CFC' : '#64748B', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}>
-                        {t.label}
-                      </button>
+                {customIndicators.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {customIndicators.map(ind => (
+                      <div key={ind.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 100, background: '#FEF3C7', border: '1px solid #FDE68A' }}>
+                        <span style={{ fontSize: 12, color: '#D97706' }}>✦ {ind.label}</span>
+                        <button type="button" onClick={() => removeCustomIndicator(ind.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', padding: 0 }}>✕</button>
+                      </div>
                     ))}
                   </div>
-                  <button onClick={handleAddQuestion} disabled={!newQuestionLabel.trim()}
-                    style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: newQuestionLabel.trim() ? '#7C5CFC' : '#E8EDF8', color: newQuestionLabel.trim() ? '#fff' : '#94A3B8', fontWeight: 600, fontSize: 13, cursor: newQuestionLabel.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.15s' }}>
-                    + Add question ({checkinQuestions.length}/5)
-                  </button>
-                </div>
-              )}
-
-              {checkinQuestions.length >= 5 && (
-                <p style={{ fontSize: 12, color: '#059669', fontWeight: 600, margin: '8px 0 0' }}>✓ Maximum 5 questions reached</p>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Auto-calibration */}
+            {/* Initial questions */}
             <div style={card}>
-              <p style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 4, fontWeight: 600, letterSpacing: '0.04em' }}>🔄 AUTO-CALIBRATION</p>
-              <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 16, lineHeight: 1.6 }}>
-                Do you want the plan to automatically adapt to your client's weekly results?
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button className="calibration-option" onClick={() => setAutoCalibration(true)}
-                  style={{ padding: '16px', borderRadius: 12, textAlign: 'left', border: `1.5px solid ${autoCalibration === true ? '#7C5CFC' : '#E8EDF8'}`, background: autoCalibration === true ? '#EDE9FE' : '#F8FAFC', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: autoCalibration === true ? '#7C5CFC' : '#0F172A', marginBottom: 4 }}>✅ Yes — adapt automatically</div>
-                  <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6 }}>
-                    If the client is doing great, the plan gradually increases in intensity. If they're struggling, the AI slows down and consolidates before moving forward. <strong>Ideal if you want each client to progress at their own natural pace.</strong>
-                  </div>
-                </button>
-                <button className="calibration-option" onClick={() => setAutoCalibration(false)}
-                  style={{ padding: '16px', borderRadius: 12, textAlign: 'left', border: `1.5px solid ${autoCalibration === false ? '#7C5CFC' : '#E8EDF8'}`, background: autoCalibration === false ? '#EDE9FE' : '#F8FAFC', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: autoCalibration === false ? '#7C5CFC' : '#0F172A', marginBottom: 4 }}>❌ No — follow my structure</div>
-                  <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6 }}>
-                    The plan follows the fixed progression of your method, the same for all clients. <strong>Ideal if you have a structured path with fixed milestones you don't want to change.</strong>
-                  </div>
-                </button>
-              </div>
+              <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Initial questions</h2>
+              <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>Asked once after purchase. The AI uses these to generate the Week 1 plan.</p>
+              <QuestionBuilder questions={initialQuestions} setQuestions={setInitialQuestions} placeholder="e.g. What is your main goal?" />
+            </div>
+
+            {/* Check-in questions */}
+            <div style={card}>
+              <h2 style={{ color: '#059669', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Weekly check-in questions</h2>
+              <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>Shown to the client at day 6 of each week. The AI uses their answers to adapt the next week's plan.</p>
+              <QuestionBuilder questions={checkinQuestions} setQuestions={setCheckinQuestions} placeholder="e.g. How much weight did you lose this week?" />
             </div>
 
             {productError && (
-              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>
-                {productError}
-              </div>
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{productError}</div>
             )}
 
             {savedProduct ? (
               <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 12, padding: '20px', textAlign: 'center' }}>
-                <p style={{ color: '#059669', fontWeight: 700, fontSize: 16, margin: '0 0 6px' }}>🎉 You&apos;re all set!</p>
+                <p style={{ color: '#059669', fontWeight: 700, fontSize: 16, margin: '0 0 6px' }}>🎉 You're all set!</p>
                 <p style={{ color: '#059669', fontSize: 13, margin: 0 }}>Your method is saved and your first product is ready. Go to Overview to manage everything.</p>
               </div>
             ) : (
