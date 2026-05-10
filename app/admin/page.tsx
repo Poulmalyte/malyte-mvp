@@ -10,11 +10,11 @@ export default function AdminPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [saved, setSaved] = useState<Record<string, boolean>>({})
 
-  async function loadProducts() {
+  async function loadProducts(s: string) {
     const res = await fetch('/api/admin-products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret }),
+      body: JSON.stringify({ secret: s }),
     })
     const data = await res.json()
     setProducts(data.products || [])
@@ -33,7 +33,7 @@ export default function AdminPage() {
     })
     if (res.ok) {
       setAuthenticated(true)
-      loadProducts()
+      loadProducts(secret)
     } else {
       alert('Wrong password')
     }
