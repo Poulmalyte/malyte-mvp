@@ -248,6 +248,7 @@ function CreateProductInner() {
         ...PRESET_INDICATORS.filter(p => selectedIndicators.includes(p.id)),
         ...customIndicators.map(c => ({ id: c.id, label: c.label })),
       ]
+
       if (isEditMode) {
         await supabase.from('products').update({
           title, description, price: parseFloat(price),
@@ -271,13 +272,25 @@ function CreateProductInner() {
           }))
         )
       } else {
+        // 1 — Crea prodotto su Lemon Squeezy
+        const lsRes = await fetch('/api/create-ls-product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description, price: parseFloat(price) }),
+        })
+        const lsData = await lsRes.json()
+        if (!lsRes.ok || !lsData.variantId) throw new Error('Failed to create Lemon Squeezy product')
+
+        // 2 — Crea prodotto su Supabase con variant ID
         const { data: product, error: productError } = await supabase.from('products').insert({
           expert_id: user.id, title, description,
           price: parseFloat(price), pricing_model: pricingModel,
           duration_months: durationMonths, is_published: true,
           progress_indicators: allIndicators,
+          lemonsqueezy_variant_id: lsData.variantId,
         }).select().single()
         if (productError) throw productError
+
         await supabase.from('product_questions').insert(
           initialQuestions.map((q, i) => ({
             product_id: product.id, question_text: q.question_text,
@@ -293,6 +306,7 @@ function CreateProductInner() {
           }))
         )
       }
+
       router.push('/dashboard')
     } catch (err: any) {
       setError(err.message || 'Unexpected error. Please try again.')
