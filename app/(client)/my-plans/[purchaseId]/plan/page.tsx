@@ -42,40 +42,53 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   return (
     <main style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
       <style>{`
-        .plan-header-inner { max-width: 800px; margin: 0 auto; }
-        .plan-header-top { display: flex; justify-content: space-between; align-items: center; padding: 16px 0 0; }
+        * { box-sizing: border-box; }
+
+        .plan-header-inner { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+        .plan-header-top { display: flex; justify-content: space-between; align-items: center; padding: 14px 0 0; }
         .plan-expert-name { font-size: 12px; color: #94A3B8; }
-        .plan-body { max-width: 800px; margin: 0 auto; padding: 24px 24px 80px; }
+        .plan-body { max-width: 800px; margin: 0 auto; padding: 20px 20px 80px; }
         .plan-title { font-family: 'Satoshi', sans-serif; font-weight: 800; font-size: 22px; color: #0F172A; margin: 0 0 4px; }
-        .plan-subtitle { color: #64748B; font-size: 13px; margin: 0 0 16px; }
-        .week-tabs { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .plan-subtitle { color: #64748B; font-size: 13px; margin: 0 0 14px; }
+
+        .week-tabs { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 14px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
         .week-tabs::-webkit-scrollbar { display: none; }
-        .stats-row { display: flex; gap: 12px; flex-wrap: wrap; }
-        .stat-box { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 14px; text-align: center; flex: 1; min-width: 60px; }
-        .meal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex-wrap: wrap; gap: 4px; }
-        .day-card { background: #FFFFFF; border-radius: 14px; border: 1px solid #E8EDF8; padding: 20px 24px; margin-bottom: 12px; }
+
+        .stats-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .stat-box { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 10px; text-align: center; flex: 1; min-width: 56px; }
+
+        .meal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; gap: 4px; flex-wrap: wrap; }
+        .day-card { background: #FFFFFF; border-radius: 14px; border: 1px solid #E8EDF8; padding: 16px 18px; margin-bottom: 10px; }
         .macro-row { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
 
-        @media (max-width: 640px) {
-          .plan-header-inner { padding: 0 16px; }
-          .plan-header-top { padding: 12px 0 0; }
+        .welcome-card { background: linear-gradient(135deg, #7C5CFC, #6385FF); border-radius: 14px; padding: 18px 20px; margin-bottom: 10px; }
+        .welcome-text { font-size: 14px; color: rgba(255,255,255,0.85); line-height: 1.6; margin: 0 0 14px; }
+        .section-card { background: #FFFFFF; border-radius: 14px; border: 1px solid #E8EDF8; padding: 16px 18px; margin-bottom: 10px; }
+
+        @media (max-width: 480px) {
+          .plan-header-inner { padding: 0 14px; }
           .plan-expert-name { display: none; }
-          .plan-body { padding: 16px 16px 80px; }
-          .plan-title { font-size: 18px; }
-          .plan-subtitle { font-size: 12px; margin-bottom: 12px; }
-          .stat-box { padding: 6px 10px; }
-          .day-card { padding: 16px; }
-          .welcome-card { padding: 16px !important; }
-          .welcome-text { font-size: 13px !important; }
-          .section-card { padding: 16px !important; }
+          .plan-body { padding: 14px 14px 80px; }
+          .plan-title { font-size: 17px; }
+          .plan-subtitle { font-size: 12px; }
+          .welcome-card { padding: 14px 16px; }
+          .welcome-text { font-size: 13px; }
+          .stat-box { padding: 6px 8px; }
+          .stat-box .stat-label { font-size: 9px !important; }
+          .stat-box .stat-value { font-size: 13px !important; }
+          .day-card { padding: 14px; }
+          .section-card { padding: 14px; }
+          .week-tab { padding: 5px 12px !important; font-size: 11px !important; }
+          .meal-name { font-size: 13px !important; }
+          .ingredient { font-size: 11px !important; }
         }
       `}</style>
 
       {/* HEADER */}
-      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '0 24px' }}>
+      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8' }}>
         <div className="plan-header-inner">
           <div className="plan-header-top">
-            <Link href="/my-plans" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>← My Plans</Link>
+            <Link href="/my-plans" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none', flexShrink: 0 }}>← My Plans</Link>
             <Link href="/" style={{ textDecoration: 'none' }}>
               <span style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A' }}>
                 malyte<span style={{ color: '#7C5CFC' }}>.</span>
@@ -84,12 +97,12 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
             <span className="plan-expert-name">{expert?.name}</span>
           </div>
 
-          <div style={{ padding: '16px 0 0' }}>
+          <div style={{ padding: '14px 0 0' }}>
             <h1 className="plan-title">{product?.title}</h1>
             <p className="plan-subtitle">{currentWeekData?.plan_title || `Week ${currentWeek}`}</p>
 
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                 <span style={{ fontSize: 11, color: '#94A3B8' }}>Week {currentWeek} of {totalWeeks}</span>
                 <span style={{ fontSize: 11, color: '#7C5CFC', fontWeight: 600 }}>{Math.round((currentWeek / totalWeeks) * 100)}%</span>
               </div>
@@ -101,11 +114,12 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
             <div className="week-tabs">
               {weeks.map((w: any) => (
                 <Link key={w.week_number} href={`/my-plans/${purchaseId}/plan?week=${w.week_number}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                  <div style={{
+                  <div className="week-tab" style={{
                     padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600,
                     background: w.week_number === currentWeek ? '#7C5CFC' : '#F5F7FA',
                     color: w.week_number === currentWeek ? '#fff' : '#94A3B8',
                     border: w.week_number === currentWeek ? 'none' : '1px solid #E8EDF8',
+                    whiteSpace: 'nowrap',
                   }}>
                     W{w.week_number}
                   </div>
@@ -121,10 +135,8 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         {currentWeekData ? (
           <>
             {currentWeekData.welcome_message && (
-              <div className="welcome-card" style={{ background: 'linear-gradient(135deg, #7C5CFC, #6385FF)', borderRadius: 14, padding: '20px 24px', marginBottom: 12 }}>
-                <p className="welcome-text" style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: '0 0 16px' }}>
-                  {currentWeekData.welcome_message}
-                </p>
+              <div className="welcome-card">
+                <p className="welcome-text">{currentWeekData.welcome_message}</p>
                 {currentWeekData.client_stats && (
                   <div className="stats-row">
                     {[
@@ -134,8 +146,8 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
                       { label: 'Fats', value: `${currentWeekData.client_stats.daily_fats_g}g` },
                     ].map((stat) => (
                       <div key={stat.label} className="stat-box">
-                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', margin: '0 0 2px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{stat.label}</p>
-                        <p style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0 }}>{stat.value}</p>
+                        <p className="stat-label" style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', margin: '0 0 2px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{stat.label}</p>
+                        <p className="stat-value" style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0 }}>{stat.value}</p>
                       </div>
                     ))}
                   </div>
@@ -144,51 +156,51 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
             )}
 
             {currentWeekData.weekly_goal && (
-              <div className="section-card" style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '16px 20px', marginBottom: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 18 }}>🎯</span>
+              <div className="section-card" style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>🎯</span>
                 <div>
                   <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>Weekly Goal</p>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', margin: 0 }}>{currentWeekData.weekly_goal}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', margin: 0, lineHeight: 1.5 }}>{currentWeekData.weekly_goal}</p>
                 </div>
               </div>
             )}
 
             {currentWeekData.days?.map((day: any, dayIdx: number) => (
               <div key={dayIdx} className="day-card">
-                <p style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+                <p style={{ fontSize: 12, fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
                   {day.day || `Day ${dayIdx + 1}`}
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {day.meals?.map((meal: any, mealIdx: number) => {
                     const mealKey = (meal.meal || meal.type || '').toLowerCase()
                     const color = mealColors[mealKey] || '#7C5CFC'
                     return (
-                      <div key={mealIdx} style={{ borderLeft: `3px solid ${color}`, paddingLeft: 14 }}>
+                      <div key={mealIdx} style={{ borderLeft: `3px solid ${color}`, paddingLeft: 12 }}>
                         <div className="meal-header">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                               {meal.meal || meal.type}
                             </span>
-                            {meal.time && <span style={{ fontSize: 11, color: '#94A3B8' }}>{meal.time}</span>}
+                            {meal.time && <span style={{ fontSize: 10, color: '#94A3B8' }}>{meal.time}</span>}
                           </div>
                           {meal.calories && (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B', background: '#F5F7FA', padding: '2px 8px', borderRadius: 100 }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#64748B', background: '#F5F7FA', padding: '2px 7px', borderRadius: 100, flexShrink: 0 }}>
                               {meal.calories} kcal
                             </span>
                           )}
                         </div>
-                        <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: '0 0 6px' }}>
+                        <p className="meal-name" style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: '0 0 6px', lineHeight: 1.4 }}>
                           {meal.name || meal.description}
                         </p>
                         {meal.ingredients && meal.ingredients.length > 0 && (
                           <div style={{ marginBottom: 6 }}>
                             {meal.ingredients.map((ing: string, i: number) => (
-                              <p key={i} style={{ fontSize: 12, color: '#64748B', margin: '0 0 2px' }}>· {ing}</p>
+                              <p key={i} className="ingredient" style={{ fontSize: 12, color: '#64748B', margin: '0 0 2px', lineHeight: 1.4 }}>· {ing}</p>
                             ))}
                           </div>
                         )}
                         {meal.preparation && (
-                          <p style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic', margin: '4px 0 0', lineHeight: 1.5 }}>
+                          <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', margin: '4px 0 0', lineHeight: 1.5 }}>
                             {meal.preparation}
                           </p>
                         )}
@@ -204,7 +216,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
                   })}
                 </div>
                 {day.daily_tip && (
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F1F5F9' }}>
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F1F5F9' }}>
                     <p style={{ fontSize: 12, color: '#7C5CFC', fontWeight: 600, margin: '0 0 2px' }}>💡 Daily tip</p>
                     <p style={{ fontSize: 12, color: '#64748B', margin: 0, lineHeight: 1.5 }}>{day.daily_tip}</p>
                   </div>
@@ -213,20 +225,20 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
             ))}
 
             {currentWeekData.expert_tip && (
-              <div className="section-card" style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 12 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Expert Tip</p>
+              <div className="section-card">
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Expert Tip</p>
                 <p style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, margin: 0 }}>{currentWeekData.expert_tip}</p>
               </div>
             )}
 
             {(currentWeekData.common_mistakes?.length > 0 || currentWeekData.success_metrics?.length > 0) && (
-              <div className="section-card" style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 12 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Weekly Wisdom</p>
+              <div className="section-card">
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Weekly Wisdom</p>
                 {currentWeekData.common_mistakes?.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
+                  <div style={{ marginBottom: 12 }}>
                     <p style={{ fontSize: 12, fontWeight: 600, color: '#EF4444', marginBottom: 6 }}>Common mistakes</p>
                     {currentWeekData.common_mistakes.map((m: string, i: number) => (
-                      <p key={i} style={{ fontSize: 13, color: '#334155', margin: '0 0 4px' }}>· {m}</p>
+                      <p key={i} style={{ fontSize: 13, color: '#334155', margin: '0 0 4px', lineHeight: 1.5 }}>· {m}</p>
                     ))}
                   </div>
                 )}
@@ -234,14 +246,14 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
                   <div>
                     <p style={{ fontSize: 12, fontWeight: 600, color: '#059669', marginBottom: 6 }}>Signs it's working</p>
                     {currentWeekData.success_metrics.map((m: string, i: number) => (
-                      <p key={i} style={{ fontSize: 13, color: '#334155', margin: '0 0 4px' }}>✓ {m}</p>
+                      <p key={i} style={{ fontSize: 13, color: '#334155', margin: '0 0 4px', lineHeight: 1.5 }}>✓ {m}</p>
                     ))}
                   </div>
                 )}
               </div>
             )}
 
-            <div style={{ marginTop: 20 }}>
+            <div style={{ marginTop: 16 }}>
               {currentWeek < totalWeeks ? (
                 <WeeklyCheckinButton purchaseId={purchaseId} weekNumber={currentWeek} />
               ) : (
