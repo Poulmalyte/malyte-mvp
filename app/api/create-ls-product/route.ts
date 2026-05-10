@@ -5,7 +5,6 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.LEMONSQUEEZY_API_KEY!
   const storeId = process.env.LEMONSQUEEZY_STORE_ID!
 
-  // 1 — Crea prodotto
   const productRes = await fetch('https://api.lemonsqueezy.com/v1/products', {
     method: 'POST',
     headers: {
@@ -23,14 +22,14 @@ export async function POST(request: NextRequest) {
   })
 
   const productJson = await productRes.json()
+
+  // Restituisci l'errore completo per debug
   if (!productRes.ok) {
-    console.error('LS product error:', productJson)
-    return NextResponse.json({ error: 'Failed to create LS product' }, { status: 500 })
+    return NextResponse.json({ error: productJson }, { status: 500 })
   }
 
   const lsProductId = productJson.data.id
 
-  // 2 — Crea variant
   const variantRes = await fetch('https://api.lemonsqueezy.com/v1/variants', {
     method: 'POST',
     headers: {
@@ -53,11 +52,8 @@ export async function POST(request: NextRequest) {
 
   const variantJson = await variantRes.json()
   if (!variantRes.ok) {
-    console.error('LS variant error:', variantJson)
-    return NextResponse.json({ error: 'Failed to create LS variant' }, { status: 500 })
+    return NextResponse.json({ error: variantJson }, { status: 500 })
   }
 
-  const variantId = variantJson.data.id
-
-  return NextResponse.json({ variantId, lsProductId })
+  return NextResponse.json({ variantId: variantJson.data.id, lsProductId })
 }
