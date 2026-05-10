@@ -5,8 +5,9 @@ import WeeklyCheckinButton from './WeeklyCheckinButton'
 import GenerateNextWeekButton from './GenerateNextWeekButton'
 import Footer from '@/components/Footer'
 
-export default async function PlanPage({ params }: { params: Promise<{ purchaseId: string }> }) {
+export default async function PlanPage({ params, searchParams }: { params: Promise<{ purchaseId: string }>, searchParams: Promise<{ week?: string }> }) {
   const { purchaseId } = await params
+  const { week } = await searchParams
   const supabase = await createServerSupabaseClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -23,7 +24,7 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
   if (!clientPlan) redirect(`/my-plans/${purchaseId}/questionnaire`)
 
   const plan = clientPlan.ai_generated_plan
-  const currentWeek = clientPlan.current_week || 1
+  const currentWeek = week ? parseInt(week) : (clientPlan.current_week || 1)
   const totalWeeks = clientPlan.total_weeks || 4
   const weeks = plan?.weeks || []
   const currentWeekData = weeks.find((w: any) => w.week_number === currentWeek) || weeks[0]
@@ -119,7 +120,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
       <div className="plan-body">
         {currentWeekData ? (
           <>
-            {/* Welcome + stats */}
             {currentWeekData.welcome_message && (
               <div className="welcome-card" style={{ background: 'linear-gradient(135deg, #7C5CFC, #6385FF)', borderRadius: 14, padding: '20px 24px', marginBottom: 12 }}>
                 <p className="welcome-text" style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: '0 0 16px' }}>
@@ -143,7 +143,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               </div>
             )}
 
-            {/* Weekly goal */}
             {currentWeekData.weekly_goal && (
               <div className="section-card" style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '16px 20px', marginBottom: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                 <span style={{ fontSize: 18 }}>🎯</span>
@@ -154,7 +153,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               </div>
             )}
 
-            {/* Days */}
             {currentWeekData.days?.map((day: any, dayIdx: number) => (
               <div key={dayIdx} className="day-card">
                 <p style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
@@ -171,9 +169,7 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
                             <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                               {meal.meal || meal.type}
                             </span>
-                            {meal.time && (
-                              <span style={{ fontSize: 11, color: '#94A3B8' }}>{meal.time}</span>
-                            )}
+                            {meal.time && <span style={{ fontSize: 11, color: '#94A3B8' }}>{meal.time}</span>}
                           </div>
                           {meal.calories && (
                             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B', background: '#F5F7FA', padding: '2px 8px', borderRadius: 100 }}>
@@ -216,7 +212,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               </div>
             ))}
 
-            {/* Expert tip */}
             {currentWeekData.expert_tip && (
               <div className="section-card" style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 12 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Expert Tip</p>
@@ -224,7 +219,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               </div>
             )}
 
-            {/* Common mistakes + success metrics */}
             {(currentWeekData.common_mistakes?.length > 0 || currentWeekData.success_metrics?.length > 0) && (
               <div className="section-card" style={{ background: '#FFFFFF', borderRadius: 14, border: '1px solid #E8EDF8', padding: '20px 24px', marginBottom: 12 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Weekly Wisdom</p>
@@ -247,7 +241,6 @@ export default async function PlanPage({ params }: { params: Promise<{ purchaseI
               </div>
             )}
 
-            {/* Check-in / complete */}
             <div style={{ marginTop: 20 }}>
               {currentWeek < totalWeeks ? (
                 <WeeklyCheckinButton purchaseId={purchaseId} weekNumber={currentWeek} />
