@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 
 type Role = 'expert' | 'client'
+type ModalType = 'terms' | 'privacy' | null
 
 export default function SignupPage() {
   const [role, setRole] = useState<Role | null>(null)
@@ -17,6 +18,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [modal, setModal] = useState<ModalType>(null)
   const router = useRouter()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,16 +57,12 @@ export default function SignupPage() {
     if (!role) { setError('Please select an account type first.'); return }
     if (!consentTerms) { setError('You must accept the Terms & Conditions to continue.'); return }
     if (!consentHealth) { setError('You must consent to data processing to use Malyte.'); return }
-
     const pendingData = JSON.stringify({
-      role,
-      consent_terms: true,
-      consent_health: true,
+      role, consent_terms: true, consent_health: true,
       consent_marketing: consentMarketing,
       consent_timestamp: new Date().toISOString(),
     })
     document.cookie = `pending_signup=${encodeURIComponent(pendingData)}; path=/; max-age=300; SameSite=Lax`
-
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -76,12 +74,9 @@ export default function SignupPage() {
       <div style={{ minHeight: '100vh', background: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
         <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center', background: '#FFFFFF', borderRadius: '24px', padding: '48px 40px', border: '1px solid #E8EDF8' }}>
           <div style={{ fontSize: '48px', marginBottom: '24px' }}>✉️</div>
-          <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontSize: '26px', fontWeight: 800, color: '#0F172A', marginBottom: '12px' }}>
-            Check your email
-          </h1>
+          <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontSize: '26px', fontWeight: 800, color: '#0F172A', marginBottom: '12px' }}>Check your email</h1>
           <p style={{ color: '#64748B', lineHeight: 1.6, fontSize: '15px' }}>
-            We sent a confirmation link to{' '}
-            <strong style={{ color: '#0F172A' }}>{email}</strong>.<br />
+            We sent a confirmation link to <strong style={{ color: '#0F172A' }}>{email}</strong>.<br />
             Click the link to activate your account.
           </p>
         </div>
@@ -106,17 +101,67 @@ export default function SignupPage() {
     <div style={{ minHeight: '100vh', background: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <style>{`
         .signup-card { padding: 40px 36px; }
-        .signup-role-grid { grid-template-columns: 1fr 1fr; }
         @media (max-width: 480px) {
           .signup-card { padding: 24px 16px; }
-          .signup-role-grid { grid-template-columns: 1fr 1fr; }
           .signup-card h1 { font-size: 20px !important; }
           .consent-label { font-size: 11px !important; }
         }
       `}</style>
-      <div style={{ maxWidth: '460px', width: '100%' }}>
 
-        {/* Logo */}
+      {/* MODAL */}
+      {modal && (
+        <div
+          onClick={() => setModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#FFFFFF', borderRadius: 20,
+              width: '100%', maxWidth: 680,
+              maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Modal header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #E8EDF8', flexShrink: 0 }}>
+              <h2 style={{ fontFamily: 'Satoshi, sans-serif', fontWeight: 800, fontSize: 18, color: '#0F172A', margin: 0 }}>
+                {modal === 'terms' ? 'Terms & Conditions' : 'Privacy Policy'}
+              </h2>
+              <button
+                onClick={() => setModal(null)}
+                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94A3B8', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+            {/* Modal content */}
+            <div style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
+              <iframe
+                src={modal === 'terms' ? '/terms' : '/privacy'}
+                style={{ width: '100%', height: '600px', border: 'none' }}
+                title={modal === 'terms' ? 'Terms & Conditions' : 'Privacy Policy'}
+              />
+            </div>
+            {/* Modal footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E8EDF8', flexShrink: 0, textAlign: 'center' }}>
+              <button
+                onClick={() => setModal(null)}
+                style={{ background: '#7C5CFC', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ maxWidth: '460px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
           <Link href="/" style={{ textDecoration: 'none' }}>
             <span style={{ fontFamily: "'Satoshi', sans-serif", fontSize: '26px', fontWeight: 800, color: '#0F172A' }}>
@@ -126,7 +171,6 @@ export default function SignupPage() {
         </div>
 
         <div className="signup-card" style={{ background: '#FFFFFF', borderRadius: '24px', border: '1px solid #E8EDF8' }}>
-
           <h1 style={{ fontFamily: "'Satoshi', sans-serif", fontSize: '24px', fontWeight: 800, color: '#0F172A', textAlign: 'center', marginBottom: '6px' }}>
             Create your account
           </h1>
@@ -135,7 +179,7 @@ export default function SignupPage() {
           </p>
 
           {/* Role Selector */}
-          <div className="signup-role-grid" style={{ display: 'grid', gap: '12px', marginBottom: '28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '28px' }}>
             <button onClick={() => setRole('expert')} style={{
               background: role === 'expert' ? '#EDE9FE' : '#F5F7FA',
               border: role === 'expert' ? '2px solid #7C5CFC' : '2px solid #E8EDF8',
@@ -143,14 +187,9 @@ export default function SignupPage() {
               cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s ease',
             }}>
               <div style={{ fontSize: '28px', marginBottom: '10px' }}>🎓</div>
-              <div style={{ fontFamily: "'Satoshi', sans-serif", fontSize: '15px', fontWeight: 700, color: role === 'expert' ? '#7C5CFC' : '#0F172A', marginBottom: '4px' }}>
-                Expert
-              </div>
-              <div style={{ fontSize: '12px', color: '#94A3B8', lineHeight: 1.5 }}>
-                Upload your methodology and sell digital plans
-              </div>
+              <div style={{ fontFamily: "'Satoshi', sans-serif", fontSize: '15px', fontWeight: 700, color: role === 'expert' ? '#7C5CFC' : '#0F172A', marginBottom: '4px' }}>Expert</div>
+              <div style={{ fontSize: '12px', color: '#94A3B8', lineHeight: 1.5 }}>Upload your methodology and sell digital plans</div>
             </button>
-
             <button onClick={() => setRole('client')} style={{
               background: role === 'client' ? '#D1FDF3' : '#F5F7FA',
               border: role === 'client' ? '2px solid #4DFFD2' : '2px solid #E8EDF8',
@@ -158,12 +197,8 @@ export default function SignupPage() {
               cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s ease',
             }}>
               <div style={{ fontSize: '28px', marginBottom: '10px' }}>✨</div>
-              <div style={{ fontFamily: "'Satoshi', sans-serif", fontSize: '15px', fontWeight: 700, color: role === 'client' ? '#059669' : '#0F172A', marginBottom: '4px' }}>
-                Client
-              </div>
-              <div style={{ fontSize: '12px', color: '#94A3B8', lineHeight: 1.5 }}>
-                Discover experts and get your personalized plan
-              </div>
+              <div style={{ fontFamily: "'Satoshi', sans-serif", fontSize: '15px', fontWeight: 700, color: role === 'client' ? '#059669' : '#0F172A', marginBottom: '4px' }}>Client</div>
+              <div style={{ fontSize: '12px', color: '#94A3B8', lineHeight: 1.5 }}>Discover experts and get your personalized plan</div>
             </button>
           </div>
 
@@ -172,12 +207,12 @@ export default function SignupPage() {
             <input type="email" placeholder="Email" value={email}
               onChange={e => setEmail(e.target.value)} style={inputStyle}
               onFocus={e => (e.target.style.borderColor = '#7C5CFC')}
-              onBlur={e  => (e.target.style.borderColor = '#E8EDF8')}
+              onBlur={e => (e.target.style.borderColor = '#E8EDF8')}
             />
             <input type="password" placeholder="Password (minimum 6 characters)" value={password}
               onChange={e => setPassword(e.target.value)} style={inputStyle}
               onFocus={e => (e.target.style.borderColor = '#7C5CFC')}
-              onBlur={e  => (e.target.style.borderColor = '#E8EDF8')}
+              onBlur={e => (e.target.style.borderColor = '#E8EDF8')}
             />
           </div>
 
@@ -190,28 +225,26 @@ export default function SignupPage() {
             borderRadius: '10px',
           }}>
             <div style={checkboxRowStyle}>
-              <input
-                type="checkbox"
-                id="consent-terms"
-                checked={consentTerms}
+              <input type="checkbox" id="consent-terms" checked={consentTerms}
                 onChange={e => setConsentTerms(e.target.checked)}
                 style={{ width: 15, height: 15, minWidth: 15, marginTop: 2, cursor: 'pointer', accentColor: '#7C5CFC' }}
               />
               <label className="consent-label" htmlFor="consent-terms" style={{ cursor: 'pointer', fontSize: '12px' }}>
                 I have read and agree to the{' '}
-                <Link href="/terms" target="_blank" style={{ color: '#7C5CFC', fontWeight: 600, textDecoration: 'none' }}>Terms & Conditions</Link>
+                <button onClick={() => setModal('terms')} style={{ background: 'none', border: 'none', padding: 0, color: '#7C5CFC', fontWeight: 600, fontSize: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>
+                  Terms & Conditions
+                </button>
                 {' '}and the{' '}
-                <Link href="/privacy" target="_blank" style={{ color: '#7C5CFC', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</Link>,
-                including the processing of my personal data as described therein.{' '}
+                <button onClick={() => setModal('privacy')} style={{ background: 'none', border: 'none', padding: 0, color: '#7C5CFC', fontWeight: 600, fontSize: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>
+                  Privacy Policy
+                </button>
+                , including the processing of my personal data as described therein.{' '}
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#7C5CFC', textTransform: 'uppercase', letterSpacing: '0.08em', background: 'rgba(124,92,252,0.08)', padding: '2px 6px', borderRadius: 4 }}>Required</span>
               </label>
             </div>
 
             <div style={checkboxRowStyle}>
-              <input
-                type="checkbox"
-                id="consent-health"
-                checked={consentHealth}
+              <input type="checkbox" id="consent-health" checked={consentHealth}
                 onChange={e => setConsentHealth(e.target.checked)}
                 style={{ width: 15, height: 15, minWidth: 15, marginTop: 2, cursor: 'pointer', accentColor: '#7C5CFC' }}
               />
@@ -224,10 +257,7 @@ export default function SignupPage() {
             </div>
 
             <div style={checkboxRowStyle}>
-              <input
-                type="checkbox"
-                id="consent-marketing"
-                checked={consentMarketing}
+              <input type="checkbox" id="consent-marketing" checked={consentMarketing}
                 onChange={e => setConsentMarketing(e.target.checked)}
                 style={{ width: 15, height: 15, minWidth: 15, marginTop: 2, cursor: 'pointer', accentColor: '#7C5CFC' }}
               />
@@ -239,11 +269,7 @@ export default function SignupPage() {
           </div>
 
           {error && (
-            <div style={{
-              background: '#FEF2F2', border: '1px solid #FECACA',
-              borderRadius: '10px', padding: '12px 14px',
-              color: '#EF4444', fontSize: '13px', marginBottom: '14px',
-            }}>
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 14px', color: '#EF4444', fontSize: '13px', marginBottom: '14px' }}>
               {error}
             </div>
           )}
@@ -288,9 +314,7 @@ export default function SignupPage() {
 
           <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: '14px' }}>
             Already have an account?{' '}
-            <Link href="/login" style={{ color: '#7C5CFC', textDecoration: 'none', fontWeight: 600 }}>
-              Sign in
-            </Link>
+            <Link href="/login" style={{ color: '#7C5CFC', textDecoration: 'none', fontWeight: 600 }}>Sign in</Link>
           </p>
         </div>
       </div>
