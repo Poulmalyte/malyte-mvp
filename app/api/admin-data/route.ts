@@ -15,10 +15,17 @@ export async function POST(request: NextRequest) {
   if (!checkSecret(secret)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   if (type === 'sellers') {
-    const { data } = await supabaseAdmin
+    const { data: expertsData } = await supabaseAdmin
       .from('experts')
-      .select('*, profiles(email)')
+      .select('id, name, slug, category, is_published, created_at, tagline')
       .order('created_at', { ascending: false })
+    const ids = (expertsData || []).map((e: any) => e.id)
+    const { data: profilesData } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email')
+      .in('id', ids)
+    const profileMap = Object.fromEntries((profilesData || []).map((p: any) => [p.id, p]))
+    const data = (expertsData || []).map((e: any) => ({ ...e, email: profileMap[e.id]?.email || null }))
 
     const result = await Promise.all((data || []).map(async (s: any) => {
       const { count: productsCount } = await supabaseAdmin.from('products').select('*', { count: 'exact', head: true }).eq('expert_id', s.id)
