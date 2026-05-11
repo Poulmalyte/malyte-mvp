@@ -26,8 +26,10 @@ export default function AdminPage() {
   const [buyers, setBuyers] = useState<any[]>([])
   const [editingSeller, setEditingSeller] = useState<Record<string, any>>({})
   const [editingProduct, setEditingProduct] = useState<Record<string, any>>({})
+  const [editingBuyer, setEditingBuyer] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [saved, setSaved] = useState<Record<string, boolean>>({})
+  const [deleting, setDeleting] = useState<Record<string, boolean>>({})
   const [search, setSearch] = useState('')
 
   async function loadAll(s: string) {
@@ -42,11 +44,14 @@ export default function AdminPage() {
     setPurchases(pud.data || [])
     setBuyers(bd.data || [])
     const se: Record<string, any> = {}
-    for (const x of sd.data || []) se[x.id] = { category: x.category, is_published: x.is_published }
+    for (const x of sd.data || []) se[x.id] = { name: x.name, category: x.category, is_published: x.is_published }
     setEditingSeller(se)
     const pe: Record<string, any> = {}
     for (const x of pd.data || []) pe[x.id] = { price: x.price, is_published: x.is_published, lemonsqueezy_variant_id: x.lemonsqueezy_variant_id || '' }
     setEditingProduct(pe)
+    const be: Record<string, any> = {}
+    for (const x of bd.data || []) be[x.id] = { name: x.name || '', email: x.email || '' }
+    setEditingBuyer(be)
   }
 
   async function handleAuth() {
@@ -70,6 +75,23 @@ export default function AdminPage() {
     setSaving(p => ({ ...p, [id]: false }))
     setSaved(p => ({ ...p, [id]: true }))
     setTimeout(() => setSaved(p => ({ ...p, [id]: false })), 2000)
+    loadAll(secret)
+  }
+
+  async function saveBuyer(id: string) {
+    setSaving(p => ({ ...p, [id]: true }))
+    await fetch('/api/admin-data', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret, type: 'buyer', id, data: editingBuyer[id] }) })
+    setSaving(p => ({ ...p, [id]: false }))
+    setSaved(p => ({ ...p, [id]: true }))
+    setTimeout(() => setSaved(p => ({ ...p, [id]: false })), 2000)
+    loadAll(secret)
+  }
+
+  async function deletePurchase(id: string) {
+    if (!confirm('Eliminare questo acquisto? Azione irreversibile.')) return
+    setDeleting(p => ({ ...p, [id]: true }))
+    await fetch('/api/admin-data', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret, type: 'purchase', id }) })
+    setDeleting(p => ({ ...p, [id]: false }))
     loadAll(secret)
   }
 
@@ -99,7 +121,7 @@ export default function AdminPage() {
   const q = search.toLowerCase()
   const filteredSellers = sellers.filter(s => !q || s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q))
   const filteredProducts = products.filter(p => !q || p.title?.toLowerCase().includes(q) || p.experts?.name?.toLowerCase().includes(q))
-  const filteredPurchases = purchases.filter(p => !q || p.profiles?.name?.toLowerCase().includes(q) || p.products?.title?.toLowerCase().includes(q))
+  const filteredPurchases = purchases.filter(p => !q || p.buyer_name?.toLowerCase().includes(q) || p.product_title?.toLowerCase().includes(q))
   const filteredBuyers = buyers.filter(b => !q || b.name?.toLowerCase().includes(q) || b.email?.toLowerCase().includes(q))
 
   return (
@@ -143,7 +165,11 @@ export default function AdminPage() {
                     {s.is_published ? 'Pubblicato' : 'Non pubblicato'}
                   </span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#94A3B8', display: 'block', marginBottom: 4 }}>Nome</label>
+                    <input value={editingSeller[s.id]?.name || ''} onChange={e => setEditingSeller(p => ({ ...p, [s.id]: { ...p[s.id], name: e.target.value } }))} style={inputStyle} />
+                  </div>
                   <div>
                     <label style={{ fontSize: 11, color: '#94A3B8', display: 'block', marginBottom: 4 }}>Categoria</label>
                     <input value={editingSeller[s.id]?.category || ''} onChange={e => setEditingSeller(p => ({ ...p, [s.id]: { ...p[s.id], category: e.target.value } }))} style={inputStyle} />
@@ -211,7 +237,7 @@ export default function AdminPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E8EDF8' }}>
-                  {['Data', 'Buyer', 'Prodotto', 'Seller', 'Importo', 'ID LS'].map(h => (
+                  {['Data', 'Buyer', 'Prodotto', 'Seller', 'Importo', 'ID LS', ''].map(h => (
                     <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -221,13 +247,22 @@ export default function AdminPage() {
                   <tr key={p.id} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? '#fff' : '#FAFBFC' }}>
                     <td style={{ padding: '12px 16px', color: '#64748B', whiteSpace: 'nowrap' }}>{new Date(p.created_at).toLocaleDateString('it-IT')}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      <p style={{ margin: 0, fontWeight: 600, color: '#0F172A' }}>{p.profiles?.name || '—'}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: '#94A3B8' }}>{p.profiles?.email || p.client_id?.slice(0, 8)}</p>
+                      <p style={{ margin: 0, fontWeight: 600, color: '#0F172A' }}>{p.buyer_name || '—'}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: '#94A3B8' }}>{p.buyer_email || p.client_id?.slice(0, 8)}</p>
                     </td>
-                    <td style={{ padding: '12px 16px', color: '#0F172A', fontWeight: 500 }}>{p.products?.title || '—'}</td>
-                    <td style={{ padding: '12px 16px', color: '#64748B' }}>{p.products?.experts?.name || '—'}</td>
+                    <td style={{ padding: '12px 16px', color: '#0F172A', fontWeight: 500 }}>{p.product_title || '—'}</td>
+                    <td style={{ padding: '12px 16px', color: '#64748B' }}>{p.seller_name || '—'}</td>
                     <td style={{ padding: '12px 16px', fontWeight: 700, color: '#059669' }}>€{p.amount || '—'}</td>
                     <td style={{ padding: '12px 16px', color: '#94A3B8', fontSize: 11 }}>{p.stripe_payment_id || '—'}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <button
+                        onClick={() => deletePurchase(p.id)}
+                        disabled={deleting[p.id]}
+                        style={{ background: 'none', border: '1px solid #FCA5A5', borderRadius: 6, color: '#EF4444', fontSize: 12, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        {deleting[p.id] ? '...' : 'Elimina'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -237,31 +272,37 @@ export default function AdminPage() {
         )}
 
         {tab === 'buyers' && (
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E8EDF8', overflow: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E8EDF8' }}>
-                  {['Nome', 'Email', 'Registrato', 'Acquisti'].map(h => (
-                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBuyers.map((b, i) => (
-                  <tr key={b.id} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? '#fff' : '#FAFBFC' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0F172A' }}>{b.name || '—'}</td>
-                    <td style={{ padding: '12px 16px', color: '#64748B' }}>{b.email || '—'}</td>
-                    <td style={{ padding: '12px 16px', color: '#64748B' }}>{b.created_at ? new Date(b.created_at).toLocaleDateString('it-IT') : '—'}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ background: '#EDE9FE', color: '#7C5CFC', fontWeight: 700, fontSize: 12, padding: '2px 10px', borderRadius: 100 }}>{b.purchases_count || 0}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {filteredBuyers.map(b => (
+              <div key={b.id} style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid #E8EDF8' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 15, color: '#0F172A', margin: '0 0 2px' }}>{b.name || '—'}</p>
+                    <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>Registrato: {b.created_at ? new Date(b.created_at).toLocaleDateString('it-IT') : '—'}</p>
+                  </div>
+                  <span style={{ background: '#EDE9FE', color: '#7C5CFC', fontWeight: 700, fontSize: 12, padding: '2px 10px', borderRadius: 100 }}>
+                    {b.purchases_count || 0} acquisti
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#94A3B8', display: 'block', marginBottom: 4 }}>Nome</label>
+                    <input value={editingBuyer[b.id]?.name || ''} onChange={e => setEditingBuyer(p => ({ ...p, [b.id]: { ...p[b.id], name: e.target.value } }))} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#94A3B8', display: 'block', marginBottom: 4 }}>Email</label>
+                    <input value={editingBuyer[b.id]?.email || ''} onChange={e => setEditingBuyer(p => ({ ...p, [b.id]: { ...p[b.id], email: e.target.value } }))} style={inputStyle} />
+                  </div>
+                  <button onClick={() => saveBuyer(b.id)} style={btnStyle(saved[b.id] ? '#059669' : '#7C5CFC')}>
+                    {saving[b.id] ? '...' : saved[b.id] ? '✓' : 'Salva'}
+                  </button>
+                </div>
+              </div>
+            ))}
             {filteredBuyers.length === 0 && <p style={{ textAlign: 'center', padding: 32, color: '#94A3B8' }}>Nessun buyer</p>}
           </div>
         )}
+
       </div>
     </div>
   )

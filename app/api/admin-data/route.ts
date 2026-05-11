@@ -30,13 +30,13 @@ export async function POST(request: NextRequest) {
     const result = await Promise.all((data || []).map(async (s: any) => {
       const { count: productsCount } = await supabaseAdmin.from('products').select('*', { count: 'exact', head: true }).eq('expert_id', s.id)
       const { data: productIds } = await supabaseAdmin.from('products').select('id').eq('expert_id', s.id)
-      const ids = productIds?.map((p: any) => p.id) || []
+      const pids = productIds?.map((p: any) => p.id) || []
       let totalRevenue = 0
-      if (ids.length > 0) {
-        const { data: purchases } = await supabaseAdmin.from('purchases').select('amount').in('product_id', ids)
+      if (pids.length > 0) {
+        const { data: purchases } = await supabaseAdmin.from('purchases').select('amount').in('product_id', pids)
         totalRevenue = purchases?.reduce((sum: number, p: any) => sum + (p.amount || 0), 0) || 0
       }
-      return { ...s, email: s.profiles?.email, products_count: productsCount, total_revenue: totalRevenue }
+      return { ...s, products_count: productsCount, total_revenue: totalRevenue }
     }))
 
     return NextResponse.json({ data: result })
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   if (type === 'purchases') {
     const { data: purchasesData } = await supabaseAdmin
       .from('purchases')
-      .select('id, client_id, product_id, amount, created_at')
+      .select('id, client_id, product_id, amount, created_at, stripe_payment_id')
       .order('created_at', { ascending: false })
     const clientIds = [...new Set((purchasesData || []).map((p: any) => p.client_id))]
     const productIds = [...new Set((purchasesData || []).map((p: any) => p.product_id))]
@@ -104,6 +104,7 @@ export async function PATCH(request: NextRequest) {
 
   if (type === 'seller') {
     await supabaseAdmin.from('experts').update({
+      name: data.name,
       category: data.category,
       is_published: data.is_published,
     }).eq('id', id)
@@ -116,6 +117,26 @@ export async function PATCH(request: NextRequest) {
       is_published: data.is_published,
       lemonsqueezy_variant_id: data.lemonsqueezy_variant_id,
     }).eq('id', id)
+    return NextResponse.json({ ok: true })
+  }
+
+  if (type === 'buyer') {
+    await supabaseAdmin.from('profiles').update({
+      name: data.name,
+      email: data.email,
+    }).eq('id', id)
+    return NextResponse.json({ ok: true })
+  }
+
+  return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+}
+
+export async function DELETE(request: NextRequest) {
+  const { secret, type, id } = await request.json()
+  if (!checkSecret(secret)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (type === 'purchase') {
+    await supabaseAdmin.from('purchases').delete().eq('id', id)
     return NextResponse.json({ ok: true })
   }
 
