@@ -46,6 +46,26 @@ const PRESET_INDICATORS = [
   { id: 'hydration', label: 'Hydration' },
 ]
 
+// Fixed questions for PDF Seller buyers — chosen by Malyte
+const PDF_SELLER_INITIAL_QUESTIONS = [
+  { question_text: 'What is your main goal?', question_type: 'select', allow_multiple: false, options: ['Weight loss', 'Muscle gain', 'Maintenance', 'Improve overall health'] },
+  { question_text: 'Do you have any food intolerances or allergies?', question_type: 'text', allow_multiple: false, options: [] },
+  { question_text: 'Are there any foods you avoid or dislike?', question_type: 'text', allow_multiple: false, options: [] },
+  { question_text: 'How many times a week do you exercise?', question_type: 'select', allow_multiple: false, options: ["I don't exercise", '1–2 times', '3–4 times', '5 or more'] },
+  { question_text: 'What is your daily activity level?', question_type: 'select', allow_multiple: false, options: ['Sedentary (desk job, little movement)', 'Lightly active (some walking)', 'Moderately active (exercise 3–4×/week)', 'Very active (intense daily exercise)'] },
+  { question_text: 'Your weight (e.g. 70 kg or 154 lbs)', question_type: 'text', allow_multiple: false, options: [] },
+  { question_text: 'Your height (e.g. 170 cm or 5ft 7in)', question_type: 'text', allow_multiple: false, options: [] },
+  { question_text: 'Your age', question_type: 'text', allow_multiple: false, options: [] },
+]
+
+const PDF_SELLER_CHECKIN_QUESTIONS = [
+  { question_text: 'How closely did you follow the plan this week?', question_type: 'select', options: ['100% – followed everything', '75% – mostly followed', '50% – followed about half', 'Less than 50%'] },
+  { question_text: 'How do you feel compared to last week?', question_type: 'select', options: ['Much better', 'Slightly better', 'About the same', 'Slightly worse'] },
+  { question_text: "Any difficulties or things you'd like to adjust?", question_type: 'text', options: [] },
+]
+
+const PDF_SELLER_DEFAULT_INDICATORS = ['weight_loss', 'energy', 'mood', 'adherence']
+
 type QuestionType = 'text' | 'select'
 
 interface Question {
@@ -166,8 +186,19 @@ function QuestionBuilder({
 export default function MethodSection({ expert }: { expert: any }) {
   const existingPdfs: string[] = expert?.method_pdfs_urls || []
   const alreadyCompleted = !!expert?.method_onboarding_completed
+  const existingSellerType = (expert?.seller_type as 'practitioner' | 'pdf_seller' | null) || null
 
-  const [step, setStep] = useState(alreadyCompleted ? 3 : existingPdfs.length >= 5 ? 2 : 1)
+  const [sellerType, setSellerType] = useState<'practitioner' | 'pdf_seller' | null>(existingSellerType)
+  const [savingType, setSavingType] = useState(false)
+
+  const getInitialStep = () => {
+    if (alreadyCompleted) return 3
+    if (existingSellerType === 'pdf_seller' && existingPdfs.length >= 1) return 3
+    if (existingSellerType === 'practitioner' && existingPdfs.length >= 5) return 2
+    return 1
+  }
+
+  const [step, setStep] = useState(getInitialStep())
   const [pdfs, setPdfs] = useState<string[]>(existingPdfs)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
@@ -184,7 +215,6 @@ export default function MethodSection({ expert }: { expert: any }) {
   const [pdfChangedWarning, setPdfChangedWarning] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // Product fields
   const [productTitle, setProductTitle] = useState('')
   const [productDesc, setProductDesc] = useState('')
   const [price, setPrice] = useState('')
@@ -200,17 +230,19 @@ export default function MethodSection({ expert }: { expert: any }) {
   const [productError, setProductError] = useState('')
 
   const totalIndicators = selectedIndicators.length + customIndicators.length
+  const isPdfSeller = sellerType === 'pdf_seller'
+  const enoughPdfs = isPdfSeller ? pdfs.length >= 1 : pdfs.length >= 5
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages, chatLoading])
 
   useEffect(() => {
-    if (step === 2 && !interviewStarted && !methodSaved) {
+    if (step === 2 && !interviewStarted && !methodSaved && sellerType === 'practitioner') {
       setInterviewStarted(true)
       startInterview()
     }
-  }, [step, interviewStarted, methodSaved])
+  }, [step, interviewStarted, methodSaved, sellerType])
 
   function resetInterview() {
     setMethodSaved(false)
@@ -232,14 +264,29 @@ export default function MethodSection({ expert }: { expert: any }) {
   }
 
   function addCustomIndicator() {
-    if (!newCustomLabel.trim()) return
-    if (totalIndicators >= 4) return
+    if (!newCustomLabel.trim() || totalIndicators >= 4) return
     setCustomIndicators(prev => [...prev, { id: crypto.randomUUID(), label: newCustomLabel.trim(), custom: true }])
     setNewCustomLabel('')
   }
 
   function removeCustomIndicator(id: string) {
     setCustomIndicators(prev => prev.filter(i => i.id !== id))
+  }
+
+  async function handleSelectSellerType(type: 'practitioner' | 'pdf_seller') {
+    setSellerType(type)
+    await supabase.from('experts').update({ seller_type: type }).eq('id', expert.id)
+  }
+
+  async function handlePdfSellerContinue() {
+    setSavingType(true)
+    await supabase.from('experts').update({
+      seller_type: 'pdf_seller',
+      method_onboarding_completed: true,
+    }).eq('id', expert.id)
+    setSavingType(false)
+    setMethodSaved(true)
+    setStep(3)
   }
 
   async function startInterview() {
@@ -287,7 +334,7 @@ export default function MethodSection({ expert }: { expert: any }) {
       if (json.success) { setPdfs(prev => [...prev, json.fileName]); addedCount++ }
       else setUploadError(json.error || 'Upload error.')
     }
-    if (addedCount > 0 && (interviewStarted || methodSaved)) { resetInterview(); setPdfChangedWarning(true) }
+    if (addedCount > 0 && (interviewStarted || methodSaved) && !isPdfSeller) { resetInterview(); setPdfChangedWarning(true) }
     setUploading(false)
   }
 
@@ -300,7 +347,7 @@ export default function MethodSection({ expert }: { expert: any }) {
     const newPdfs = pdfs.filter(p => p !== pdfPath)
     await supabase.from('experts').update({ method_pdfs_urls: newPdfs }).eq('id', expert.id)
     setPdfs(newPdfs)
-    if (interviewStarted || methodSaved) { resetInterview(); setPdfChangedWarning(true) }
+    if ((interviewStarted || methodSaved) && !isPdfSeller) { resetInterview(); setPdfChangedWarning(true) }
     setDeletingPdf(null)
   }
 
@@ -348,19 +395,25 @@ export default function MethodSection({ expert }: { expert: any }) {
 
   async function handleSaveProduct() {
     if (!productTitle || !productDesc || !price || !pricingModel) { setProductError('Please fill in all product fields and select a sales model'); return }
-    if (initialQuestions.length === 0) { setProductError('Add at least one initial question for your clients'); return }
-    if (checkinQuestions.length === 0) { setProductError('Add at least one weekly check-in question'); return }
-    if (totalIndicators === 0) { setProductError('Select at least one progress indicator'); return }
-    for (const q of [...initialQuestions, ...checkinQuestions]) {
-      if (!q.question_text.trim()) { setProductError('All questions must have text'); return }
-      if (q.question_type === 'select' && q.options.filter(o => o.trim()).length < 2) { setProductError('Multiple choice questions need at least 2 options'); return }
+
+    if (!isPdfSeller) {
+      if (initialQuestions.length === 0) { setProductError('Add at least one initial question for your clients'); return }
+      if (checkinQuestions.length === 0) { setProductError('Add at least one weekly check-in question'); return }
+      if (totalIndicators === 0) { setProductError('Select at least one progress indicator'); return }
+      for (const q of [...initialQuestions, ...checkinQuestions]) {
+        if (!q.question_text.trim()) { setProductError('All questions must have text'); return }
+        if (q.question_type === 'select' && q.options.filter(o => o.trim()).length < 2) { setProductError('Multiple choice questions need at least 2 options'); return }
+      }
     }
+
     setSavingProduct(true); setProductError('')
 
-    const allIndicators = [
-      ...PRESET_INDICATORS.filter(p => selectedIndicators.includes(p.id)),
-      ...customIndicators.map(c => ({ id: c.id, label: c.label })),
-    ]
+    const allIndicators = isPdfSeller
+      ? PRESET_INDICATORS.filter(p => PDF_SELLER_DEFAULT_INDICATORS.includes(p.id))
+      : [
+        ...PRESET_INDICATORS.filter(p => selectedIndicators.includes(p.id)),
+        ...customIndicators.map(c => ({ id: c.id, label: c.label })),
+      ]
 
     const { data: product, error } = await supabase.from('products').insert({
       expert_id: expert.id,
@@ -375,18 +428,22 @@ export default function MethodSection({ expert }: { expert: any }) {
 
     if (error || !product) { setProductError('Error saving product. Please try again.'); setSavingProduct(false); return }
 
+    const iqToInsert = isPdfSeller ? PDF_SELLER_INITIAL_QUESTIONS : initialQuestions
+    const cqToInsert = isPdfSeller ? PDF_SELLER_CHECKIN_QUESTIONS : checkinQuestions
+
     await supabase.from('product_questions').insert(
-      initialQuestions.map((q, i) => ({
+      iqToInsert.map((q, i) => ({
         product_id: product.id, question_text: q.question_text,
-        question_type: q.question_type, options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null,
+        question_type: q.question_type,
+        options: q.question_type === 'select' ? q.options.filter((o: string) => o.trim()) : null,
         allow_multiple: q.question_type === 'select' ? q.allow_multiple : false, order_index: i,
       }))
     )
     await supabase.from('product_checkin_questions').insert(
-      checkinQuestions.map((q, i) => ({
+      cqToInsert.map((q, i) => ({
         product_id: product.id, question_text: q.question_text,
-        question_type: q.question_type === 'select' ? 'select' : 'text',
-        options: q.question_type === 'select' ? q.options.filter(o => o.trim()) : null, order_index: i,
+        question_type: q.question_type,
+        options: q.question_type === 'select' ? q.options.filter((o: string) => o.trim()) : null, order_index: i,
       }))
     )
 
@@ -394,16 +451,40 @@ export default function MethodSection({ expert }: { expert: any }) {
     setSavedProduct(true)
   }
 
-  const enoughPdfs = pdfs.length >= 5
-  const step1Done = enoughPdfs
+  const step1Done = enoughPdfs && sellerType !== null
   const step2Done = methodSaved
   const step3Done = savedProduct
 
+  // Steps for display
+  const practitionerSteps = [
+    { label: '1. Upload PDFs', done: step1Done },
+    { label: '2. Your method', done: step2Done },
+    { label: '3. Your product', done: step3Done },
+  ]
+  const pdfSellerSteps = [
+    { label: '1. Upload PDF', done: step1Done },
+    { label: '2. Your product', done: step3Done },
+  ]
+  const displaySteps = isPdfSeller ? pdfSellerSteps : practitionerSteps
+
   function stepStyle(index: number, done: boolean) {
-    const isActive = step === index + 1
+    const isActive = isPdfSeller
+      ? (index === 0 && step === 1) || (index === 1 && step === 3)
+      : step === index + 1
     if (done) return { padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#D1FDF3', color: '#059669', border: '1.5px solid #6EE7B7', transition: 'all 0.15s' }
     if (isActive) return { padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#7C5CFC', color: '#fff', transition: 'all 0.15s' }
     return { padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#F1F5F9', color: '#94A3B8', transition: 'all 0.15s' }
+  }
+
+  function handleStepClick(index: number) {
+    if (isPdfSeller) {
+      if (index === 0) setStep(1)
+      if (index === 1 && step2Done) setStep(3)
+    } else {
+      if (index === 0) setStep(1)
+      if (index === 1 && (enoughPdfs || step2Done)) setStep(2)
+      if (index === 2 && step2Done) setStep(3)
+    }
   }
 
   return (
@@ -415,19 +496,19 @@ export default function MethodSection({ expert }: { expert: any }) {
         .chat-input:focus { border-color: #7C5CFC !important; outline: none; }
         @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
         .pdf-action-btn:hover { opacity: 0.75 !important; }
+        .seller-type-card:hover { border-color: #7C5CFC !important; }
       `}</style>
 
       <div>
         <div style={{ marginBottom: 24, textAlign: 'center' }}>
           <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 22, color: '#0F172A', margin: '0 0 6px' }}>My Method</h2>
-          <p style={{ color: '#64748B', fontSize: 14, margin: 0, lineHeight: 1.6 }}>Complete all three steps to start selling your methodology as personalised AI plans.</p>
+          <p style={{ color: '#64748B', fontSize: 14, margin: 0, lineHeight: 1.6 }}>Complete all steps to start selling your methodology as personalised AI plans.</p>
         </div>
 
+        {/* Steps nav */}
         <div className="method-steps" style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {[{ label: '1. Upload PDFs', done: step1Done }, { label: '2. Your method', done: step2Done }, { label: '3. Your product', done: step3Done }].map((s, i) => (
-            <div key={i} className="method-step-btn"
-              onClick={() => { if (i === 0) setStep(1); if (i === 1 && (enoughPdfs || step2Done)) setStep(2); if (i === 2 && step2Done) setStep(3) }}
-              style={stepStyle(i, s.done)}>
+          {displaySteps.map((s, i) => (
+            <div key={i} className="method-step-btn" onClick={() => handleStepClick(i)} style={stepStyle(i, s.done)}>
               {s.done ? `✓ ${s.label}` : s.label}
             </div>
           ))}
@@ -435,57 +516,127 @@ export default function MethodSection({ expert }: { expert: any }) {
 
         {/* STEP 1 */}
         {step === 1 && (
-          <div style={card}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 1 — Your real plans</p>
-            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
-              Upload at least <strong>5 PDFs</strong> of your real plans. The AI reads them before asking you questions.
-            </p>
-            {pdfs.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>
-                  Uploaded PDFs: <span style={{ color: pdfs.length >= 5 ? '#059669' : '#D97706' }}>{pdfs.length}/5 minimum</span>
+          <div>
+            {/* Seller type selection */}
+            <div style={card}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 1 — Who are you?</p>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>Choose how you work — this determines how your plans are generated.</p>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {[
+                  {
+                    type: 'practitioner' as const,
+                    emoji: '🧠',
+                    title: 'Practitioner',
+                    desc: 'I have a personal method I want to scale. Claude will learn my approach and generate fully personalized plans for each client.',
+                    color: '#7C5CFC',
+                    bg: '#EDE9FE',
+                    border: '#C4B5FD',
+                  },
+                  {
+                    type: 'pdf_seller' as const,
+                    emoji: '📄',
+                    title: 'PDF Seller',
+                    desc: 'I have ready-made plans. Claude will adapt them to each buyer\'s profile automatically — same content, fully personalized.',
+                    color: '#059669',
+                    bg: '#D1FDF3',
+                    border: '#6EE7B7',
+                  },
+                ].map(opt => (
+                  <div
+                    key={opt.type}
+                    className="seller-type-card"
+                    onClick={() => handleSelectSellerType(opt.type)}
+                    style={{
+                      flex: 1, minWidth: 220, padding: '20px', borderRadius: 14, cursor: 'pointer',
+                      border: `2px solid ${sellerType === opt.type ? opt.border : '#E8EDF8'}`,
+                      background: sellerType === opt.type ? opt.bg : '#F8FAFC',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <div style={{ fontSize: 28, marginBottom: 10 }}>{opt.emoji}</div>
+                    <p style={{ fontWeight: 700, fontSize: 15, color: sellerType === opt.type ? opt.color : '#0F172A', margin: '0 0 6px' }}>{opt.title}</p>
+                    <p style={{ fontSize: 12, color: '#64748B', margin: 0, lineHeight: 1.6 }}>{opt.desc}</p>
+                    {sellerType === opt.type && (
+                      <div style={{ marginTop: 12, display: 'inline-block', background: opt.color, color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100 }}>✓ Selected</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* PDF upload — shown only after type is selected */}
+            {sellerType && (
+              <div style={card}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  {isPdfSeller ? 'Upload your PDF plan' : 'Upload your real plans'}
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {pdfs.map((pdf, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#F1F5F9', borderRadius: 8 }}>
-                      <span style={{ fontSize: 14 }}>📄</span>
-                      <span style={{ fontSize: 12, color: '#0F172A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {pdf.split('/').pop()?.replace(/^\d+_/, '') || pdf}
+                <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
+                  {isPdfSeller
+                    ? 'Upload at least <strong>1 PDF</strong> of your plan. Claude will use it to generate personalized versions for each buyer.'
+                    : `Upload at least <strong>5 PDFs</strong> of your real plans. The AI reads them before asking you questions.`
+                  }
+                </p>
+
+                {pdfs.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>
+                      Uploaded PDFs: <span style={{ color: enoughPdfs ? '#059669' : '#D97706' }}>
+                        {pdfs.length}/{isPdfSeller ? '1' : '5'} minimum
                       </span>
-                      <button className="pdf-action-btn" onClick={() => handleOpenPdf(pdf)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '2px 4px', color: '#7C5CFC', transition: 'opacity 0.15s' }}>👁</button>
-                      <button className="pdf-action-btn" onClick={() => handleDeletePdf(pdf)} disabled={deletingPdf === pdf}
-                        style={{ background: 'none', border: 'none', cursor: deletingPdf === pdf ? 'not-allowed' : 'pointer', fontSize: 15, padding: '2px 4px', color: '#EF4444', opacity: deletingPdf === pdf ? 0.4 : 1, transition: 'opacity 0.15s' }}>
-                        {deletingPdf === pdf ? '…' : '🗑'}
-                      </button>
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {pdfs.map((pdf, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#F1F5F9', borderRadius: 8 }}>
+                          <span style={{ fontSize: 14 }}>📄</span>
+                          <span style={{ fontSize: 12, color: '#0F172A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {pdf.split('/').pop()?.replace(/^\d+_/, '') || pdf}
+                          </span>
+                          <button className="pdf-action-btn" onClick={() => handleOpenPdf(pdf)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '2px 4px', color: '#7C5CFC', transition: 'opacity 0.15s' }}>👁</button>
+                          <button className="pdf-action-btn" onClick={() => handleDeletePdf(pdf)} disabled={deletingPdf === pdf}
+                            style={{ background: 'none', border: 'none', cursor: deletingPdf === pdf ? 'not-allowed' : 'pointer', fontSize: 15, padding: '2px 4px', color: '#EF4444', opacity: deletingPdf === pdf ? 0.4 : 1 }}>
+                            {deletingPdf === pdf ? '…' : '🗑'}
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
+
+                {pdfChangedWarning && (
+                  <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+                    <p style={{ fontSize: 13, color: '#C2410C', margin: 0, fontWeight: 600 }}>⚠️ Your PDFs have changed — you'll need to redo the interview in Step 2.</p>
+                  </div>
+                )}
+                {uploadError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 12 }}>{uploadError}</p>}
+
+                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #E8EDF8', borderRadius: 12, padding: '24px 16px', cursor: 'pointer', background: '#F8FAFC', marginBottom: 16 }}>
+                  <input type="file" accept=".pdf" multiple onChange={handlePdfUpload} style={{ display: 'none' }} />
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>📄</div>
+                  <p style={{ fontWeight: 600, color: '#0F172A', fontSize: 13, margin: '0 0 2px', textAlign: 'center' }}>
+                    {uploading ? 'Uploading...' : pdfs.length > 0 ? '+ Add more PDFs' : 'Click to select PDFs'}
+                  </p>
+                  <p style={{ color: '#94A3B8', fontSize: 12, margin: 0, textAlign: 'center' }}>Multiple files · PDF only</p>
+                </label>
+
+                {isPdfSeller ? (
+                  <button onClick={handlePdfSellerContinue} disabled={!enoughPdfs || savingType}
+                    style={{ width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: enoughPdfs ? '#059669' : '#E8EDF8', color: enoughPdfs ? '#fff' : '#94A3B8', border: 'none', cursor: enoughPdfs ? 'pointer' : 'not-allowed', opacity: savingType ? 0.7 : 1 }}>
+                    {savingType ? 'Saving…' : enoughPdfs ? 'Continue to product →' : 'Upload at least 1 PDF to continue'}
+                  </button>
+                ) : (
+                  <button onClick={() => setStep(2)} disabled={!enoughPdfs}
+                    style={{ width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: enoughPdfs ? '#7C5CFC' : '#E8EDF8', color: enoughPdfs ? '#fff' : '#94A3B8', border: 'none', cursor: enoughPdfs ? 'pointer' : 'not-allowed' }}>
+                    {enoughPdfs ? 'Continue →' : `Upload ${5 - pdfs.length} more PDFs to continue`}
+                  </button>
+                )}
               </div>
             )}
-            {pdfChangedWarning && (
-              <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
-                <p style={{ fontSize: 13, color: '#C2410C', margin: 0, fontWeight: 600 }}>⚠️ Your PDFs have changed — you'll need to redo the interview in Step 2.</p>
-              </div>
-            )}
-            {uploadError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 12 }}>{uploadError}</p>}
-            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #E8EDF8', borderRadius: 12, padding: '24px 16px', cursor: 'pointer', background: '#F8FAFC', marginBottom: 16 }}>
-              <input type="file" accept=".pdf" multiple onChange={handlePdfUpload} style={{ display: 'none' }} />
-              <div style={{ fontSize: 24, marginBottom: 6 }}>📄</div>
-              <p style={{ fontWeight: 600, color: '#0F172A', fontSize: 13, margin: '0 0 2px', textAlign: 'center' }}>
-                {uploading ? 'Uploading...' : pdfs.length > 0 ? '+ Add more PDFs' : 'Click to select PDFs'}
-              </p>
-              <p style={{ color: '#94A3B8', fontSize: 12, margin: 0, textAlign: 'center' }}>Multiple files · PDF only</p>
-            </label>
-            <button onClick={() => setStep(2)} disabled={!enoughPdfs}
-              style={{ width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: enoughPdfs ? '#7C5CFC' : '#E8EDF8', color: enoughPdfs ? '#fff' : '#94A3B8', border: 'none', cursor: enoughPdfs ? 'pointer' : 'not-allowed' }}>
-              {enoughPdfs ? 'Continue →' : `Upload ${5 - pdfs.length} more PDFs to continue`}
-            </button>
           </div>
         )}
 
-        {/* STEP 2 */}
-        {step === 2 && (
+        {/* STEP 2 — Practitioner only */}
+        {step === 2 && sellerType === 'practitioner' && (
           <div>
             {methodSaved ? (
               <div style={{ ...card, textAlign: 'center' }}>
@@ -554,12 +705,21 @@ export default function MethodSection({ expert }: { expert: any }) {
           </div>
         )}
 
-        {/* STEP 3 — identico a create-product */}
+        {/* STEP 3 — Product */}
         {step === 3 && (
           <div>
             <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 3 — Your product</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                {isPdfSeller ? 'Step 2' : 'Step 3'} — Your product
+              </p>
               <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>Define your first digital product. You can create more from the dashboard at any time.</p>
+              {isPdfSeller && (
+                <div style={{ marginTop: 12, background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 10, padding: '10px 14px' }}>
+                  <p style={{ fontSize: 12, color: '#059669', margin: 0, fontWeight: 600 }}>
+                    ✓ PDF Seller mode — buyer questions and progress tracking are pre-configured automatically.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Product details */}
@@ -602,58 +762,64 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             </div>
 
-            {/* Progress indicators */}
-            <div style={card}>
-              <h2 style={{ color: '#D97706', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Progress indicators</h2>
-              <p style={{ color: '#64748B', fontSize: 13, marginBottom: 12 }}>Choose up to 4 metrics to track weekly. <strong style={{ color: '#0F172A' }}>Select {4 - totalIndicators} more.</strong></p>
-              <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
-                <p style={{ fontSize: 12, color: '#D97706', fontWeight: 600, marginBottom: 4 }}>💡 Why progress indicators matter</p>
-                <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6, margin: 0 }}>After each weekly check-in, the AI automatically scores your client's progress on these dimensions (1–10).</p>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-                {PRESET_INDICATORS.map(ind => {
-                  const selected = selectedIndicators.includes(ind.id)
-                  const disabled = !selected && totalIndicators >= 4
-                  return (
-                    <button key={ind.id} type="button" onClick={() => togglePresetIndicator(ind.id)} disabled={disabled}
-                      style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 500, border: `1px solid ${selected ? '#D97706' : '#E8EDF8'}`, background: selected ? '#FEF3C7' : '#F5F7FA', color: selected ? '#D97706' : disabled ? '#C7D2F0' : '#64748B', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
-                      {selected ? '✓ ' : ''}{ind.label}
-                    </button>
-                  )
-                })}
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 8 }}>Or add a custom indicator:</label>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  <input type="text" value={newCustomLabel} onChange={e => setNewCustomLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomIndicator()} placeholder="e.g. Back pain level..." disabled={totalIndicators >= 4} style={{ ...input, flex: 1, opacity: totalIndicators >= 4 ? 0.5 : 1 }} />
-                  <button type="button" onClick={addCustomIndicator} disabled={totalIndicators >= 4 || !newCustomLabel.trim()} style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#FEF3C7', border: '1px solid #FDE68A', color: '#D97706', cursor: 'pointer', whiteSpace: 'nowrap', opacity: totalIndicators >= 4 || !newCustomLabel.trim() ? 0.4 : 1 }}>+ Add</button>
+            {/* Progress indicators — practitioner only */}
+            {!isPdfSeller && (
+              <div style={card}>
+                <h2 style={{ color: '#D97706', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Progress indicators</h2>
+                <p style={{ color: '#64748B', fontSize: 13, marginBottom: 12 }}>Choose up to 4 metrics to track weekly. <strong style={{ color: '#0F172A' }}>Select {4 - totalIndicators} more.</strong></p>
+                <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
+                  <p style={{ fontSize: 12, color: '#D97706', fontWeight: 600, marginBottom: 4 }}>💡 Why progress indicators matter</p>
+                  <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6, margin: 0 }}>After each weekly check-in, the AI automatically scores your client's progress on these dimensions (1–10).</p>
                 </div>
-                {customIndicators.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {customIndicators.map(ind => (
-                      <div key={ind.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 100, background: '#FEF3C7', border: '1px solid #FDE68A' }}>
-                        <span style={{ fontSize: 12, color: '#D97706' }}>✦ {ind.label}</span>
-                        <button type="button" onClick={() => removeCustomIndicator(ind.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', padding: 0 }}>✕</button>
-                      </div>
-                    ))}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                  {PRESET_INDICATORS.map(ind => {
+                    const selected = selectedIndicators.includes(ind.id)
+                    const disabled = !selected && totalIndicators >= 4
+                    return (
+                      <button key={ind.id} type="button" onClick={() => togglePresetIndicator(ind.id)} disabled={disabled}
+                        style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 500, border: `1px solid ${selected ? '#D97706' : '#E8EDF8'}`, background: selected ? '#FEF3C7' : '#F5F7FA', color: selected ? '#D97706' : disabled ? '#C7D2F0' : '#64748B', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
+                        {selected ? '✓ ' : ''}{ind.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, color: '#64748B', display: 'block', marginBottom: 8 }}>Or add a custom indicator:</label>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <input type="text" value={newCustomLabel} onChange={e => setNewCustomLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomIndicator()} placeholder="e.g. Back pain level..." disabled={totalIndicators >= 4} style={{ ...input, flex: 1, opacity: totalIndicators >= 4 ? 0.5 : 1 }} />
+                    <button type="button" onClick={addCustomIndicator} disabled={totalIndicators >= 4 || !newCustomLabel.trim()} style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#FEF3C7', border: '1px solid #FDE68A', color: '#D97706', cursor: 'pointer', whiteSpace: 'nowrap', opacity: totalIndicators >= 4 || !newCustomLabel.trim() ? 0.4 : 1 }}>+ Add</button>
                   </div>
-                )}
+                  {customIndicators.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {customIndicators.map(ind => (
+                        <div key={ind.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 100, background: '#FEF3C7', border: '1px solid #FDE68A' }}>
+                          <span style={{ fontSize: 12, color: '#D97706' }}>✦ {ind.label}</span>
+                          <button type="button" onClick={() => removeCustomIndicator(ind.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', padding: 0 }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Initial questions */}
-            <div style={card}>
-              <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Initial questions</h2>
-              <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>Asked once after purchase. The AI uses these to generate the Week 1 plan.</p>
-              <QuestionBuilder questions={initialQuestions} setQuestions={setInitialQuestions} placeholder="e.g. What is your main goal?" />
-            </div>
+            {/* Initial questions — practitioner only */}
+            {!isPdfSeller && (
+              <div style={card}>
+                <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Initial questions</h2>
+                <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>Asked once after purchase. The AI uses these to generate the Week 1 plan.</p>
+                <QuestionBuilder questions={initialQuestions} setQuestions={setInitialQuestions} placeholder="e.g. What is your main goal?" />
+              </div>
+            )}
 
-            {/* Check-in questions */}
-            <div style={card}>
-              <h2 style={{ color: '#059669', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Weekly check-in questions</h2>
-              <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>Shown to the client at day 6 of each week. The AI uses their answers to adapt the next week's plan.</p>
-              <QuestionBuilder questions={checkinQuestions} setQuestions={setCheckinQuestions} placeholder="e.g. How much weight did you lose this week?" />
-            </div>
+            {/* Check-in questions — practitioner only */}
+            {!isPdfSeller && (
+              <div style={card}>
+                <h2 style={{ color: '#059669', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Weekly check-in questions</h2>
+                <p style={{ color: '#64748B', fontSize: 13, marginBottom: 20 }}>Shown to the client at day 6 of each week. The AI uses their answers to adapt the next week's plan.</p>
+                <QuestionBuilder questions={checkinQuestions} setQuestions={setCheckinQuestions} placeholder="e.g. How much weight did you lose this week?" />
+              </div>
+            )}
 
             {productError && (
               <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{productError}</div>
@@ -662,7 +828,7 @@ export default function MethodSection({ expert }: { expert: any }) {
             {savedProduct ? (
               <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 12, padding: '20px', textAlign: 'center' }}>
                 <p style={{ color: '#059669', fontWeight: 700, fontSize: 16, margin: '0 0 6px' }}>🎉 You're all set!</p>
-                <p style={{ color: '#059669', fontSize: 13, margin: 0 }}>Your method is saved and your first product is ready. Go to Overview to manage everything.</p>
+                <p style={{ color: '#059669', fontSize: 13, margin: 0 }}>Your product is live. Go to Overview to manage everything.</p>
               </div>
             ) : (
               <button onClick={handleSaveProduct} disabled={savingProduct}
