@@ -46,7 +46,6 @@ const PRESET_INDICATORS = [
   { id: 'hydration', label: 'Hydration' },
 ]
 
-// Fixed questions for PDF Seller buyers — chosen by Malyte
 const PDF_SELLER_INITIAL_QUESTIONS = [
   { question_text: 'What is your main goal?', question_type: 'select', allow_multiple: false, options: ['Weight loss', 'Muscle gain', 'Maintenance', 'Improve overall health'] },
   { question_text: 'Do you have any food intolerances or allergies?', question_type: 'text', allow_multiple: false, options: [] },
@@ -455,7 +454,6 @@ export default function MethodSection({ expert }: { expert: any }) {
   const step2Done = methodSaved
   const step3Done = savedProduct
 
-  // Steps for display
   const practitionerSteps = [
     { label: '1. Upload PDFs', done: step1Done },
     { label: '2. Your method', done: step2Done },
@@ -505,7 +503,6 @@ export default function MethodSection({ expert }: { expert: any }) {
           <p style={{ color: '#64748B', fontSize: 14, margin: 0, lineHeight: 1.6 }}>Complete all steps to start selling your methodology as personalised AI plans.</p>
         </div>
 
-        {/* Steps nav */}
         <div className="method-steps" style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
           {displaySteps.map((s, i) => (
             <div key={i} className="method-step-btn" onClick={() => handleStepClick(i)} style={stepStyle(i, s.done)}>
@@ -517,42 +514,16 @@ export default function MethodSection({ expert }: { expert: any }) {
         {/* STEP 1 */}
         {step === 1 && (
           <div>
-            {/* Seller type selection */}
             <div style={card}>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 1 — Who are you?</p>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>Choose how you work — this determines how your plans are generated.</p>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {[
-                  {
-                    type: 'practitioner' as const,
-                    emoji: '🧠',
-                    title: 'Practitioner',
-                    desc: 'I have a personal method I want to scale. Claude will learn my approach and generate fully personalized plans for each client.',
-                    color: '#7C5CFC',
-                    bg: '#EDE9FE',
-                    border: '#C4B5FD',
-                  },
-                  {
-                    type: 'pdf_seller' as const,
-                    emoji: '📄',
-                    title: 'PDF Seller',
-                    desc: 'I have ready-made plans. Claude will adapt them to each buyer\'s profile automatically — same content, fully personalized.',
-                    color: '#059669',
-                    bg: '#D1FDF3',
-                    border: '#6EE7B7',
-                  },
+                  { type: 'practitioner' as const, emoji: '🧠', title: 'Practitioner', desc: 'I have a personal method I want to scale. Claude will learn my approach and generate fully personalized plans for each client.', color: '#7C5CFC', bg: '#EDE9FE', border: '#C4B5FD' },
+                  { type: 'pdf_seller' as const, emoji: '📄', title: 'PDF Seller', desc: "I have ready-made plans. Claude will adapt them to each buyer's profile automatically — same content, fully personalized.", color: '#059669', bg: '#D1FDF3', border: '#6EE7B7' },
                 ].map(opt => (
-                  <div
-                    key={opt.type}
-                    className="seller-type-card"
-                    onClick={() => handleSelectSellerType(opt.type)}
-                    style={{
-                      flex: 1, minWidth: 220, padding: '20px', borderRadius: 14, cursor: 'pointer',
-                      border: `2px solid ${sellerType === opt.type ? opt.border : '#E8EDF8'}`,
-                      background: sellerType === opt.type ? opt.bg : '#F8FAFC',
-                      transition: 'all 0.15s',
-                    }}
-                  >
+                  <div key={opt.type} className="seller-type-card" onClick={() => handleSelectSellerType(opt.type)}
+                    style={{ flex: 1, minWidth: 220, padding: '20px', borderRadius: 14, cursor: 'pointer', border: `2px solid ${sellerType === opt.type ? opt.border : '#E8EDF8'}`, background: sellerType === opt.type ? opt.bg : '#F8FAFC', transition: 'all 0.15s' }}>
                     <div style={{ fontSize: 28, marginBottom: 10 }}>{opt.emoji}</div>
                     <p style={{ fontWeight: 700, fontSize: 15, color: sellerType === opt.type ? opt.color : '#0F172A', margin: '0 0 6px' }}>{opt.title}</p>
                     <p style={{ fontSize: 12, color: '#64748B', margin: 0, lineHeight: 1.6 }}>{opt.desc}</p>
@@ -564,7 +535,6 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             </div>
 
-            {/* PDF upload — shown only after type is selected */}
             {sellerType && (
               <div style={card}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
@@ -572,29 +542,23 @@ export default function MethodSection({ expert }: { expert: any }) {
                 </p>
                 <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
                   {isPdfSeller
-                    ? 'Upload at least <strong>1 PDF</strong> of your plan. Claude will use it to generate personalized versions for each buyer.'
-                    : `Upload at least <strong>5 PDFs</strong> of your real plans. The AI reads them before asking you questions.`
+                    ? <span>Upload at least <strong>1 PDF</strong> of your plan. Claude will use it to generate personalized versions for each buyer.</span>
+                    : <span>Upload at least <strong>5 PDFs</strong> of your real plans. The AI reads them before asking you questions.</span>
                   }
                 </p>
 
                 {pdfs.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
                     <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>
-                      Uploaded PDFs: <span style={{ color: enoughPdfs ? '#059669' : '#D97706' }}>
-                        {pdfs.length}/{isPdfSeller ? '1' : '5'} minimum
-                      </span>
+                      Uploaded PDFs: <span style={{ color: enoughPdfs ? '#059669' : '#D97706' }}>{pdfs.length}/{isPdfSeller ? '1' : '5'} minimum</span>
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {pdfs.map((pdf, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#F1F5F9', borderRadius: 8 }}>
                           <span style={{ fontSize: 14 }}>📄</span>
-                          <span style={{ fontSize: 12, color: '#0F172A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {pdf.split('/').pop()?.replace(/^\d+_/, '') || pdf}
-                          </span>
-                          <button className="pdf-action-btn" onClick={() => handleOpenPdf(pdf)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '2px 4px', color: '#7C5CFC', transition: 'opacity 0.15s' }}>👁</button>
-                          <button className="pdf-action-btn" onClick={() => handleDeletePdf(pdf)} disabled={deletingPdf === pdf}
-                            style={{ background: 'none', border: 'none', cursor: deletingPdf === pdf ? 'not-allowed' : 'pointer', fontSize: 15, padding: '2px 4px', color: '#EF4444', opacity: deletingPdf === pdf ? 0.4 : 1 }}>
+                          <span style={{ fontSize: 12, color: '#0F172A', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pdf.split('/').pop()?.replace(/^\d+_/, '') || pdf}</span>
+                          <button className="pdf-action-btn" onClick={() => handleOpenPdf(pdf)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: '2px 4px', color: '#7C5CFC' }}>👁</button>
+                          <button className="pdf-action-btn" onClick={() => handleDeletePdf(pdf)} disabled={deletingPdf === pdf} style={{ background: 'none', border: 'none', cursor: deletingPdf === pdf ? 'not-allowed' : 'pointer', fontSize: 15, padding: '2px 4px', color: '#EF4444', opacity: deletingPdf === pdf ? 0.4 : 1 }}>
                             {deletingPdf === pdf ? '…' : '🗑'}
                           </button>
                         </div>
@@ -613,9 +577,7 @@ export default function MethodSection({ expert }: { expert: any }) {
                 <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #E8EDF8', borderRadius: 12, padding: '24px 16px', cursor: 'pointer', background: '#F8FAFC', marginBottom: 16 }}>
                   <input type="file" accept=".pdf" multiple onChange={handlePdfUpload} style={{ display: 'none' }} />
                   <div style={{ fontSize: 24, marginBottom: 6 }}>📄</div>
-                  <p style={{ fontWeight: 600, color: '#0F172A', fontSize: 13, margin: '0 0 2px', textAlign: 'center' }}>
-                    {uploading ? 'Uploading...' : pdfs.length > 0 ? '+ Add more PDFs' : 'Click to select PDFs'}
-                  </p>
+                  <p style={{ fontWeight: 600, color: '#0F172A', fontSize: 13, margin: '0 0 2px', textAlign: 'center' }}>{uploading ? 'Uploading...' : pdfs.length > 0 ? '+ Add more PDFs' : 'Click to select PDFs'}</p>
                   <p style={{ color: '#94A3B8', fontSize: 12, margin: 0, textAlign: 'center' }}>Multiple files · PDF only</p>
                 </label>
 
@@ -715,14 +677,11 @@ export default function MethodSection({ expert }: { expert: any }) {
               <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>Define your first digital product. You can create more from the dashboard at any time.</p>
               {isPdfSeller && (
                 <div style={{ marginTop: 12, background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 10, padding: '10px 14px' }}>
-                  <p style={{ fontSize: 12, color: '#059669', margin: 0, fontWeight: 600 }}>
-                    ✓ PDF Seller mode — buyer questions and progress tracking are pre-configured automatically.
-                  </p>
+                  <p style={{ fontSize: 12, color: '#059669', margin: 0, fontWeight: 600 }}>✓ PDF Seller mode — buyer questions and progress tracking are pre-configured automatically.</p>
                 </div>
               )}
             </div>
 
-            {/* Product details */}
             <div style={card}>
               <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 20px' }}>Product details</h2>
               <div style={{ marginBottom: 16 }}>
@@ -762,7 +721,6 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             </div>
 
-            {/* Progress indicators — practitioner only */}
             {!isPdfSeller && (
               <div style={card}>
                 <h2 style={{ color: '#D97706', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Progress indicators</h2>
@@ -803,7 +761,6 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             )}
 
-            {/* Initial questions — practitioner only */}
             {!isPdfSeller && (
               <div style={card}>
                 <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Initial questions</h2>
@@ -812,7 +769,6 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             )}
 
-            {/* Check-in questions — practitioner only */}
             {!isPdfSeller && (
               <div style={card}>
                 <h2 style={{ color: '#059669', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Weekly check-in questions</h2>
