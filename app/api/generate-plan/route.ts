@@ -30,25 +30,81 @@ async function fetchPdfsAsBase64(pdfPaths: string[]): Promise<string[]> {
   return results
 }
 
+function calculateTDEE(answers: Record<string, any>): number | null {
+  const weightRaw = answers['Your weight (e.g. 70 kg or 154 lbs)'] || ''
+  const heightRaw = answers['Your height (e.g. 170 cm or 5ft 7in)'] || ''
+  const ageRaw = answers['Your age'] || ''
+  const activityRaw = answers['What is your daily activity level?'] || ''
+
+  let weightKg: number | null = null
+  let heightCm: number | null = null
+  const age = parseInt(ageRaw)
+
+  // Parse weight
+  const wLbs = weightRaw.match(/(\d+\.?\d*)\s*lbs?/i)
+  const wKg = weightRaw.match(/(\d+\.?\d*)\s*kg/i)
+  const wNum = weightRaw.match(/^(\d+\.?\d*)$/)
+  if (wLbs) weightKg = parseFloat(wLbs[1]) / 2.205
+  else if (wKg) weightKg = parseFloat(wKg[1])
+  else if (wNum) weightKg = parseFloat(wNum[1])
+
+  // Parse height
+  const hCm = heightRaw.match(/(\d+\.?\d*)\s*cm/i)
+  const hFtIn = heightRaw.match(/(\d+)\s*ft\s*(\d*)\s*in?/i)
+  const hFt = heightRaw.match(/(\d+\.?\d*)\s*ft/i)
+  const hNum = heightRaw.match(/^(\d+\.?\d*)$/)
+  if (hCm) heightCm = parseFloat(hCm[1])
+  else if (hFtIn) heightCm = parseFloat(hFtIn[1]) * 30.48 + (parseFloat(hFtIn[2] || '0') * 2.54)
+  else if (hFt) heightCm = parseFloat(hFt[1]) * 30.48
+  else if (hNum) heightCm = parseFloat(hNum[1])
+
+  if (!weightKg || !heightCm || !age || isNaN(age)) return null
+
+  // Mifflin-St Jeor (assume average between male/female)
+  const bmrMale = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5
+  const bmrFemale = (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161
+  const bmr = (bmrMale + bmrFemale) / 2
+
+  const activityLower = activityRaw.toLowerCase()
+  let multiplier = 1.375
+  if (activityLower.includes('sedentary') || activityLower.includes('desk')) multiplier = 1.2
+  else if (activityLower.includes('lightly') || activityLower.includes('some walking')) multiplier = 1.375
+  else if (activityLower.includes('moderately') || activityLower.includes('3')) multiplier = 1.55
+  else if (activityLower.includes('very') || activityLower.includes('intense')) multiplier = 1.725
+
+  return Math.round(bmr * multiplier)
+}
+
 function buildMethodContext(expert: any): string {
   const structured = expert.method_structured || {}
   const answers = expert.method_questions_answers || {}
 
-  if (structured.primo_passo) {
+  if (structured.mattoni || structured.regole_sempre) {
     return `
 === EXPERT METHOD — ${(expert.category || 'PROFESSIONAL').toUpperCase()} ===
 These rules are ABSOLUTE and cannot be violated under any circumstance.
 
-FIRST STEP WITH EVERY CLIENT: ${structured.primo_passo || 'not specified'}
-HOW THE METHOD ADAPTS TO EACH CLIENT: ${structured.adattamento || 'not specified'}
-WHAT CLIENTS STRUGGLE WITH MOST: ${structured.blocco_principale || 'not specified'}
-WHAT TO PRIORITIZE WHEN RESOURCES ARE LIMITED: ${structured.prioritizzazione || 'not specified'}
-HOW TO KNOW CLIENT IS READY FOR NEXT PHASE: ${structured.segnale_progressione || 'not specified'}
-MOST CRITICAL WEEK AND WHY: ${structured.settimana_critica || 'not specified'}
+CORE ELEMENTS (use ONLY these): ${(structured.mattoni || []).join(', ') || 'not specified'}
+ALWAYS DO: ${(structured.regole_sempre || []).join(', ') || 'not specified'}
+NEVER DO: ${(structured.regole_mai || []).join(', ') || 'not specified'}
+COMBINATION LOGIC: ${(structured.logica_combinazione || []).join(', ') || 'not specified'}
+SUBSTITUTION RULES: ${JSON.stringify(structured.albero_decisionale || [])}
+CALORIE APPROACH: ${structured.calorie_metodo || 'not specified'}
+CALORIE DELTAS: ${JSON.stringify(structured.calorie_deltas || {})}
 WHAT MAKES THIS METHOD UNIQUE: ${structured.unicita || 'not specified'}
-THINGS THIS METHOD ALWAYS DOES: ${(structured.regole_sempre || []).join(', ') || 'not specified'}
-THINGS THIS METHOD NEVER DOES: ${(structured.regole_mai || []).join(', ') || 'not specified'}
 ADDITIONAL NOTES: ${structured.note_aggiuntive || 'none'}
+=================================`
+  }
+
+  if (structured.primo_passo) {
+    return `
+=== EXPERT METHOD — ${(expert.category || 'PROFESSIONAL').toUpperCase()} ===
+FIRST STEP: ${structured.primo_passo}
+HOW METHOD ADAPTS: ${structured.adattamento || 'not specified'}
+MAIN BLOCKER: ${structured.blocco_principale || 'not specified'}
+ALWAYS DO: ${(structured.regole_sempre || []).join(', ') || 'not specified'}
+NEVER DO: ${(structured.regole_mai || []).join(', ') || 'not specified'}
+UNIQUE FACTOR: ${structured.unicita || 'not specified'}
 =================================`
   }
 
@@ -58,75 +114,170 @@ ADDITIONAL NOTES: ${structured.note_aggiuntive || 'none'}
   if (isNutritionist) {
     return `
 === EXPERT METHOD — NUTRITION ===
-These rules are ABSOLUTE and cannot be violated under any circumstance.
-
 CALORIC TARGET & MACROS: ${answers.caloric_target || 'not specified'}
 ON/OFF DAYS: ${answers.on_off_days || 'not specified'}
 UNTOUCHABLE FOODS: ${answers.untouchable_foods || 'not specified'}
 METABOLIC ADAPTATION: ${answers.metabolic_adaptation || 'not specified'}
 ALLERGIES & PREFERENCES: ${answers.allergies_management || 'not specified'}
-FOOD SUBSTITUTIONS POLICY: ${expert.allow_substitutions === 'always' ? 'AI can always substitute foods with macro-equivalent alternatives' : expert.allow_substitutions === 'selective' ? 'AI can substitute only foods not listed as untouchable' : 'No substitutions allowed'}
+FOOD SUBSTITUTIONS: ${expert.allow_substitutions === 'always' ? 'Always substitute with macro-equivalent' : expert.allow_substitutions === 'selective' ? 'Only for non-untouchable foods' : 'No substitutions'}
 =================================`
   }
 
   return `
 === EXPERT METHOD ===
-These rules are ABSOLUTE and cannot be violated under any circumstance.
-
 GUARANTEED RESULT: ${answers.specific_result || 'not specified'}
 ABSOLUTE RULES: ${answers.absolute_rules || 'not specified'}
-WHAT THE METHOD NEVER DOES: ${answers.never_does || 'not specified'}
-PROGRESSION OVER TIME: ${answers.progression || 'not specified'}
+NEVER DOES: ${answers.never_does || 'not specified'}
+PROGRESSION: ${answers.progression || 'not specified'}
 STOP CRITERIA: ${answers.stop_criteria || 'not specified'}
 ====================`
 }
 
+function buildPdfSellerSystemPrompt(expert: any, questionnaireAnswers: Record<string, any>): string {
+  const tdee = calculateTDEE(questionnaireAnswers)
+  const goal = questionnaireAnswers['What is your main goal?'] || 'general wellness'
+  const intolerances = questionnaireAnswers['Do you have any food intolerances or allergies?'] || 'none'
+  const avoidedFoods = questionnaireAnswers['Are there any foods you avoid or dislike?'] || 'none'
+
+  let calorieTarget = ''
+  if (tdee) {
+    const goalLower = goal.toLowerCase()
+    if (goalLower.includes('weight loss') || goalLower.includes('dimagrimento')) {
+      calorieTarget = `Target calories: ${tdee - 350} kcal/day (TDEE ${tdee} - 350 deficit)`
+    } else if (goalLower.includes('muscle') || goalLower.includes('massa')) {
+      calorieTarget = `Target calories: ${tdee + 300} kcal/day (TDEE ${tdee} + 300 surplus)`
+    } else {
+      calorieTarget = `Target calories: ${tdee} kcal/day (TDEE maintenance)`
+    }
+  }
+
+  return `You are an AI assistant that personalizes ready-made plans for individual buyers.
+
+You have received one or more PDF plans from the seller. Your job is to adapt their content for this specific buyer — keeping the seller's structure, foods, and philosophy intact, but personalizing quantities, substitutions, and details to fit this person.
+
+BUYER PROFILE:
+- Goal: ${goal}
+- Intolerances/Allergies: ${intolerances}
+- Foods to avoid: ${avoidedFoods}
+- Activity level: ${questionnaireAnswers['What is your daily activity level?'] || 'not specified'}
+- Exercise frequency: ${questionnaireAnswers['How many times a week do you exercise?'] || 'not specified'}
+${calorieTarget ? `- ${calorieTarget}` : ''}
+
+PERSONALIZATION RULES:
+1. Keep the seller's structure and food choices as the foundation
+2. Adjust quantities to match the buyer's caloric target (if calculable)
+3. Remove any food the buyer is intolerant to or dislikes — replace with similar alternatives from the same plan
+4. Add the buyer's name feeling (e.g. "this plan is built for your goal of ${goal}")
+5. Write the welcome message as if the seller is speaking directly to this buyer
+6. NEVER invent foods or concepts not present in the PDF — only adapt what's already there
+
+OUTPUT: Respond ONLY with valid JSON in the format described by the user prompt.`
+}
+
 function buildCheckinHistory(checkins: any[]): string {
   if (!checkins || checkins.length === 0) return ''
-
   const lines = checkins.map((c: any) => {
-    const answersText = Object.entries(c.answers || {})
-      .map(([k, v]) => `  ${k}: ${v}`)
-      .join('\n')
-    const freeNote = c.free_note ? `  Note from client: "${c.free_note}"` : ''
+    const answersText = Object.entries(c.answers || {}).map(([k, v]) => `  ${k}: ${v}`).join('\n')
+    const freeNote = c.free_note ? `  Note: "${c.free_note}"` : ''
     return `Week ${c.week_number}:\n${answersText}${freeNote ? '\n' + freeNote : ''}`
   }).join('\n\n')
-
   return `\n=== CLIENT HISTORY (last ${checkins.length} weeks) ===\n${lines}\n=====================================`
 }
 
 function buildPatternDetection(autoCalibration: boolean): string {
-  const patternInstructions = `
+  return `
 PATTERN ANALYSIS — EXECUTE BEFORE GENERATING THE PLAN:
 - Review the client history above carefully
 - Identify any recurring pattern: same blocker for 2+ weeks, declining metric, goal missed repeatedly
 - If a pattern exists, prioritize addressing it in this week's plan
-- Be explicit in the welcome_message about why you're focusing on this`
-
-  const calibrationInstructions = autoCalibration ? `
+- Be explicit in the welcome_message about why you're focusing on this
+` + (autoCalibration ? `
 AUTO-CALIBRATION — ACTIVE:
 - If client completed >80% of last week's objectives → increase intensity by ~15%
-- If client completed <50% of last week's objectives → simplify and consolidate before advancing
-- Reflect this calibration in the plan difficulty` : `
+- If client completed <50% of last week's objectives → simplify and consolidate` : `
 AUTO-CALIBRATION — DISABLED:
-- Follow the fixed progression of the expert's method regardless of client results
-- Do not increase or decrease intensity based on performance`
-
-  return patternInstructions + calibrationInstructions
+- Follow the fixed progression regardless of client results`)
 }
 
 function buildDoubleCheckInstructions(): string {
   return `
 MANDATORY DOUBLE-CHECK — EXECUTE BEFORE RETURNING OUTPUT:
-
-PHASE 1 — METHOD COMPLIANCE:
 - Output must align with the expert's declared method
 - All absolute rules must be respected
 - The plan must never do what the expert declared the method never does
-- Progression must match the current week
 - Pattern analysis must be reflected in the plan
+Only return the plan after this check passes.`
+}
 
-Only return the plan after phase 1 passes.`
+function buildUserPrompt(product: any, currentWeek: number, totalWeeks: number, questionnaireAnswers: any, checkinContext: string, freeNoteContext: string, checkinHistory: string, isPdfSeller: boolean): string {
+  return `PRODUCT: ${product.title} — ${product.description}
+PROGRAM: ${product.duration_months || 1} month${(product.duration_months || 1) > 1 ? 's' : ''} — ${totalWeeks} weeks total
+CURRENT WEEK: ${currentWeek} of ${totalWeeks}
+
+CLIENT ANSWERS:
+${Object.entries(questionnaireAnswers || {}).map(([k, v]) => `${k}: ${v}`).join('\n')}
+${checkinContext}
+${freeNoteContext}
+${checkinHistory}
+
+IMPORTANT: Respond entirely in English.
+
+TASK: Generate a day-by-day plan for Week ${currentWeek} of ${totalWeeks}.
+${isPdfSeller ? 'Adapt the PDF plan content to this buyer\'s specific profile.' : `Focus: ${currentWeek === 1 ? 'building foundations' : currentWeek === totalWeeks ? 'consolidating results' : `progressive intensity from week ${currentWeek - 1}`}.`}
+
+Reply ONLY with valid JSON, no markdown:
+
+{
+  "welcome_message": "2-3 sentences explaining WHY this week is structured this way, then 1 sentence of motivation",
+  "plan_title": "Week ${currentWeek} — title",
+  "plan_subtitle": "One sentence focus",
+  "week_number": ${currentWeek},
+  "total_weeks": ${totalWeeks},
+  "client_stats": {
+    "daily_calories": 0,
+    "daily_protein_g": 0,
+    "daily_carbs_g": 0,
+    "daily_fats_g": 0,
+    "note": "Key metric or focus for this week"
+  },
+  "weekly_goal": "One measurable goal for this week",
+  "mindset": "One mindset tip relevant to this week",
+  "days": [
+    {
+      "day": "Monday",
+      "date_label": "Week ${currentWeek} — Monday",
+      "meals": [
+        {
+          "meal": "Meal / Task / Session name",
+          "time": "Time or time block",
+          "calories": 0,
+          "protein_g": 0,
+          "carbs_g": 0,
+          "fats_g": 0,
+          "name": "Name",
+          "ingredients": ["Item 1", "Item 2", "Item 3"],
+          "preparation": "How to execute — one sentence",
+          "tip": "One practical tip"
+        }
+      ],
+      "daily_tip": "One tip for this day"
+    }
+  ],
+  "daily_guidelines": {
+    "title": "Week ${currentWeek} Rules",
+    "rules": [
+      { "rule": "Rule 1", "explanation": "One sentence" },
+      { "rule": "Rule 2", "explanation": "One sentence" },
+      { "rule": "Rule 3", "explanation": "One sentence" }
+    ]
+  },
+  "expert_tip": "One paragraph expert tip specific to Week ${currentWeek}",
+  "common_mistakes": ["Mistake 1", "Mistake 2", "Mistake 3"],
+  "success_metrics": ["Sign 1", "Sign 2", "Sign 3", "Sign 4"],
+  "closing_message": "One motivating sentence."
+}
+
+CRITICAL: "days" must have exactly 7 items (Monday to Sunday). Each day must have 1-4 items in "meals". Vary content across days.`
 }
 
 export async function POST(request: NextRequest) {
@@ -150,6 +301,7 @@ export async function POST(request: NextRequest) {
           id,
           name,
           category,
+          seller_type,
           methodology_name,
           methodology_description,
           results_description,
@@ -173,6 +325,7 @@ export async function POST(request: NextRequest) {
   const totalMonths = product.duration_months || 1
   const totalWeeks = totalMonths * 4
   const autoCalibration = product.auto_calibration !== false
+  const isPdfSeller = expert.seller_type === 'pdf_seller'
 
   const { data: recentCheckins } = await supabase
     .from('weekly_checkins')
@@ -186,10 +339,6 @@ export async function POST(request: NextRequest) {
   const pdfPaths: string[] = expert.method_pdfs_urls || []
   const pdfBase64List = pdfPaths.length > 0 ? await fetchPdfsAsBase64(pdfPaths) : []
 
-  const methodContext = buildMethodContext(expert)
-  const patternDetection = buildPatternDetection(autoCalibration)
-  const doubleCheck = buildDoubleCheckInstructions()
-
   const checkinContext = checkinAnswers && Object.keys(checkinAnswers).length > 0
     ? `\nLAST WEEK CHECK-IN:\n${Object.entries(checkinAnswers).map(([k, v]) => `${k}: ${v}`).join('\n')}`
     : ''
@@ -198,7 +347,16 @@ export async function POST(request: NextRequest) {
     ? `\nCLIENT NOTE FOR THIS WEEK: "${freeNote}"\n→ Take this into account when generating the plan.`
     : ''
 
-  const systemPrompt = `You are an elite AI coach replicating the methodology of ${expert.name}, expert in ${expert.category}.
+  // ── BUILD SYSTEM PROMPT based on seller type ────────────────────────────────
+  let systemPrompt: string
+
+  if (isPdfSeller) {
+    systemPrompt = buildPdfSellerSystemPrompt(expert, questionnaireAnswers || {})
+  } else {
+    const methodContext = buildMethodContext(expert)
+    const patternDetection = buildPatternDetection(autoCalibration)
+    const doubleCheck = buildDoubleCheckInstructions()
+    systemPrompt = `You are an elite AI coach replicating the methodology of ${expert.name}, expert in ${expert.category}.
 
 ${methodContext}
 
@@ -207,94 +365,14 @@ ${patternDetection}
 ${doubleCheck}
 
 CRITICAL OUTPUT RULES:
-- Adapt the format, language and terminology to the expert's category. A business coach does not use meal/calories terminology. A fitness coach does not use revenue/KPI terminology.
+- Adapt the format, language and terminology to the expert's category.
 - The welcome_message must always start with 2-3 sentences explaining WHY this week is structured this way, based on the client's history and any patterns detected.
 - CRITICAL: The client only sees the final verified plan. Never show your validation process.`
+  }
 
-  const userPrompt = `PRODUCT: ${product.title} — ${product.description}
-PROGRAM: ${totalMonths} month${totalMonths > 1 ? 's' : ''} — ${totalWeeks} weeks total
-CURRENT WEEK: ${currentWeek} of ${totalWeeks}
+  const userPrompt = buildUserPrompt(product, currentWeek, totalWeeks, questionnaireAnswers, checkinContext, freeNoteContext, checkinHistory, isPdfSeller)
 
-CLIENT ONBOARDING ANSWERS:
-${Object.entries(questionnaireAnswers || {}).map(([k, v]) => `${k}: ${v}`).join('\n')}
-${checkinContext}
-${freeNoteContext}
-${checkinHistory}
-
-IMPORTANT: Respond entirely in English.
-
-TASK: Generate a day-by-day plan for Week ${currentWeek} of ${totalWeeks}.
-Focus: ${currentWeek === 1 ? 'building foundations' : currentWeek === totalWeeks ? 'consolidating results' : `progressive intensity from week ${currentWeek - 1}`}.
-
-Adapt the JSON structure to the expert's category:
-- For nutrition: use meals, calories, ingredients
-- For fitness: use sessions, exercises, sets/reps
-- For business/marketing: use tasks, actions, milestones, KPIs
-- For other categories: use whatever structure best represents the method
-
-Reply ONLY with valid JSON, no markdown:
-
-{
-  "welcome_message": "2-3 sentences explaining WHY this week is structured this way based on history, then 1 sentence of motivation",
-  "plan_title": "Week ${currentWeek} — title",
-  "plan_subtitle": "One sentence focus",
-  "week_number": ${currentWeek},
-  "total_weeks": ${totalWeeks},
-  "client_stats": {
-    "daily_calories": 0,
-    "daily_protein_g": 0,
-    "daily_carbs_g": 0,
-    "daily_fats_g": 0,
-    "note": "Key metric or focus for this week — adapt to category"
-  },
-  "weekly_goal": "One measurable goal for this week",
-  "mindset": "One mindset tip relevant to this week",
-  "days": [
-    {
-      "day": "Monday",
-      "date_label": "Week ${currentWeek} — Monday",
-      "meals": [
-        {
-          "meal": "Task / Session / Meal name — adapt to category",
-          "time": "Time or time block",
-          "calories": 0,
-          "protein_g": 0,
-          "carbs_g": 0,
-          "fats_g": 0,
-          "name": "Name of the task, session or meal",
-          "ingredients": ["Step 1 or ingredient 1", "Step 2 or ingredient 2", "Step 3 or ingredient 3"],
-          "preparation": "How to execute — one sentence",
-          "tip": "One practical tip"
-        }
-      ],
-      "daily_tip": "One tip for this day"
-    }
-  ],
-  "daily_guidelines": {
-    "title": "Week ${currentWeek} Rules",
-    "rules": [
-      { "rule": "Rule 1", "explanation": "One sentence" },
-      { "rule": "Rule 2", "explanation": "One sentence" },
-      { "rule": "Rule 3", "explanation": "One sentence" }
-    ]
-  },
-  "expert_tip": "One paragraph expert tip specific to Week ${currentWeek}",
-  "common_mistakes": [
-    "Mistake 1 with brief explanation",
-    "Mistake 2 with brief explanation",
-    "Mistake 3 with brief explanation"
-  ],
-  "success_metrics": [
-    "Sign 1 that the week is going well",
-    "Sign 2 that the week is going well",
-    "Sign 3 that the week is going well",
-    "Sign 4 that the week is going well"
-  ],
-  "closing_message": "One motivating sentence."
-}
-
-CRITICAL: "days" must have exactly 7 items (Monday to Sunday). Each day must have at least 1 and max 4 items in "meals" (adapt count to category). Vary content across days.`
-
+  // ── BUILD MESSAGE CONTENT ───────────────────────────────────────────────────
   const messageContent: any[] = []
   for (const base64 of pdfBase64List) {
     messageContent.push({
@@ -323,22 +401,16 @@ CRITICAL: "days" must have exactly 7 items (Monday to Sunday). Each day must hav
           messages: [{ role: 'user', content: messageContent }],
         })
 
-        // Stream each text chunk to the client
         for await (const event of stream) {
-          if (
-            event.type === 'content_block_delta' &&
-            event.delta.type === 'text_delta'
-          ) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
             fullText += event.delta.text
             send({ chunk: event.delta.text })
           }
         }
 
-        // Parse full JSON once stream is complete
         const cleanJson = fullText.replace(/```json|```/g, '').trim()
         const aiWeek = JSON.parse(cleanJson)
 
-        // Save to Supabase
         const { data: existingPlan } = await supabase
           .from('client_plans')
           .select('id, ai_generated_plan')
@@ -370,11 +442,7 @@ CRITICAL: "days" must have exactly 7 items (Monday to Sunday). Each day must hav
             .select()
             .single()
 
-          if (updateError) {
-            send({ error: 'Error updating plan' })
-            controller.close()
-            return
-          }
+          if (updateError) { send({ error: 'Error updating plan' }); controller.close(); return }
           savedPlan = data
         } else {
           const { data, error: saveError } = await supabase
@@ -396,15 +464,10 @@ CRITICAL: "days" must have exactly 7 items (Monday to Sunday). Each day must hav
             .select()
             .single()
 
-          if (saveError) {
-            send({ error: 'Error saving plan' })
-            controller.close()
-            return
-          }
+          if (saveError) { send({ error: 'Error saving plan' }); controller.close(); return }
           savedPlan = data
         }
 
-        // Send final event with saved plan
         send({ done: true, plan: savedPlan })
       } catch (error) {
         console.error('AI STREAM ERROR:', error)
