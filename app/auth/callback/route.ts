@@ -29,7 +29,6 @@ export async function GET(request: NextRequest) {
     if (session?.user) {
       const userId = session.user.id
 
-      // Legge il cookie dei consensi impostato prima del redirect OAuth
       const pendingCookie = cookieStore.get('pending_signup')?.value
       let pendingData: {
         role?: string
@@ -42,46 +41,54 @@ export async function GET(request: NextRequest) {
         try { pendingData = JSON.parse(decodeURIComponent(pendingCookie)) } catch {}
       }
 
-      // Cancella subito il cookie
       cookieStore.set('pending_signup', '', { path: '/', maxAge: 0 })
 
-      // Controlla se il profilo esiste già
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .single()
 
+      let redirectPath = '/login'
+
       if (existingProfile?.role) {
-        // Utente già registrato → login normale
         if (existingProfile.role === 'expert') {
           const { data: expertProfile } = await supabase
             .from('experts')
             .select('id, slug')
             .eq('id', userId)
             .single()
-          const redirectPath = expertProfile?.slug ? '/dashboard' : '/onboarding'
-          return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
+          redirectPath = expertProfile?.slug ? '/dashboard' : '/onboarding'
+        } else {
+          redirectPath = '/my-plans'
         }
-        // Client esistente → my-plans
-        return NextResponse.redirect(new URL('/my-plans', requestUrl.origin))
+      } else {
+        const role = pendingData?.role || (session.user.user_metadata?.role as string) || 'client'
+
+        await supabase.from('profiles').upsert({
+          id: userId,
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+          role,
+          consent_terms: pendingData?.consent_terms ?? false,
+          consent_health: pendingData?.consent_health ?? false,
+          consent_marketing: pendingData?.consent_marketing ?? false,
+          consent_timestamp: pendingData?.consent_timestamp ?? new Date().toISOString(),
+        }, { onConflict: 'id' })
+
+        redirectPath = role === 'expert' ? '/onboarding' : '/client-onboarding'
       }
 
-      // Nuovo utente — usa role dal cookie, fallback a user_metadata
-      const role = pendingData?.role || (session.user.user_metadata?.role as string) || 'client'
-
-      await supabase.from('profiles').upsert({
-        id: userId,
-        name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
-        role,
-        consent_terms: pendingData?.consent_terms ?? false,
-        consent_health: pendingData?.consent_health ?? false,
-        consent_marketing: pendingData?.consent_marketing ?? false,
-        consent_timestamp: pendingData?.consent_timestamp ?? new Date().toISOString(),
-      }, { onConflict: 'id' })
-
-      const redirectPath = role === 'expert' ? '/onboarding' : '/client-onboarding'
-      return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
+      // Crea la redirect response e copia TUTTI i cookie su di essa
+      const response = NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
+      cookieStore.getAll().forEach(cookie => {
+        response.cookies.set(cookie.name, cookie.value, {
+          path: '/',
+          sameSite: 'lax',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+        })
+      })
+      return response
     }
   }
 
