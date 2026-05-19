@@ -33,7 +33,7 @@ export default function ProfileSection() {
         .from('experts')
         .select('avatar_url, short_bio, long_bio')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
       if (data) {
         setAvatarUrl(data.avatar_url || '')
         setPreviewUrl(data.avatar_url || '')
