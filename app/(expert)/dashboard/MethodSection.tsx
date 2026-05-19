@@ -519,8 +519,8 @@ export default function MethodSection({ expert }: { expert: any }) {
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>Choose how you work — this determines how your plans are generated.</p>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {[
-                  { type: 'practitioner' as const, emoji: '🧠', title: 'Practitioner', desc: 'I have a personal method I want to scale. Claude will learn my approach and generate fully personalized plans for each client.', color: '#7C5CFC', bg: '#EDE9FE', border: '#C4B5FD' },
-                  { type: 'pdf_seller' as const, emoji: '📄', title: 'PDF Seller', desc: "I have ready-made plans. Claude will adapt them to each buyer's profile automatically — same content, fully personalized.", color: '#059669', bg: '#D1FDF3', border: '#6EE7B7' },
+                  { type: 'practitioner' as const, emoji: '🧠', title: 'Practitioner', desc: 'I have a personal method I want to scale. Malyte will learn my approach and generate fully personalized plans for each client.', color: '#7C5CFC', bg: '#EDE9FE', border: '#C4B5FD' },
+                  { type: 'pdf_seller' as const, emoji: '📄', title: 'PDF Seller', desc: "I have ready-made plans. Malyte will adapt them to each buyer's profile automatically — same content, fully personalized.", color: '#059669', bg: '#D1FDF3', border: '#6EE7B7' },
                 ].map(opt => (
                   <div key={opt.type} className="seller-type-card" onClick={() => handleSelectSellerType(opt.type)}
                     style={{ flex: 1, minWidth: 220, padding: '20px', borderRadius: 14, cursor: 'pointer', border: `2px solid ${sellerType === opt.type ? opt.border : '#E8EDF8'}`, background: sellerType === opt.type ? opt.bg : '#F8FAFC', transition: 'all 0.15s' }}>
@@ -542,8 +542,8 @@ export default function MethodSection({ expert }: { expert: any }) {
                 </p>
                 <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
                   {isPdfSeller
-                    ? <span>Upload at least <strong>1 PDF</strong> of your plan. Claude will use it to generate personalized versions for each buyer.</span>
-                    : <span>Upload at least <strong>5 PDFs</strong> of your real plans. The AI reads them before asking you questions.</span>
+                    ? <span>Upload at least <strong>1 PDF</strong> of your plan. Malyte will use it to generate personalized versions for each buyer.</span>
+                    : <span>Upload at least <strong>5 PDFs</strong> of your real plans. Malyte reads them before asking you questions.</span>
                   }
                 </p>
 
