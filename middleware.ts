@@ -11,7 +11,6 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const pathname = req.nextUrl.pathname
 
-  // — Currency detection —
   const country = req.headers.get('x-vercel-ip-country') ?? null
   const currency = getCurrencyFromCountry(country)
   res.cookies.set('user_currency', currency, {
@@ -48,8 +47,9 @@ export async function middleware(req: NextRequest) {
     const isExpertRoute = EXPERT_ROUTES.some(r => pathname.startsWith(r))
     const isClientRoute = CLIENT_ROUTES.some(r => pathname.startsWith(r))
     const isOnboardingClient = pathname === '/client-onboarding'
+    const isOnboardingExpert = pathname === '/onboarding'
 
-    if (!isAuthRoute && !isOnboardingClient) {
+    if (!isAuthRoute && !isOnboardingClient && !isOnboardingExpert) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('role, name, country')
@@ -58,8 +58,14 @@ export async function middleware(req: NextRequest) {
 
       const role = profile?.role || 'client'
 
+      // Solo i client vengono mandati a client-onboarding se mancano dati
       if (role === 'client' && (!profile?.name || !profile?.country)) {
         return NextResponse.redirect(new URL('/client-onboarding', req.url))
+      }
+
+      // Gli expert senza name vengono mandati a /onboarding
+      if (role === 'expert' && !profile?.name && !isOnboardingExpert) {
+        return NextResponse.redirect(new URL('/onboarding', req.url))
       }
 
       if (role === 'expert' && isClientRoute) {
