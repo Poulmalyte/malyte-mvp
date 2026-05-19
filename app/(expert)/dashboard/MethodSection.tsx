@@ -279,11 +279,15 @@ export default function MethodSection({ expert }: { expert: any }) {
 
   async function handlePdfSellerContinue() {
     setSavingType(true)
-    await supabase.from('experts').update({
+    const { error } = await supabase.from('experts').update({
       seller_type: 'pdf_seller',
       method_onboarding_completed: true,
     }).eq('id', expert.id)
     setSavingType(false)
+    if (error) {
+      setUploadError('Error saving. Please try again.')
+      return
+    }
     setMethodSaved(true)
     setStep(3)
   }
