@@ -10,6 +10,7 @@ import AccountSettings from './AccountSettings'
 import ProfileSection from './ProfileSection'
 import Footer from '@/components/Footer'
 import ProductRow from './ProductRow'
+import EditQuestionsModal from './EditQuestionsModal'
 
 async function getExpertData(supabase: any, userId: string) {
   const { data: expert } = await supabase.from('experts').select('*').eq('id', userId).single()
@@ -199,6 +200,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     : null
 
   const methodCompleted = expert?.method_onboarding_completed === true
+  const isPdfSeller = expert?.seller_type === 'pdf_seller'
 
   const card: React.CSSProperties = {
     background: '#FFFFFF', borderRadius: 16,
@@ -341,11 +343,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {products.map((product: any) => (
-                      <ProductRow
-                        key={product.id}
-                        product={product}
-                        sold={soldByProduct[product.id] || 0}
-                      />
+                      <div key={product.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <ProductRow
+                          product={product}
+                          sold={soldByProduct[product.id] || 0}
+                        />
+                        {isPdfSeller && (
+                          <div style={{ paddingLeft: 4 }}>
+                            <EditQuestionsModal productId={product.id} />
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
