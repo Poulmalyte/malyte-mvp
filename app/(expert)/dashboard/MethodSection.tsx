@@ -46,24 +46,13 @@ const PRESET_INDICATORS = [
   { id: 'hydration', label: 'Hydration' },
 ]
 
-const PDF_SELLER_INITIAL_QUESTIONS = [
-  { question_text: 'What is your main goal?', question_type: 'select', allow_multiple: false, options: ['Weight loss', 'Muscle gain', 'Maintenance', 'Improve overall health'] },
-  { question_text: 'Do you have any food intolerances or allergies?', question_type: 'text', allow_multiple: false, options: [] },
-  { question_text: 'Are there any foods you avoid or dislike?', question_type: 'text', allow_multiple: false, options: [] },
-  { question_text: 'How many times a week do you exercise?', question_type: 'select', allow_multiple: false, options: ["I don't exercise", '1–2 times', '3–4 times', '5 or more'] },
-  { question_text: 'What is your daily activity level?', question_type: 'select', allow_multiple: false, options: ['Sedentary (desk job, little movement)', 'Lightly active (some walking)', 'Moderately active (exercise 3–4×/week)', 'Very active (intense daily exercise)'] },
-  { question_text: 'Your weight (e.g. 70 kg or 154 lbs)', question_type: 'text', allow_multiple: false, options: [] },
-  { question_text: 'Your height (e.g. 170 cm or 5ft 7in)', question_type: 'text', allow_multiple: false, options: [] },
-  { question_text: 'Your age', question_type: 'text', allow_multiple: false, options: [] },
-]
+const PDF_SELLER_DEFAULT_INDICATORS = ['weight_loss', 'energy', 'mood', 'adherence']
 
 const PDF_SELLER_CHECKIN_QUESTIONS = [
   { question_text: 'How closely did you follow the plan this week?', question_type: 'select', options: ['100% – followed everything', '75% – mostly followed', '50% – followed about half', 'Less than 50%'] },
   { question_text: 'How do you feel compared to last week?', question_type: 'select', options: ['Much better', 'Slightly better', 'About the same', 'Slightly worse'] },
   { question_text: "Any difficulties or things you'd like to adjust?", question_type: 'text', options: [] },
 ]
-
-const PDF_SELLER_DEFAULT_INDICATORS = ['weight_loss', 'energy', 'mood', 'adherence']
 
 type QuestionType = 'text' | 'select'
 
@@ -87,11 +76,12 @@ interface ChatMessage {
 }
 
 function QuestionBuilder({
-  questions, setQuestions, placeholder = 'e.g. What is your main goal?',
+  questions, setQuestions, placeholder = 'e.g. What is your main goal?', minQuestions = 0,
 }: {
   questions: Question[]
   setQuestions: React.Dispatch<React.SetStateAction<Question[]>>
   placeholder?: string
+  minQuestions?: number
 }) {
   function addQuestion() {
     setQuestions(prev => [...prev, { id: crypto.randomUUID(), question_text: '', question_type: 'text', allow_multiple: false, options: [] }])
@@ -109,6 +99,7 @@ function QuestionBuilder({
     setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, options: q.options.filter((_, i) => i !== index) } : q))
   }
   function removeQuestion(id: string) {
+    if (questions.length <= minQuestions) return
     setQuestions(prev => prev.filter(q => q.id !== id))
   }
 
@@ -119,8 +110,10 @@ function QuestionBuilder({
           <div key={q.id} style={{ background: '#F5F7FA', borderRadius: 12, padding: 20, border: '1px solid #E8EDF8' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <span style={{ color: '#7C5CFC', fontSize: 12, fontWeight: 600 }}>Question {i + 1}</span>
-              <button type="button" onClick={() => removeQuestion(q.id)}
-                style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 13, cursor: 'pointer' }}>Remove</button>
+              {questions.length > minQuestions && (
+                <button type="button" onClick={() => removeQuestion(q.id)}
+                  style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 13, cursor: 'pointer' }}>Remove</button>
+              )}
             </div>
             <input type="text" value={q.question_text}
               onChange={e => updateQuestion(q.id, 'question_text', e.target.value)}
@@ -227,6 +220,14 @@ export default function MethodSection({ expert }: { expert: any }) {
   const [savingProduct, setSavingProduct] = useState(false)
   const [savedProduct, setSavedProduct] = useState(false)
   const [productError, setProductError] = useState('')
+
+  // PDF Seller initial questions — custom, editable
+  const [pdfSellerQuestions, setPdfSellerQuestions] = useState<Question[]>([
+    { id: crypto.randomUUID(), question_text: '', question_type: 'text', allow_multiple: false, options: [] },
+    { id: crypto.randomUUID(), question_text: '', question_type: 'text', allow_multiple: false, options: [] },
+    { id: crypto.randomUUID(), question_text: '', question_type: 'text', allow_multiple: false, options: [] },
+    { id: crypto.randomUUID(), question_text: '', question_type: 'text', allow_multiple: false, options: [] },
+  ])
 
   const totalIndicators = selectedIndicators.length + customIndicators.length
   const isPdfSeller = sellerType === 'pdf_seller'
@@ -399,7 +400,15 @@ export default function MethodSection({ expert }: { expert: any }) {
   async function handleSaveProduct() {
     if (!productTitle || !productDesc || !price || !pricingModel) { setProductError('Please fill in all product fields and select a sales model'); return }
 
-    if (!isPdfSeller) {
+    if (isPdfSeller) {
+      const validPdfQuestions = pdfSellerQuestions.filter(q => q.question_text.trim())
+      if (validPdfQuestions.length < 4) { setProductError('Add at least 4 questions for your buyers'); return }
+      for (const q of validPdfQuestions) {
+        if (q.question_type === 'select' && q.options.filter(o => o.trim()).length < 2) {
+          setProductError('Multiple choice questions need at least 2 options'); return
+        }
+      }
+    } else {
       if (initialQuestions.length === 0) { setProductError('Add at least one initial question for your clients'); return }
       if (checkinQuestions.length === 0) { setProductError('Add at least one weekly check-in question'); return }
       if (totalIndicators === 0) { setProductError('Select at least one progress indicator'); return }
@@ -431,7 +440,10 @@ export default function MethodSection({ expert }: { expert: any }) {
 
     if (error || !product) { setProductError('Error saving product. Please try again.'); setSavingProduct(false); return }
 
-    const iqToInsert = isPdfSeller ? PDF_SELLER_INITIAL_QUESTIONS : initialQuestions
+    const iqToInsert = isPdfSeller
+      ? pdfSellerQuestions.filter(q => q.question_text.trim())
+      : initialQuestions
+
     const cqToInsert = isPdfSeller ? PDF_SELLER_CHECKIN_QUESTIONS : checkinQuestions
 
     await supabase.from('product_questions').insert(
@@ -679,11 +691,6 @@ export default function MethodSection({ expert }: { expert: any }) {
                 {isPdfSeller ? 'Step 2' : 'Step 3'} — Your product
               </p>
               <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>Define your first digital product. You can create more from the dashboard at any time.</p>
-              {isPdfSeller && (
-                <div style={{ marginTop: 12, background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 10, padding: '10px 14px' }}>
-                  <p style={{ fontSize: 12, color: '#059669', margin: 0, fontWeight: 600 }}>✓ PDF Seller mode — buyer questions and progress tracking are pre-configured automatically.</p>
-                </div>
-              )}
             </div>
 
             <div style={card}>
@@ -725,6 +732,33 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             </div>
 
+            {/* PDF Seller — domande custom */}
+            {isPdfSeller && (
+              <div style={card}>
+                <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Buyer questions</h2>
+                <p style={{ color: '#64748B', fontSize: 13, marginBottom: 8 }}>
+                  These questions are shown to buyers before their plan is generated. Add at least <strong>4 questions</strong> — you can always edit them later.
+                </p>
+                <div style={{ background: '#EDE9FE', border: '1px solid #C4B5FD', borderRadius: 10, padding: '10px 14px', marginBottom: 20 }}>
+                  <p style={{ fontSize: 12, color: '#7C5CFC', margin: 0, fontWeight: 600 }}>
+                    💡 Ask what Malyte needs to personalize the plan — goals, intolerances, activity level, weight, height, age.
+                  </p>
+                </div>
+                <QuestionBuilder
+                  questions={pdfSellerQuestions}
+                  setQuestions={setPdfSellerQuestions}
+                  placeholder="e.g. What is your main goal?"
+                  minQuestions={4}
+                />
+                {pdfSellerQuestions.filter(q => q.question_text.trim()).length < 4 && (
+                  <p style={{ fontSize: 12, color: '#D97706', marginTop: 8 }}>
+                    ⚠️ {4 - pdfSellerQuestions.filter(q => q.question_text.trim()).length} more question{4 - pdfSellerQuestions.filter(q => q.question_text.trim()).length > 1 ? 's' : ''} needed
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Practitioner — progress indicators */}
             {!isPdfSeller && (
               <div style={card}>
                 <h2 style={{ color: '#D97706', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Progress indicators</h2>
@@ -765,6 +799,7 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             )}
 
+            {/* Practitioner — initial questions */}
             {!isPdfSeller && (
               <div style={card}>
                 <h2 style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Initial questions</h2>
@@ -773,6 +808,7 @@ export default function MethodSection({ expert }: { expert: any }) {
               </div>
             )}
 
+            {/* Practitioner — check-in questions */}
             {!isPdfSeller && (
               <div style={card}>
                 <h2 style={{ color: '#059669', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Weekly check-in questions</h2>
