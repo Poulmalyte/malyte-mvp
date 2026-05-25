@@ -11,6 +11,7 @@ import ProfileSection from './ProfileSection'
 import Footer from '@/components/Footer'
 import ProductRow from './ProductRow'
 import EditQuestionsModal from './EditQuestionsModal'
+import ShopifySection from './ShopifySection'
 
 async function getExpertData(supabase: any, userId: string) {
   const { data: expert } = await supabase.from('experts').select('*').eq('id', userId).single()
@@ -178,6 +179,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     : tab === 'method' ? 'method'
     : tab === 'clients' ? 'clients'
     : tab === 'profile' ? 'profile'
+    : tab === 'shopify' ? 'shopify'
     : 'overview'
 
   const supabase = await createServerSupabaseClient()
@@ -282,6 +284,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 { label: 'Customers', value: 'clients', href: '/dashboard?tab=clients' },
                 { label: 'Analytics', value: 'analytics', href: '/dashboard?tab=analytics' },
                 { label: 'My Method', value: 'method', href: '/dashboard?tab=method' },
+                { label: 'Shopify', value: 'shopify', href: '/dashboard?tab=shopify' },
                 { label: 'Profile', value: 'profile', href: '/dashboard?tab=profile' },
                 { label: 'Settings', value: 'settings', href: '/dashboard?tab=settings' },
               ].map(t => (
@@ -548,6 +551,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
 
           {activeTab === 'method' && <MethodSection expert={expert} />}
+
+          {activeTab === 'shopify' && (
+            <div style={card}>
+              <ShopifySection expertId={user.id} />
+            </div>
+          )}
 
           {activeTab === 'profile' && (
             <div style={card}>
