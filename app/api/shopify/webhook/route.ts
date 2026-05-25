@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
-// Verifica che il webhook venga da Shopify
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 function verifyWebhook(body: string, hmac: string): boolean {
   const secret = process.env.SHOPIFY_CLIENT_SECRET!
   const hash = crypto.createHmac('sha256', secret).update(body, 'utf8').digest('base64')
@@ -16,50 +20,54 @@ export async function POST(request: NextRequest) {
 
   const body = await request.text()
 
-  // Verifica autenticità
   if (!verifyWebhook(body, hmac)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (topic !== 'orders/create') {
+  if (topic !== 'orders/paid') {
     return NextResponse.json({ ok: true })
   }
 
   const order = JSON.parse(body)
-  const customerEmail = order.customer?.email
-  const customerName = order.customer?.first_name || 'Cliente'
+  const buyerEmail = order.customer?.email || order.email
+  const buyerName = order.customer?.first_name || ''
 
-  if (!customerEmail) {
+  if (!buyerEmail) {
     return NextResponse.json({ ok: true })
   }
 
-  const supabase = await createServerSupabaseClient()
+  // Per ogni prodotto nell'ordine
+  for (const item of order.line_items || []) {
+    const shopifyProductId = String(item.product_id)
 
-  // Trova il seller collegato a questo shop
-  const { data: installation } = await supabase
-    .from('shopify_installations')
-    .select('*')
-    .eq('shop_domain', shop)
-    .single()
+    // Cerca il prodotto Malyte collegato a questo prodotto Shopify
+    const { data: shopifyProduct } = await supabaseAdmin
+      .from('shopify_products')
+      .select('*')
+      .eq('shop', shop)
+      .eq('shopify_product_id', shopifyProductId)
+      .maybeSingle()
 
-  if (!installation) {
-    return NextResponse.json({ error: 'Shop not found' }, { status: 404 })
-  }
+    if (!shopifyProduct) continue
 
-  // Registra l'ordine come pending — il buyer riceverà un'email con il link al questionario
-  const { error } = await supabase
-    .from('shopify_orders')
-    .insert({
-      shop_domain: shop,
-      shopify_order_id: String(order.id),
-      customer_email: customerEmail,
-      customer_name: customerName,
-      status: 'pending',
-    })
+    // Token unico per questo ordine+prodotto
+    const token = crypto.randomBytes(32).toString('hex')
 
-  if (error) {
-    console.error('Error saving order:', error)
-    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+    // Crea record ordine
+    const { error } = await supabaseAdmin
+      .from('shopify_orders')
+      .upsert({
+        shop,
+        shopify_order_id: String(order.id),
+        shopify_product_id: shopifyProductId,
+        buyer_email: buyerEmail,
+        token,
+        status: 'pending',
+      }, { onConflict: 'shop,shopify_order_id' })
+
+    if (error) {
+      console.error('Error saving order:', error)
+    }
   }
 
   return NextResponse.json({ ok: true })
