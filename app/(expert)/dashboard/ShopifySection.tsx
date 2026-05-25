@@ -41,26 +41,26 @@ interface ShopifyProduct {
 
 function QuestionBuilder({ questions, setQuestions }: {
   questions: Question[]
-  setQuestions: React.Dispatch<React.SetStateAction<Question[]>>
+  setQuestions: (qs: Question[]) => void
 }) {
   function addQuestion() {
-    setQuestions(prev => [...prev, { id: crypto.randomUUID(), question_text: '', question_type: 'text', options: [] }])
+    setQuestions([...questions, { id: crypto.randomUUID(), question_text: '', question_type: 'text', options: [] }])
   }
   function updateQuestion(id: string, field: keyof Question, value: any) {
-    setQuestions(prev => prev.map(q => q.id === id ? { ...q, [field]: value } : q))
+    setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q))
   }
   function removeQuestion(id: string) {
     if (questions.length <= 4) return
-    setQuestions(prev => prev.filter(q => q.id !== id))
+    setQuestions(questions.filter(q => q.id !== id))
   }
   function addOption(qid: string) {
-    setQuestions(prev => prev.map(q => q.id === qid ? { ...q, options: [...q.options, ''] } : q))
+    setQuestions(questions.map(q => q.id === qid ? { ...q, options: [...q.options, ''] } : q))
   }
   function updateOption(qid: string, i: number, val: string) {
-    setQuestions(prev => prev.map(q => q.id === qid ? { ...q, options: q.options.map((o, j) => j === i ? val : o) } : q))
+    setQuestions(questions.map(q => q.id === qid ? { ...q, options: q.options.map((o, j) => j === i ? val : o) } : q))
   }
   function removeOption(qid: string, i: number) {
-    setQuestions(prev => prev.map(q => q.id === qid ? { ...q, options: q.options.filter((_, j) => j !== i) } : q))
+    setQuestions(questions.map(q => q.id === qid ? { ...q, options: q.options.filter((_, j) => j !== i) } : q))
   }
 
   return (
@@ -246,7 +246,6 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
         <p style={{ color: '#64748B', fontSize: 14, margin: 0 }}>Connect your Shopify store and configure your products.</p>
       </div>
 
-      {/* NOT CONNECTED */}
       {!installation && (
         <div style={card}>
           <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Connect your store</p>
@@ -267,10 +266,8 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
         </div>
       )}
 
-      {/* CONNECTED */}
       {installation && (
         <>
-          {/* Store info */}
           <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 4px' }}>Connected store</p>
@@ -282,7 +279,6 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
             </button>
           </div>
 
-          {/* Products */}
           <div style={card}>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>
               Products ({products.length})
@@ -301,9 +297,7 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
 
                   return (
                     <div key={product.shopify_product_id} style={{ border: `1px solid ${isReady ? '#6EE7B7' : '#E8EDF8'}`, borderRadius: 12, overflow: 'hidden' }}>
-                      {/* Product header */}
-                      <div
-                        onClick={() => setExpandedProduct(isExpanded ? null : product.shopify_product_id)}
+                      <div onClick={() => setExpandedProduct(isExpanded ? null : product.shopify_product_id)}
                         style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: isReady ? '#F0FDF4' : '#F8FAFC' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{ fontSize: 16 }}>{isReady ? '✅' : '⚙️'}</span>
@@ -318,11 +312,8 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
                         <span style={{ color: '#94A3B8', fontSize: 12 }}>{isExpanded ? '▲' : '▼'}</span>
                       </div>
 
-                      {/* Product settings */}
                       {isExpanded && (
                         <div style={{ padding: '20px 16px', borderTop: '1px solid #E8EDF8' }}>
-
-                          {/* Plan type */}
                           <div style={{ marginBottom: 20 }}>
                             <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PLAN TYPE</label>
                             <div style={{ display: 'flex', gap: 10 }}>
@@ -342,7 +333,6 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
                             </div>
                           </div>
 
-                          {/* Duration — solo se weekly */}
                           {productPlanType[product.shopify_product_id] === 'weekly' && (
                             <div style={{ marginBottom: 20 }}>
                               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>DURATION (weeks)</label>
@@ -361,7 +351,6 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
                             </div>
                           )}
 
-                          {/* PDF upload */}
                           <div style={{ marginBottom: 20 }}>
                             <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PDF PLAN</label>
                             {hasPdf && (
@@ -379,13 +368,12 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
                             </label>
                           </div>
 
-                          {/* Questions */}
                           <div style={{ marginBottom: 20 }}>
                             <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>BUYER QUESTIONS (min 4)</label>
                             <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 12 }}>These questions are shown to buyers before their plan is generated.</p>
                             <QuestionBuilder
                               questions={productQuestions[product.shopify_product_id] || []}
-                              setQuestions={qs => setProductQuestions(prev => ({ ...prev, [product.shopify_product_id]: qs }))}
+                              setQuestions={(qs: Question[]) => setProductQuestions(prev => ({ ...prev, [product.shopify_product_id]: qs }))}
                             />
                           </div>
 
@@ -403,7 +391,6 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
             )}
           </div>
 
-          {/* Orders */}
           <div style={card}>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>
               Recent orders ({orders.length})
