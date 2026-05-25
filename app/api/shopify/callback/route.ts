@@ -6,6 +6,28 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const WEBHOOK_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/webhook`
+const API_VERSION = '2025-01'
+
+async function registerWebhook(shop: string, token: string, topic: string) {
+  const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/webhooks.json`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': token,
+    },
+    body: JSON.stringify({
+      webhook: { topic, address: WEBHOOK_URL, format: 'json' },
+    }),
+  })
+  const data = await res.json()
+  if (data.errors) {
+    console.error(`Webhook ${topic} error:`, data.errors)
+  } else {
+    console.log(`✅ Webhook ${topic} registered`)
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const code = searchParams.get('code')
@@ -21,9 +43,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
   }
 
-  // Estrai expert_id dallo state
-  const expertId = state.split('_')[1]
-
   // Scambia code per access token
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: 'POST',
@@ -35,19 +54,20 @@ export async function GET(request: NextRequest) {
     }),
   })
 
-  const { access_token } = await tokenResponse.json()
+  const tokenData = await tokenResponse.json()
+  const access_token = tokenData.access_token
 
   if (!access_token) {
+    console.error('Token error:', tokenData)
     return NextResponse.json({ error: 'Failed to get access token' }, { status: 400 })
   }
 
-  // Salva installazione con expert_id
+  // Salva installazione
   const { error: installError } = await supabaseAdmin
     .from('shopify_installations')
     .upsert({
       shop_domain: shop,
       access_token,
-      expert_id: expertId,
     }, { onConflict: 'shop_domain' })
 
   if (installError) {
@@ -55,21 +75,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Database error' }, { status: 500 })
   }
 
-  // Registra webhook orders/paid
-  await fetch(`https://${shop}/admin/api/2024-01/webhooks.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': access_token,
-    },
-    body: JSON.stringify({
-      webhook: {
-        topic: 'orders/paid',
-        address: `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/webhook`,
-        format: 'json',
-      },
-    }),
-  })
+  // Registra tutti i webhook
+  await Promise.all([
+    registerWebhook(shop, access_token, 'orders/paid'),
+    registerWebhook(shop, access_token, 'customers/data_request'),
+    registerWebhook(shop, access_token, 'customers/redact'),
+    registerWebhook(shop, access_token, 'shop/redact'),
+  ])
 
   const response = NextResponse.redirect(
     `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?tab=shopify&shop=${shop}&installed=true`
