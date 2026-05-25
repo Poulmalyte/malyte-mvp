@@ -30,17 +30,24 @@ export async function POST(request: NextRequest) {
 
   const order = JSON.parse(body)
   const buyerEmail = order.customer?.email || order.email
-  const buyerName = order.customer?.first_name || ''
 
   if (!buyerEmail) {
     return NextResponse.json({ ok: true })
   }
 
+  // Recupera access token del negozio
+  const { data: installation } = await supabaseAdmin
+    .from('shopify_installations')
+    .select('access_token')
+    .eq('shop_domain', shop)
+    .maybeSingle()
+
+  const accessToken = installation?.access_token as string | undefined
+
   // Per ogni prodotto nell'ordine
   for (const item of order.line_items || []) {
     const shopifyProductId = String(item.product_id)
 
-    // Cerca il prodotto Malyte collegato a questo prodotto Shopify
     const { data: shopifyProduct } = await supabaseAdmin
       .from('shopify_products')
       .select('*')
@@ -50,10 +57,8 @@ export async function POST(request: NextRequest) {
 
     if (!shopifyProduct) continue
 
-    // Token unico per questo ordine+prodotto
     const token = crypto.randomBytes(32).toString('hex')
 
-    // Crea record ordine
     const { error } = await supabaseAdmin
       .from('shopify_orders')
       .upsert({
@@ -67,6 +72,26 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error saving order:', error)
+      continue
+    }
+
+    // Salva token come metafield sull'ordine Shopify
+    if (accessToken) {
+      await fetch(`https://${shop}/admin/api/2024-01/orders/${order.id}/metafields.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': accessToken,
+        },
+        body: JSON.stringify({
+          metafield: {
+            namespace: 'malyte',
+            key: 'plan_token',
+            value: token,
+            type: 'single_line_text_field',
+          },
+        }),
+      })
     }
   }
 
