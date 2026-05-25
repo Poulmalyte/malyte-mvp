@@ -10,37 +10,32 @@ const supabaseAdmin = createClient(
 export default async function PlanPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
-  // Trova l'ordine dal token
   const { data: order } = await supabaseAdmin
     .from('shopify_orders')
     .select('*')
     .eq('token', token)
     .maybeSingle()
 
-  if (!order) {
-    redirect('/login')
-  }
+  if (!order) redirect('/login')
 
-  // Trova il prodotto Shopify con PDF e domande
   const { data: shopifyProduct } = await supabaseAdmin
     .from('shopify_products')
     .select('*')
-    .eq('shop', order.shop)
-    .eq('shopify_product_id', order.shopify_product_id)
+    .eq('shop', order!.shop)
+    .eq('shopify_product_id', order!.shopify_product_id)
     .maybeSingle()
 
-  // Trova il piano già generato se esiste
   const { data: existingPlan } = await supabaseAdmin
     .from('shopify_plans')
     .select('*')
-    .eq('order_id', order.id)
+    .eq('order_id', order!.id)
     .order('week_number', { ascending: false })
     .limit(1)
     .maybeSingle()
 
   return (
     <PlanClient
-      order={order}
+      order={order!}
       shopifyProduct={shopifyProduct}
       existingPlan={existingPlan}
       token={token}
