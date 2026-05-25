@@ -24,10 +24,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // GDPR obbligatori
+  if (topic === 'customers/data_request') {
+    console.log(`[GDPR] Data request for shop: ${shop}`)
+    return NextResponse.json({ ok: true })
+  }
+
+  if (topic === 'customers/redact') {
+    const payload = JSON.parse(body)
+    const email = payload.customer?.email
+    if (email) {
+      await supabaseAdmin
+        .from('shopify_orders')
+        .delete()
+        .eq('shop', shop)
+        .eq('buyer_email', email)
+    }
+    return NextResponse.json({ ok: true })
+  }
+
+  if (topic === 'shop/redact') {
+    await supabaseAdmin
+      .from('shopify_installations')
+      .delete()
+      .eq('shop_domain', shop)
+    await supabaseAdmin
+      .from('shopify_orders')
+      .delete()
+      .eq('shop', shop)
+    return NextResponse.json({ ok: true })
+  }
+
   if (topic !== 'orders/paid') {
     return NextResponse.json({ ok: true })
   }
 
+  // orders/paid
   const order = JSON.parse(body)
   const buyerEmail = order.customer?.email || order.email
 
@@ -35,7 +67,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  // Recupera access token del negozio
   const { data: installation } = await supabaseAdmin
     .from('shopify_installations')
     .select('access_token')
@@ -44,7 +75,6 @@ export async function POST(request: NextRequest) {
 
   const accessToken = installation?.access_token as string | undefined
 
-  // Per ogni prodotto nell'ordine
   for (const item of order.line_items || []) {
     const shopifyProductId = String(item.product_id)
 
@@ -75,7 +105,6 @@ export async function POST(request: NextRequest) {
       continue
     }
 
-    // Salva token come metafield sull'ordine Shopify
     if (accessToken) {
       await fetch(`https://${shop}/admin/api/2024-01/orders/${order.id}/metafields.json`, {
         method: 'POST',
