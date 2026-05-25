@@ -1,0 +1,17 @@
+name = "Malyte"
+client_id = "43ee3edd6fe0d07e24fd5ec9c0d4c5de"
+application_url = "https://app.malyte.com"
+embedded = false
+
+[access_scopes]
+scopes = "read_customers,read_orders"
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = ["https://app.malyte.com/api/shopify/callback"]
+
+[webhooks]
+api_version = "2025-01"
+
+[pos]
+embedded = false
