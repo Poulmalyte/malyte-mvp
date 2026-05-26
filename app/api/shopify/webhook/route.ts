@@ -8,10 +8,16 @@ const supabaseAdmin = createClient(
 )
 
 function verifyWebhook(body: string, hmac: string): boolean {
-  if (hmac === 'test-bypass-malyte') return true
   const secret = process.env.SHOPIFY_CLIENT_SECRET!
-  const hash = crypto.createHmac('sha256', secret).update(body, 'utf8').digest('base64')
-  return hash === hmac
+  const calculated = crypto.createHmac('sha256', secret).update(body, 'utf8').digest('base64')
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(calculated, 'base64'),
+      Buffer.from(hmac, 'base64')
+    )
+  } catch {
+    return false
+  }
 }
 
 export async function POST(request: NextRequest) {
