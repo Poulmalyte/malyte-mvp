@@ -34,24 +34,14 @@ export async function POST(request: NextRequest) {
     const payload = JSON.parse(body)
     const email = payload.customer?.email
     if (email) {
-      await supabaseAdmin
-        .from('shopify_orders')
-        .delete()
-        .eq('shop', shop)
-        .eq('buyer_email', email)
+      await supabaseAdmin.from('shopify_orders').delete().eq('shop', shop).eq('buyer_email', email)
     }
     return NextResponse.json({ ok: true })
   }
 
   if (topic === 'shop/redact') {
-    await supabaseAdmin
-      .from('shopify_installations')
-      .delete()
-      .eq('shop_domain', shop)
-    await supabaseAdmin
-      .from('shopify_orders')
-      .delete()
-      .eq('shop', shop)
+    await supabaseAdmin.from('shopify_installations').delete().eq('shop_domain', shop)
+    await supabaseAdmin.from('shopify_orders').delete().eq('shop', shop)
     return NextResponse.json({ ok: true })
   }
 
@@ -62,7 +52,13 @@ export async function POST(request: NextRequest) {
   const order = JSON.parse(body)
   const buyerEmail = order.customer?.email || order.email
 
+  console.log('[Webhook] order id:', order.id)
+  console.log('[Webhook] buyerEmail:', buyerEmail)
+  console.log('[Webhook] line_items:', JSON.stringify(order.line_items))
+  console.log('[Webhook] shop:', shop)
+
   if (!buyerEmail) {
+    console.log('[Webhook] No buyer email, skipping')
     return NextResponse.json({ ok: true })
   }
 
@@ -72,17 +68,22 @@ export async function POST(request: NextRequest) {
     .eq('shop_domain', shop)
     .maybeSingle()
 
+  console.log('[Webhook] installation found:', !!installation)
+
   const accessToken = installation?.access_token as string | undefined
 
   for (const item of order.line_items || []) {
     const shopifyProductId = String(item.product_id)
+    console.log('[Webhook] checking product:', shopifyProductId)
 
-    const { data: shopifyProduct } = await supabaseAdmin
+    const { data: shopifyProduct, error: productError } = await supabaseAdmin
       .from('shopify_products')
       .select('*')
       .eq('shop', shop)
       .eq('shopify_product_id', shopifyProductId)
       .maybeSingle()
+
+    console.log('[Webhook] shopifyProduct found:', !!shopifyProduct, 'error:', JSON.stringify(productError))
 
     if (!shopifyProduct) continue
 
@@ -98,6 +99,8 @@ export async function POST(request: NextRequest) {
         token,
         status: 'pending',
       }, { onConflict: 'shop,shopify_order_id' })
+
+    console.log('[Webhook] upsert error:', JSON.stringify(error))
 
     if (error) {
       console.error('Error saving order:', error)
