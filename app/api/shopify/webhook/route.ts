@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
         shopify_order_id: String(order.id),
         shopify_product_id: shopifyProductId,
         buyer_email: buyerEmail,
+        customer_email: buyerEmail,
         token,
         status: 'pending',
       }, { onConflict: 'shop_domain,shopify_order_id' })
