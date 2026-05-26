@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin
       .from('shopify_products')
       .upsert({
-        shop_domain: shop,
+        shop: shop,
         shopify_product_id: String(product.id),
         shopify_product_title: product.title,
-      }, { onConflict: 'shop_domain,shopify_product_id' })
+      }, { onConflict: 'shop,shopify_product_id' })
   }
 
   return NextResponse.json({ ok: true, count: products.length })

@@ -142,7 +142,7 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
       const { data: prods } = await supabase
         .from('shopify_products')
         .select('*')
-        .eq('shop_domain', inst.shop_domain)
+        .eq('shop', inst.shop_domain)
         .order('created_at', { ascending: false })
       setProducts(prods || [])
 
@@ -230,7 +230,7 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
         duration_weeks: productDuration[shopifyProductId] || 4,
         updated_at: new Date().toISOString(),
       })
-      .eq('shop_domain', installation.shop_domain)
+      .eq('shop', installation.shop_domain)
       .eq('shopify_product_id', shopifyProductId)
 
     setSavingProduct(null)
