@@ -166,7 +166,7 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
       const { data: ords } = await supabase
         .from('shopify_orders')
         .select('*')
-        .eq('shop', inst.shop_domain)
+        .eq('shop_domain', inst.shop_domain)
         .order('created_at', { ascending: false })
         .limit(20)
       setOrders(ords || [])
