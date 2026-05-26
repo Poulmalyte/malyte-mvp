@@ -43,6 +43,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
   }
 
+  // Estrai expert_id dallo state: formato {random}_{expertId}
+  const stateParts = state.split('_')
+  const expertId = stateParts.length >= 2 ? stateParts.slice(1).join('_') : null
+  console.log('[Callback] expertId from state:', expertId)
+
   // Scambia code per access token
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: 'POST',
@@ -63,12 +68,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to get access token' }, { status: 400 })
   }
 
-  // Salva installazione
+  // Salva installazione con expert_id
   const { error: installError } = await supabaseAdmin
     .from('shopify_installations')
     .upsert({
       shop_domain: shop,
       access_token,
+      expert_id: expertId,
     }, { onConflict: 'shop_domain' })
 
   if (installError) {
