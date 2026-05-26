@@ -34,14 +34,14 @@ export async function POST(request: NextRequest) {
     const payload = JSON.parse(body)
     const email = payload.customer?.email
     if (email) {
-      await supabaseAdmin.from('shopify_orders').delete().eq('shop', shop).eq('buyer_email', email)
+      await supabaseAdmin.from('shopify_orders').delete().eq('shop_domain', shop).eq('buyer_email', email)
     }
     return NextResponse.json({ ok: true })
   }
 
   if (topic === 'shop/redact') {
     await supabaseAdmin.from('shopify_installations').delete().eq('shop_domain', shop)
-    await supabaseAdmin.from('shopify_orders').delete().eq('shop', shop)
+    await supabaseAdmin.from('shopify_orders').delete().eq('shop_domain', shop)
     return NextResponse.json({ ok: true })
   }
 
@@ -92,13 +92,13 @@ export async function POST(request: NextRequest) {
     const { error } = await supabaseAdmin
       .from('shopify_orders')
       .upsert({
-        shop,
+        shop_domain: shop,
         shopify_order_id: String(order.id),
         shopify_product_id: shopifyProductId,
         buyer_email: buyerEmail,
         token,
         status: 'pending',
-      }, { onConflict: 'shop,shopify_order_id' })
+      }, { onConflict: 'shop_domain,shopify_order_id' })
 
     console.log('[Webhook] upsert error:', JSON.stringify(error))
 
