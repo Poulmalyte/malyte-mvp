@@ -142,7 +142,7 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
       const { data: prods } = await supabase
         .from('shopify_products')
         .select('*')
-        .eq('shop', inst.shop_domain)
+        .eq('shop_domain', inst.shop_domain)
         .order('created_at', { ascending: false })
       setProducts(prods || [])
 
@@ -179,7 +179,7 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
     if (!shop) return
     if (!shop.includes('.myshopify.com')) shop = `${shop}.myshopify.com`
     setConnectingShop(true)
-    window.location.href = `/api/shopify/install?shop=${shop}`
+    window.location.href = `/api/shopify/install?shop=${shop}&expert_id=${expertId}`
   }
 
   async function handleSyncProducts() {
@@ -230,7 +230,7 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
         duration_weeks: productDuration[shopifyProductId] || 4,
         updated_at: new Date().toISOString(),
       })
-      .eq('shop', installation.shop_domain)
+      .eq('shop_domain', installation.shop_domain)
       .eq('shopify_product_id', shopifyProductId)
 
     setSavingProduct(null)
