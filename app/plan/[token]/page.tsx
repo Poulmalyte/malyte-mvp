@@ -21,7 +21,7 @@ export default async function PlanPage({ params }: { params: Promise<{ token: st
   const { data: shopifyProduct } = await supabaseAdmin
     .from('shopify_products')
     .select('*')
-    .eq('shop', order!.shop)
+    .eq('shop', order!.shop_domain)
     .eq('shopify_product_id', order!.shopify_product_id)
     .maybeSingle()
 
