@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
   })
 
   const data = await res.json()
+  console.log('Shopify response status:', res.status)
+  console.log('Shopify response data:', JSON.stringify(data))
+
   const products = data.products || []
 
   for (const product of products) {

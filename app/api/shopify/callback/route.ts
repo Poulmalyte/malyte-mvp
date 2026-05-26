@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
   })
 
   const tokenData = await tokenResponse.json()
+  console.log('Token response:', JSON.stringify(tokenData))
   const access_token = tokenData.access_token
 
   if (!access_token) {
