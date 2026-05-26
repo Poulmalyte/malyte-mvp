@@ -33,20 +33,30 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const shop = searchParams.get('shop')
   const state = searchParams.get('state')
-  const savedState = request.cookies.get('shopify_state')?.value
 
-  if (!state || state !== savedState) {
-    return NextResponse.json({ error: 'Invalid state' }, { status: 403 })
-  }
-
-  if (!code || !shop) {
+  if (!state || !code || !shop) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
   }
 
-  // Estrai expert_id dallo state: formato {random}_{expertId}
-  const stateParts = state.split('_')
-  const expertId = stateParts.length >= 2 ? stateParts.slice(1).join('_') : null
-  console.log('[Callback] expertId from state:', expertId)
+  // Leggi expert_id dalla tabella invece del cookie
+  const { data: oauthState } = await supabaseAdmin
+    .from('shopify_oauth_states')
+    .select('expert_id')
+    .eq('state', state)
+    .maybeSingle()
+
+  if (!oauthState) {
+    return NextResponse.json({ error: 'Invalid state' }, { status: 403 })
+  }
+
+  const expertId = oauthState.expert_id
+  console.log('[Callback] expertId from DB:', expertId)
+
+  // Cancella lo state usato
+  await supabaseAdmin
+    .from('shopify_oauth_states')
+    .delete()
+    .eq('state', state)
 
   // Scambia code per access token
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
@@ -60,7 +70,6 @@ export async function GET(request: NextRequest) {
   })
 
   const tokenData = await tokenResponse.json()
-  console.log('Token response:', JSON.stringify(tokenData))
   const access_token = tokenData.access_token
 
   if (!access_token) {

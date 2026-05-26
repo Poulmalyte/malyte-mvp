@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET(request: NextRequest) {
   const shop = request.nextUrl.searchParams.get('shop')
@@ -12,7 +18,12 @@ export async function GET(request: NextRequest) {
   const scopes = process.env.SHOPIFY_SCOPES!
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/callback`
   const nonce = Math.random().toString(36).substring(2)
-  const state = expertId ? `${nonce}_${expertId}` : nonce
+  const state = `${nonce}_${expertId || ''}`
+
+  // Salva state → expertId nel DB prima del redirect
+  await supabaseAdmin
+    .from('shopify_oauth_states')
+    .insert({ state, expert_id: expertId, shop_domain: shop })
 
   const installUrl = `https://${shop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`
 
