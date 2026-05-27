@@ -8,7 +8,10 @@ scopes = "read_customers,read_orders"
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = ["https://app.malyte.com/api/shopify/callback"]
+redirect_urls = [
+  "https://app.malyte.com/api/shopify/callback",
+  "https://app.malyte.com/api/shopify/billing/confirm"
+]
 
 [webhooks]
 api_version = "2026-04"
