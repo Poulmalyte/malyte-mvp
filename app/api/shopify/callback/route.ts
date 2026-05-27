@@ -7,7 +7,7 @@ const supabaseAdmin = createClient(
 )
 
 const WEBHOOK_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/webhook`
-const API_VERSION = '2025-01'
+const API_VERSION = '2026-04'
 
 async function registerWebhook(shop: string, token: string, topic: string) {
   const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/webhooks.json`, {
@@ -72,11 +72,15 @@ async function createSubscription(shop: string, token: string): Promise<string> 
   })
 
   const data = await res.json()
-  console.log('[Billing] subscription response:', JSON.stringify(data))
+  console.log('[Billing] full response:', JSON.stringify(data))
 
-  const errors = data?.data?.appSubscriptionCreate?.userErrors
-  if (errors?.length > 0) {
-    throw new Error(`Subscription error: ${errors[0].message}`)
+  if (data.errors) {
+    throw new Error(`GraphQL error: ${JSON.stringify(data.errors)}`)
+  }
+
+  const userErrors = data?.data?.appSubscriptionCreate?.userErrors
+  if (userErrors?.length > 0) {
+    throw new Error(`Subscription userErrors: ${JSON.stringify(userErrors)}`)
   }
 
   const confirmationUrl = data?.data?.appSubscriptionCreate?.confirmationUrl
@@ -149,7 +153,6 @@ export async function GET(request: NextRequest) {
 
   await registerWebhook(shop, access_token, 'orders/paid')
 
-  // Crea subscription e manda il merchant alla pagina di conferma Shopify
   try {
     const confirmationUrl = await createSubscription(shop, access_token)
     const response = NextResponse.redirect(confirmationUrl)
@@ -157,7 +160,6 @@ export async function GET(request: NextRequest) {
     return response
   } catch (err) {
     console.error('[Billing] Error creating subscription:', err)
-    // Fallback: manda al dashboard anche senza subscription (la gestiamo dopo)
     const response = NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?tab=shopify&shop=${shop}&installed=true`
     )
