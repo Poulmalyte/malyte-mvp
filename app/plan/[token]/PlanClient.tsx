@@ -15,6 +15,13 @@ const input: React.CSSProperties = {
   boxSizing: 'border-box',
 }
 
+const CHECKIN_QUESTIONS = [
+  'How did you feel this week overall? (1-10)',
+  'Did you follow the plan? What was difficult?',
+  'Any physical changes or results you noticed?',
+  'What would you like to focus on next week?',
+]
+
 export default function PlanClient({ order, shopifyProduct, existingPlan, token }: {
   order: any
   shopifyProduct: any
@@ -31,7 +38,10 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [generating, setGenerating] = useState(false)
   const [plan, setPlan] = useState<any>(existingPlan?.plan_data || null)
-  const [step, setStep] = useState<'auth' | 'questionnaire' | 'plan'>('auth')
+  const [currentWeek, setCurrentWeek] = useState<number>(existingPlan?.week_number || 1)
+  const [step, setStep] = useState<'auth' | 'questionnaire' | 'plan' | 'checkin'>('auth')
+  const [checkinAnswers, setCheckinAnswers] = useState<Record<string, string>>({})
+  const [checkinLoading, setCheckinLoading] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -94,10 +104,37 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
       body: JSON.stringify({ token, answers }),
     })
     const json = await res.json()
-    if (json.plan) { setPlan(json.plan); setStep('plan') }
+    if (json.plan) { setPlan(json.plan); setCurrentWeek(1); setStep('plan') }
     else alert('Error generating plan. Please try again.')
     setGenerating(false)
   }
+
+  async function handleCheckin() {
+    for (const q of CHECKIN_QUESTIONS) {
+      if (!checkinAnswers[q]?.trim()) {
+        alert('Please answer all check-in questions'); return
+      }
+    }
+    setCheckinLoading(true)
+    const res = await fetch('/api/shopify/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, week_number: currentWeek, answers: checkinAnswers }),
+    })
+    const json = await res.json()
+    if (json.plan) {
+      setPlan(json.plan)
+      setCurrentWeek(json.week_number)
+      setCheckinAnswers({})
+      setStep('plan')
+    } else {
+      alert('Error generating next week plan. Please try again.')
+    }
+    setCheckinLoading(false)
+  }
+
+  const isPlanWeekly = shopifyProduct?.plan_type === 'weekly'
+  const totalWeeks = shopifyProduct?.duration_weeks || 4
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif", padding: '24px 16px' }}>
@@ -193,30 +230,91 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
         )}
 
         {step === 'plan' && plan && (
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28 }}>
-            <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 12, padding: '16px 20px', marginBottom: 24 }}>
-              <p style={{ fontWeight: 700, color: '#059669', fontSize: 15, margin: '0 0 4px' }}>✓ Your plan is ready!</p>
-              <p style={{ color: '#065F46', fontSize: 13, margin: 0 }}>You can come back anytime at app.malyte.com</p>
-            </div>
-            <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A', marginBottom: 8 }}>
-              {plan.plan_title || 'Your personalized plan'}
-            </h2>
-            <p style={{ color: '#64748B', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>{plan.welcome_message}</p>
-            {plan.sections?.map((section: any, i: number) => (
-              <div key={i} style={{ marginBottom: 20 }}>
-                <h3 style={{ fontWeight: 700, fontSize: 15, color: '#0F172A', marginBottom: 8 }}>{section.title}</h3>
-                <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.7 }}>{section.content}</p>
-              </div>
-            ))}
-            {plan.tips?.length > 0 && (
-              <div style={{ background: '#EDE9FE', borderRadius: 12, padding: 16, marginBottom: 20 }}>
-                <p style={{ fontWeight: 700, fontSize: 13, color: '#7C5CFC', marginBottom: 8 }}>💡 Tips</p>
-                {plan.tips.map((tip: string, i: number) => (
-                  <p key={i} style={{ fontSize: 13, color: '#334155', margin: '0 0 4px' }}>• {tip}</p>
-                ))}
+          <div>
+            {isPlanWeekly && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, background: '#EDE9FE', borderRadius: 12, padding: '12px 18px' }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#7C5CFC' }}>Week {currentWeek} of {totalWeeks}</span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {Array.from({ length: totalWeeks }, (_, i) => (
+                    <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i < currentWeek ? '#7C5CFC' : '#C4B5FD' }} />
+                  ))}
+                </div>
               </div>
             )}
-            <p style={{ fontSize: 14, color: '#059669', fontWeight: 600, textAlign: 'center' }}>{plan.closing_message}</p>
+
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28, marginBottom: 16 }}>
+              <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 12, padding: '16px 20px', marginBottom: 24 }}>
+                <p style={{ fontWeight: 700, color: '#059669', fontSize: 15, margin: '0 0 4px' }}>✓ Your plan is ready!</p>
+                <p style={{ color: '#065F46', fontSize: 13, margin: 0 }}>You can come back anytime at app.malyte.com</p>
+              </div>
+              <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A', marginBottom: 8 }}>
+                {plan.plan_title || 'Your personalized plan'}
+              </h2>
+              <p style={{ color: '#64748B', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>{plan.welcome_message}</p>
+              {plan.sections?.map((section: any, i: number) => (
+                <div key={i} style={{ marginBottom: 20 }}>
+                  <h3 style={{ fontWeight: 700, fontSize: 15, color: '#0F172A', marginBottom: 8 }}>{section.title}</h3>
+                  <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.7 }}>{section.content}</p>
+                </div>
+              ))}
+              {plan.tips?.length > 0 && (
+                <div style={{ background: '#EDE9FE', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+                  <p style={{ fontWeight: 700, fontSize: 13, color: '#7C5CFC', marginBottom: 8 }}>💡 Tips</p>
+                  {plan.tips.map((tip: string, i: number) => (
+                    <p key={i} style={{ fontSize: 13, color: '#334155', margin: '0 0 4px' }}>• {tip}</p>
+                  ))}
+                </div>
+              )}
+              <p style={{ fontSize: 14, color: '#059669', fontWeight: 600, textAlign: 'center' }}>{plan.closing_message}</p>
+            </div>
+
+            {isPlanWeekly && currentWeek < totalWeeks && (
+              <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28 }}>
+                <button onClick={() => setStep('checkin')}
+                  style={{ width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                  📋 Do week {currentWeek} check-in & get week {currentWeek + 1} →
+                </button>
+              </div>
+            )}
+
+            {isPlanWeekly && currentWeek >= totalWeeks && (
+              <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 16, padding: 24, textAlign: 'center' }}>
+                <p style={{ fontSize: 20, marginBottom: 8 }}>🎉</p>
+                <p style={{ fontWeight: 700, fontSize: 16, color: '#059669', marginBottom: 4 }}>Program completed!</p>
+                <p style={{ fontSize: 13, color: '#065F46' }}>You've completed all {totalWeeks} weeks. Congratulations!</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 'checkin' && (
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28 }}>
+            <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A', marginBottom: 6 }}>
+              Week {currentWeek} check-in
+            </h2>
+            <p style={{ color: '#64748B', fontSize: 13, marginBottom: 24 }}>
+              Tell us how week {currentWeek} went so we can adapt your next plan.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {CHECKIN_QUESTIONS.map((q, i) => (
+                <div key={i}>
+                  <label style={{ fontSize: 13, color: '#0F172A', display: 'block', marginBottom: 8, fontWeight: 500 }}>
+                    {i + 1}. {q}
+                  </label>
+                  <input type="text" value={checkinAnswers[q] || ''}
+                    onChange={e => setCheckinAnswers(prev => ({ ...prev, [q]: e.target.value }))}
+                    placeholder="Your answer…" style={input} />
+                </div>
+              ))}
+            </div>
+            <button onClick={handleCheckin} disabled={checkinLoading}
+              style={{ width: '100%', marginTop: 24, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', color: '#fff', border: 'none', cursor: checkinLoading ? 'not-allowed' : 'pointer', opacity: checkinLoading ? 0.7 : 1 }}>
+              {checkinLoading ? 'Generating week ' + (currentWeek + 1) + ' plan…' : '✨ Generate week ' + (currentWeek + 1) + ' plan →'}
+            </button>
+            <button onClick={() => setStep('plan')}
+              style={{ width: '100%', marginTop: 10, padding: '12px', borderRadius: 12, fontWeight: 600, fontSize: 13, background: 'transparent', color: '#94A3B8', border: '1px solid #E8EDF8', cursor: 'pointer' }}>
+              ← Back to plan
+            </button>
           </div>
         )}
 
