@@ -9,7 +9,7 @@ export default async function ShopifyPage() {
 
   const { data: expert } = await supabase
     .from('experts')
-    .select('id, name')
+    .select('*')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -33,6 +33,7 @@ export default async function ShopifyPage() {
     <ShopifyDashboard
       expertId={user.id}
       expertName={expert.name || ''}
+      expert={expert}
       totalOrders={totalOrders}
       plansGenerated={plansGenerated}
       hasInstallation={!!installation}

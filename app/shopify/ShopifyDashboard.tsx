@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
+import MethodSection from '@/app/(expert)/dashboard/MethodSection'
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -115,12 +116,13 @@ function QuestionBuilder({ questions, setQuestions }: {
 interface Props {
   expertId: string
   expertName: string
+  expert: any
   totalOrders: number
   plansGenerated: number
   hasInstallation: boolean
 }
 
-export default function ShopifyDashboard({ expertId, expertName, totalOrders, plansGenerated, hasInstallation }: Props) {
+export default function ShopifyDashboard({ expertId, expertName, expert, totalOrders, plansGenerated, hasInstallation }: Props) {
   const [installation, setInstallation] = useState<any>(null)
   const [products, setProducts] = useState<ShopifyProduct[]>([])
   const [orders, setOrders] = useState<any[]>([])
@@ -134,7 +136,7 @@ export default function ShopifyDashboard({ expertId, expertName, totalOrders, pl
   const [productPlanType, setProductPlanType] = useState<Record<string, 'weekly' | 'guide'>>({})
   const [productDuration, setProductDuration] = useState<Record<string, number>>({})
   const [syncingProducts, setSyncingProducts] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'settings'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'method' | 'products' | 'orders' | 'settings'>('overview')
 
   useEffect(() => { loadData() }, [])
 
@@ -245,6 +247,7 @@ export default function ShopifyDashboard({ expertId, expertName, totalOrders, pl
           <div style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
             {[
               { label: 'Overview', value: 'overview' },
+              { label: 'My Method', value: 'method' },
               { label: 'Products', value: 'products' },
               { label: 'Orders', value: 'orders' },
               { label: 'Settings', value: 'settings' },
@@ -341,6 +344,12 @@ export default function ShopifyDashboard({ expertId, expertName, totalOrders, pl
               </div>
             )}
           </>
+        )}
+
+        {activeTab === 'method' && (
+          <div style={card}>
+            <MethodSection expert={expert} />
+          </div>
         )}
 
         {activeTab === 'products' && (
