@@ -39,6 +39,19 @@ interface ShopifyProduct {
   duration_weeks: number
 }
 
+interface BrandProduct {
+  id: string
+  name: string
+  category: string
+  when_to_use: string
+  benefits: string
+  url: string
+  dosage: string
+  suitable_for: string
+  not_suitable_for: string
+  tags: string
+}
+
 function QuestionBuilder({ questions, setQuestions }: {
   questions: Question[]
   setQuestions: (qs: Question[]) => void
@@ -116,6 +129,7 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
   const [installation, setInstallation] = useState<any>(null)
   const [products, setProducts] = useState<ShopifyProduct[]>([])
   const [orders, setOrders] = useState<any[]>([])
+  const [brandProducts, setBrandProducts] = useState<BrandProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [shopInput, setShopInput] = useState('')
   const [connectingShop, setConnectingShop] = useState(false)
@@ -126,6 +140,8 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
   const [productPlanType, setProductPlanType] = useState<Record<string, 'weekly' | 'guide'>>({})
   const [productDuration, setProductDuration] = useState<Record<string, number>>({})
   const [syncingProducts, setSyncingProducts] = useState(false)
+  const [uploadingCsv, setUploadingCsv] = useState(false)
+  const [csvError, setCsvError] = useState('')
 
   useEffect(() => { loadData() }, [])
 
@@ -170,6 +186,13 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
         .order('created_at', { ascending: false })
         .limit(20)
       setOrders(ords || [])
+
+      const { data: bp } = await supabase
+        .from('shopify_brand_products')
+        .select('*')
+        .eq('shop_domain', inst.shop_domain)
+        .order('created_at', { ascending: false })
+      setBrandProducts(bp || [])
     }
     setLoading(false)
   }
@@ -234,6 +257,45 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
       .eq('shopify_product_id', shopifyProductId)
 
     setSavingProduct(null)
+    await loadData()
+  }
+
+  async function handleUploadCsv(file: File) {
+    if (!installation) return
+    setUploadingCsv(true)
+    setCsvError('')
+
+    const text = await file.text()
+    const lines = text.trim().split('\n')
+    if (lines.length < 2) { setCsvError('CSV is empty or invalid.'); setUploadingCsv(false); return }
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''))
+    const required = ['name']
+    for (const r of required) {
+      if (!headers.includes(r)) { setCsvError(`Missing required column: ${r}`); setUploadingCsv(false); return }
+    }
+
+    const rows = lines.slice(1).map(line => {
+      const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
+      const row: any = { shop_domain: installation.shop_domain }
+      headers.forEach((h, i) => { row[h] = values[i] || '' })
+      return row
+    }).filter(r => r.name)
+
+    if (rows.length === 0) { setCsvError('No valid rows found.'); setUploadingCsv(false); return }
+
+    // Cancella i vecchi prodotti e inserisce i nuovi
+    await supabase.from('shopify_brand_products').delete().eq('shop_domain', installation.shop_domain)
+    const { error } = await supabase.from('shopify_brand_products').insert(rows)
+
+    if (error) { setCsvError('Error saving products. Check CSV format.'); setUploadingCsv(false); return }
+
+    await loadData()
+    setUploadingCsv(false)
+  }
+
+  async function handleDeleteBrandProduct(id: string) {
+    await supabase.from('shopify_brand_products').delete().eq('id', id)
     await loadData()
   }
 
@@ -387,6 +449,62 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+
+          {/* BRAND PRODUCTS CATALOG */}
+          <div style={card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 4px' }}>Brand Products Catalog</p>
+                <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>Claude will recommend these products naturally in buyer plans.</p>
+              </div>
+              <label style={{ cursor: 'pointer' }}>
+                <input type="file" accept=".csv" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadCsv(f) }} />
+                <div style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, border: '1px solid #7C5CFC', background: uploadingCsv ? '#F5F7FA' : '#EDE9FE', color: '#7C5CFC', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {uploadingCsv ? 'Uploading…' : brandProducts.length > 0 ? '🔄 Replace CSV' : '+ Upload CSV'}
+                </div>
+              </label>
+            </div>
+
+            {csvError && (
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 14 }}>
+                <p style={{ color: '#EF4444', fontSize: 12, margin: 0 }}>⚠️ {csvError}</p>
+              </div>
+            )}
+
+            <div style={{ background: '#F8FAFC', borderRadius: 8, padding: '10px 14px', marginBottom: 14, border: '1px solid #E8EDF8' }}>
+              <p style={{ fontSize: 11, color: '#64748B', margin: '0 0 4px', fontWeight: 600 }}>Required CSV format:</p>
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: 0, fontFamily: 'monospace' }}>name, category, when_to_use, benefits, url, dosage, suitable_for, not_suitable_for, tags</p>
+            </div>
+
+            {brandProducts.length === 0 ? (
+              <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No products yet. Upload a CSV to get started.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {brandProducts.map(bp => (
+                  <div key={bp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E8EDF8' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 4px' }}>{bp.name}</p>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {bp.category && <span style={{ fontSize: 10, background: '#EDE9FE', color: '#7C5CFC', padding: '2px 8px', borderRadius: 100, fontWeight: 600 }}>{bp.category}</span>}
+                        {bp.when_to_use && <span style={{ fontSize: 10, background: '#F0FDF4', color: '#059669', padding: '2px 8px', borderRadius: 100, fontWeight: 600 }}>{bp.when_to_use}</span>}
+                        {bp.tags && <span style={{ fontSize: 10, background: '#F1F5F9', color: '#64748B', padding: '2px 8px', borderRadius: 100 }}>{bp.tags}</span>}
+                      </div>
+                      {bp.benefits && <p style={{ fontSize: 11, color: '#64748B', margin: '4px 0 0', lineHeight: 1.5 }}>{bp.benefits}</p>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 12 }}>
+                      {bp.url && (
+                        <a href={bp.url} target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: 11, color: '#7C5CFC', fontWeight: 600, textDecoration: 'none' }}>↗</a>
+                      )}
+                      <button onClick={() => handleDeleteBrandProduct(bp.id)}
+                        style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer' }}>✕</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
