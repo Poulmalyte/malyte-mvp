@@ -1,6 +1,6 @@
 name = "Malyte"
 client_id = "43ee3edd6fe0d07e24fd5ec9c0d4c5de"
-application_url = "https://app.malyte.com"
+application_url = "https://app.malyte.com/dashboard?tab=shopify"
 embedded = false
 
 [access_scopes]
