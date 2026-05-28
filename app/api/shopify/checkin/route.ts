@@ -52,6 +52,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Product not found' }, { status: 404 })
   }
 
+  // Prendi i prodotti brand dal catalogo
+  const { data: brandProducts } = await supabaseAdmin
+    .from('shopify_brand_products')
+    .select('*')
+    .eq('shop_domain', order.shop_domain)
+
+  const brandProductsList = (brandProducts || []).map((p: any) => {
+    let line = `- ${p.name}`
+    if (p.category) line += ` (${p.category})`
+    if (p.when_to_use) line += ` — when to use: ${p.when_to_use}`
+    if (p.benefits) line += ` — benefits: ${p.benefits}`
+    if (p.dosage) line += ` — dosage: ${p.dosage}`
+    if (p.url) line += ` — link: ${p.url}`
+    return line
+  }).join('\n')
+
   // Salva il check-in
   await supabaseAdmin
     .from('shopify_checkins')
@@ -89,6 +105,7 @@ export async function POST(request: NextRequest) {
   const systemPrompt = `You are an AI assistant that generates adaptive weekly plans based on buyer feedback.
 You have the seller's PDF methodology. Use it as the foundation but adapt each week based on the buyer's check-in feedback.
 Never invent content not present in the PDF. Only adapt what's already there.
+When relevant, naturally recommend the brand's products listed in the prompt — integrate them into the plan where they genuinely fit. Do not force recommendations. If a product has a URL, include it as a link.
 Respond ONLY with valid JSON, no markdown.`
 
   const userPrompt = `BUYER PROFILE (from initial questionnaire):
@@ -99,7 +116,8 @@ ${checkinText}
 
 ${prevPlanText}
 
-TASK: Generate week ${week_number + 1} plan based on the PDF methodology and the buyer's feedback from this week.
+${brandProductsList ? `BRAND PRODUCTS (recommend these naturally when relevant):\n${brandProductsList}\n` : ''}
+TASK: Generate week ${week_number + 1} plan based on the PDF methodology and the buyer's feedback from this week. Where relevant, suggest the brand's products naturally within the plan content.
 
 Reply ONLY with valid JSON:
 {
