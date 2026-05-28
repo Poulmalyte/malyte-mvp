@@ -52,6 +52,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Product not found' }, { status: 404 })
   }
 
+  // Prendi i prodotti brand dal catalogo
+  const { data: brandProducts } = await supabaseAdmin
+    .from('shopify_brand_products')
+    .select('*')
+    .eq('shop_domain', order.shop_domain)
+
+  const brandProductsList = (brandProducts || []).map((p: any) => {
+    let line = `- ${p.name}`
+    if (p.category) line += ` (${p.category})`
+    if (p.when_to_use) line += ` — when to use: ${p.when_to_use}`
+    if (p.benefits) line += ` — benefits: ${p.benefits}`
+    if (p.dosage) line += ` — dosage: ${p.dosage}`
+    if (p.url) line += ` — link: ${p.url}`
+    return line
+  }).join('\n')
+
   await supabaseAdmin
     .from('shopify_orders')
     .update({ questionnaire_answers: answers, status: 'questionnaire_done' })
@@ -68,14 +84,16 @@ export async function POST(request: NextRequest) {
   const systemPrompt = `You are an AI assistant that personalizes ready-made plans for individual buyers.
 You have received a PDF plan from the seller. Your job is to adapt its content for this specific buyer — keeping the seller's structure, philosophy and approach intact, but personalizing quantities, substitutions, and details to fit this person.
 Never invent content not present in the PDF. Only adapt what's already there.
+When relevant, naturally recommend the brand's products listed in the prompt — integrate them into the plan where they genuinely fit. Do not force recommendations. If a product has a URL, include it as a link.
 Respond ONLY with valid JSON, no markdown.`
 
   const userPrompt = `BUYER ANSWERS:
 ${answersText}
 
+${brandProductsList ? `BRAND PRODUCTS (recommend these naturally when relevant):\n${brandProductsList}\n` : ''}
 PLAN TYPE: ${shopifyProduct.plan_type === 'guide' ? 'One-time personalized guide' : `Weekly plan — ${shopifyProduct.duration_weeks} weeks total`}
 
-TASK: Generate a personalized plan based on the PDF for this buyer.
+TASK: Generate a personalized plan based on the PDF for this buyer. Where relevant, suggest the brand's products naturally within the plan content.
 
 Reply ONLY with valid JSON:
 {
