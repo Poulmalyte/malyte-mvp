@@ -128,23 +128,6 @@ export default function ProfileMenu({ name, email, slug }: Props) {
           </div>
 
           <div style={{ borderTop: '1px solid rgba(99,130,255,0.1)', padding: '8px 0' }}>
-            <Link href="/subscription" onClick={() => setOpen(false)} style={{ textDecoration: 'none' }}>
-              <div
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 16px', fontSize: 13, color: '#C4CBE0', fontWeight: 500,
-                  cursor: 'pointer', transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              >
-                <span style={{ fontSize: 14, opacity: 0.6 }}>◇</span>
-                Subscription
-              </div>
-            </Link>
-          </div>
-
-          <div style={{ borderTop: '1px solid rgba(99,130,255,0.1)', padding: '8px 0' }}>
             <button
               onClick={handleSignOut}
               style={{
