@@ -1,5 +1,4 @@
 'use client'
-
 import React, { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
@@ -39,17 +38,19 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
   const [generating, setGenerating] = useState(false)
   const [plan, setPlan] = useState<any>(existingPlan?.plan_data || null)
   const [currentWeek, setCurrentWeek] = useState<number>(existingPlan?.week_number || 1)
-  const [step, setStep] = useState<'auth' | 'questionnaire' | 'plan' | 'checkin'>('auth')
+  const [step, setStep] = useState<'auth' | 'questionnaire' | 'plan' | 'checkin'>(existingPlan ? 'plan' : 'auth')
   const [checkinAnswers, setCheckinAnswers] = useState<Record<string, string>>({})
   const [checkinLoading, setCheckinLoading] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setUser(user)
-        setStep(existingPlan ? 'plan' : 'questionnaire')
-      }
-    })
+    if (!existingPlan) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          setUser(user)
+          setStep('questionnaire')
+        }
+      })
+    }
   }, [])
 
   async function handleAuth() {
@@ -139,7 +140,6 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif", padding: '24px 16px' }}>
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
-
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 24, color: '#0F172A' }}>
             malyte<span style={{ color: '#7C5CFC' }}>.</span>
@@ -254,7 +254,7 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
               {plan.sections?.map((section: any, i: number) => (
                 <div key={i} style={{ marginBottom: 20 }}>
                   <h3 style={{ fontWeight: 700, fontSize: 15, color: '#0F172A', marginBottom: 8 }}>{section.title}</h3>
-                  <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.7 }}>{section.content}</p>
+                  <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{section.content}</p>
                 </div>
               ))}
               {plan.tips?.length > 0 && (
@@ -270,6 +270,11 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
 
             {isPlanWeekly && currentWeek < totalWeeks && (
               <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28 }}>
+                {plan.checkin_message && (
+                  <div style={{ background: '#EDE9FE', border: '1px solid #C4B5FD', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
+                    <p style={{ fontSize: 14, color: '#5B21B6', lineHeight: 1.6, margin: 0 }}>{plan.checkin_message}</p>
+                  </div>
+                )}
                 <button onClick={() => setStep('checkin')}
                   style={{ width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', color: '#fff', border: 'none', cursor: 'pointer' }}>
                   📋 Do week {currentWeek} check-in & get week {currentWeek + 1} →
