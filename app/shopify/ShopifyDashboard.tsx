@@ -136,7 +136,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
   const [productPlanType, setProductPlanType] = useState<Record<string, 'weekly' | 'guide'>>({})
   const [productDuration, setProductDuration] = useState<Record<string, number>>({})
   const [syncingProducts, setSyncingProducts] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'method' | 'products' | 'orders' | 'settings'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'method' | 'products' | 'customers' | 'orders' | 'settings'>('overview')
 
   useEffect(() => { loadData() }, [])
 
@@ -249,6 +249,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
               { label: 'Overview', value: 'overview' },
               { label: 'My Method', value: 'method' },
               { label: 'Products', value: 'products' },
+              { label: 'Customers', value: 'customers' },
               { label: 'Orders', value: 'orders' },
               { label: 'Settings', value: 'settings' },
             ].map(t => (
@@ -444,6 +445,60 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
               )}
             </div>
           </>
+        )}
+
+        {activeTab === 'customers' && (
+          <div style={card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>
+                Customers ({orders.length})
+              </p>
+            </div>
+            {orders.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>👥</div>
+                <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 6 }}>No customers yet.</p>
+                <p style={{ color: '#CBD5E1', fontSize: 12 }}>Customers will appear here once they purchase a product from your Shopify store.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {orders.map((order: any) => {
+                  const product = products.find(p => p.shopify_product_id === order.shopify_product_id)
+                  const initials = order.buyer_email ? order.buyer_email.slice(0, 2).toUpperCase() : '?'
+                  return (
+                    <div key={order.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: '#fff' }}>
+                        {initials}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {order.buyer_email || 'Unknown'}
+                        </p>
+                        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>
+                          {product?.shopify_product_title || 'Product'} · {new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100,
+                          background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7',
+                          color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706',
+                        }}>
+                          {order.status === 'plan_generated' ? '✓ Plan ready' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
+                        </span>
+                        {order.token && (
+                          <a href={`/plan/${order.token}`} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: 12, fontWeight: 600, color: '#7C5CFC', textDecoration: 'none', background: '#EDE9FE', padding: '4px 12px', borderRadius: 100, border: '1px solid #C4B5FD' }}>
+                            View plan →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'orders' && (
