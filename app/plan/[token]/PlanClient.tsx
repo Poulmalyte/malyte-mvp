@@ -21,6 +21,82 @@ const CHECKIN_QUESTIONS = [
   'What would you like to focus on next week?',
 ]
 
+const DAY_COLORS: Record<string, string> = {
+  Monday: '#7C5CFC', Tuesday: '#6385FF', Wednesday: '#059669',
+  Thursday: '#D97706', Friday: '#EC4899', Saturday: '#8B5CF6', Sunday: '#0EA5E9'
+}
+
+function NutritionDay({ day }: { day: any }) {
+  const color = DAY_COLORS[day.day] || '#7C5CFC'
+  return (
+    <div style={{ background: '#FFFFFF', borderRadius: 12, border: '1px solid #E8EDF8', overflow: 'hidden', marginBottom: 10 }}>
+      <div style={{ background: color, padding: '8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>{day.day}</span>
+        {day.kcal && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>{day.kcal} kcal</span>}
+      </div>
+      <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {day.breakfast && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>☀️</span>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>Breakfast</p>
+              <p style={{ fontSize: 13, color: '#334155', margin: 0, lineHeight: 1.5 }}>{day.breakfast}</p>
+            </div>
+          </div>
+        )}
+        {day.lunch && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>🥗</span>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>Lunch</p>
+              <p style={{ fontSize: 13, color: '#334155', margin: 0, lineHeight: 1.5 }}>{day.lunch}</p>
+            </div>
+          </div>
+        )}
+        {day.dinner && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>🍽️</span>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>Dinner</p>
+              <p style={{ fontSize: 13, color: '#334155', margin: 0, lineHeight: 1.5 }}>{day.dinner}</p>
+            </div>
+          </div>
+        )}
+        {day.activity && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>🏃</span>
+            <div>
+              <p style={{ fontSize: 13, color: '#334155', margin: 0, lineHeight: 1.5 }}>{day.activity}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PlanSection({ section }: { section: any }) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <h3 style={{ fontWeight: 700, fontSize: 16, color: '#0F172A', marginBottom: 14 }}>{section.title}</h3>
+      {section.type === 'days' && section.days?.map((day: any, i: number) => (
+        <NutritionDay key={i} day={day} />
+      ))}
+      {section.type === 'days' && section.note && (
+        <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px', border: '1px solid #E8EDF8', marginTop: 4 }}>
+          <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>📌 {section.note}</p>
+        </div>
+      )}
+      {section.type === 'text' && (
+        <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{section.content}</p>
+      )}
+      {!section.type && section.content && (
+        <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{section.content}</p>
+      )}
+    </div>
+  )
+}
+
 export default function PlanClient({ order, shopifyProduct, existingPlan, token }: {
   order: any
   shopifyProduct: any
@@ -139,7 +215,7 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
 
   return (
     <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif", padding: '24px 16px' }}>
-      <div style={{ maxWidth: 600, margin: '0 auto' }}>
+      <div style={{ maxWidth: 620, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 24, color: '#0F172A' }}>
             malyte<span style={{ color: '#7C5CFC' }}>.</span>
@@ -250,29 +326,34 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
               <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A', marginBottom: 8 }}>
                 {plan.plan_title || 'Your personalized plan'}
               </h2>
-              <p style={{ color: '#64748B', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>{plan.welcome_message}</p>
+              <p style={{ color: '#64748B', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>{plan.welcome_message}</p>
+
               {plan.sections?.map((section: any, i: number) => (
-                <div key={i} style={{ marginBottom: 20 }}>
-                  <h3 style={{ fontWeight: 700, fontSize: 15, color: '#0F172A', marginBottom: 8 }}>{section.title}</h3>
-                  <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{section.content}</p>
-                </div>
+                <PlanSection key={i} section={section} />
               ))}
+
               {plan.tips?.length > 0 && (
                 <div style={{ background: '#EDE9FE', borderRadius: 12, padding: 16, marginBottom: 20 }}>
-                  <p style={{ fontWeight: 700, fontSize: 13, color: '#7C5CFC', marginBottom: 8 }}>💡 Tips</p>
+                  <p style={{ fontWeight: 700, fontSize: 13, color: '#7C5CFC', marginBottom: 10 }}>💡 Tips for this week</p>
                   {plan.tips.map((tip: string, i: number) => (
-                    <p key={i} style={{ fontSize: 13, color: '#334155', margin: '0 0 4px' }}>• {tip}</p>
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6 }}>
+                      <span style={{ color: '#7C5CFC', fontWeight: 700, flexShrink: 0 }}>•</span>
+                      <p style={{ fontSize: 13, color: '#334155', margin: 0, lineHeight: 1.5 }}>{tip}</p>
+                    </div>
                   ))}
                 </div>
               )}
-              <p style={{ fontSize: 14, color: '#059669', fontWeight: 600, textAlign: 'center' }}>{plan.closing_message}</p>
+
+              <div style={{ background: 'linear-gradient(135deg, #EDE9FE, #D1FDF3)', borderRadius: 12, padding: '16px 20px', textAlign: 'center' }}>
+                <p style={{ fontSize: 14, color: '#5B21B6', fontWeight: 600, margin: 0 }}>{plan.closing_message}</p>
+              </div>
             </div>
 
             {isPlanWeekly && currentWeek < totalWeeks && (
-              <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28 }}>
+              <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 24 }}>
                 {plan.checkin_message && (
-                  <div style={{ background: '#EDE9FE', border: '1px solid #C4B5FD', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
-                    <p style={{ fontSize: 14, color: '#5B21B6', lineHeight: 1.6, margin: 0 }}>{plan.checkin_message}</p>
+                  <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+                    <p style={{ fontSize: 13, color: '#92400E', lineHeight: 1.6, margin: 0 }}>{plan.checkin_message}</p>
                   </div>
                 )}
                 <button onClick={() => setStep('checkin')}
@@ -286,7 +367,7 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
               <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 16, padding: 24, textAlign: 'center' }}>
                 <p style={{ fontSize: 20, marginBottom: 8 }}>🎉</p>
                 <p style={{ fontWeight: 700, fontSize: 16, color: '#059669', marginBottom: 4 }}>Program completed!</p>
-                <p style={{ fontSize: 13, color: '#065F46' }}>You've completed all {totalWeeks} weeks. Congratulations!</p>
+                <p style={{ fontSize: 13, color: '#065F46' }}>You have completed all {totalWeeks} weeks. Congratulations!</p>
               </div>
             )}
           </div>
