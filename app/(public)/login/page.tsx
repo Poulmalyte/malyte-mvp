@@ -96,7 +96,7 @@ export default function LoginPage() {
     setLoading(true); setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError('Incorrect email or password'); setLoading(false); return }
-    router.push('/dashboard'); router.refresh()
+    const params = new URLSearchParams(window.location.search); const next = params.get("next") || "/dashboard"; router.push(next); router.refresh()
   }
 
   async function handleGoogleLogin() {
