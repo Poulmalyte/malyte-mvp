@@ -5,7 +5,7 @@ import ShopifyDashboard from './ShopifyDashboard'
 export default async function ShopifyPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) redirect('/login?next=/shopify')
 
   const { data: expert } = await supabase
     .from('experts')
@@ -13,7 +13,7 @@ export default async function ShopifyPage() {
     .eq('id', user.id)
     .maybeSingle()
 
-  if (!expert) redirect('/login')
+  if (!expert) redirect('/login?next=/shopify')
 
   const { data: installation } = await supabase
     .from('shopify_installations')
