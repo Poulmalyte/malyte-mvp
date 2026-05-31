@@ -237,7 +237,9 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
             <div>
-              <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>malyte<span style={{ color: '#7C5CFC' }}>.</span></span>
+              <a href="/shopify/home" style={{ textDecoration: 'none' }}>
+  <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>malyte<span style={{ color: '#7C5CFC' }}>.</span></span>
+</a>
               <p style={{ color: '#94A3B8', fontSize: 12, margin: '2px 0 0' }}>Shopify App · {expertName}</p>
             </div>
             {installation && (
