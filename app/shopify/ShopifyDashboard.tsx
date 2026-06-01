@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
+import { useRouter } from 'next/navigation'
 import MethodSection from '@/app/(expert)/dashboard/MethodSection'
 
 const supabase = createBrowserClient(
@@ -123,6 +124,7 @@ interface Props {
 }
 
 export default function ShopifyDashboard({ expertId, expertName, expert, totalOrders, plansGenerated, hasInstallation }: Props) {
+  const router = useRouter()
   const [installation, setInstallation] = useState<any>(null)
   const [products, setProducts] = useState<ShopifyProduct[]>([])
   const [orders, setOrders] = useState<any[]>([])
@@ -137,6 +139,8 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
   const [productDuration, setProductDuration] = useState<Record<string, number>>({})
   const [syncingProducts, setSyncingProducts] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'method' | 'products' | 'customers' | 'orders' | 'settings'>('overview')
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
@@ -167,6 +171,23 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
       setOrders(ords || [])
     }
     setLoading(false)
+  }
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    await supabase.auth.signOut()
+    router.push('/shopify/login')
+  }
+
+  async function handleDisconnectStore() {
+    if (!installation) return
+    if (!confirm('Are you sure you want to disconnect your store? This will remove all synced products.')) return
+    setDisconnecting(true)
+    await supabase.from('shopify_installations').delete().eq('id', installation.id)
+    setInstallation(null)
+    setProducts([])
+    setOrders([])
+    setDisconnecting(false)
   }
 
   function handleConnectShop() {
@@ -238,13 +259,21 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
             <div>
               <a href="/shopify/home" style={{ textDecoration: 'none' }}>
-  <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>malyte<span style={{ color: '#7C5CFC' }}>.</span></span>
-</a>
+                <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>malyte<span style={{ color: '#7C5CFC' }}>.</span></span>
+              </a>
               <p style={{ color: '#94A3B8', fontSize: 12, margin: '2px 0 0' }}>Shopify App · {expertName}</p>
             </div>
-            {installation && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #6EE7B7', padding: '4px 12px', borderRadius: 100 }}>✓ {installation.shop_domain}</span>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {installation && (
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #6EE7B7', padding: '4px 12px', borderRadius: 100 }}>✓ {installation.shop_domain}</span>
+              )}
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, border: '1px solid #E8EDF8', background: '#F8FAFC', color: '#64748B', cursor: 'pointer', opacity: signingOut ? 0.7 : 1 }}>
+                {signingOut ? 'Signing out…' : 'Sign out'}
+              </button>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
             {[
@@ -316,6 +345,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
             {!installation && (
               <div style={card}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Connect your store</p>
+                <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>Enter your Shopify store URL to connect it to Malyte.</p>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <input type="text" value={shopInput} onChange={e => setShopInput(e.target.value)} placeholder="your-store.myshopify.com" style={{ ...input, flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleConnectShop()} />
                   <button onClick={handleConnectShop} disabled={connectingShop || !shopInput.trim()} style={{ padding: '12px 20px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', opacity: connectingShop ? 0.7 : 1 }}>
@@ -366,7 +396,9 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
             )}
             <div style={card}>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Products ({products.length})</p>
-              {products.length === 0 ? (
+              {!installation ? (
+                <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Connect your Shopify store first to sync products.</p>
+              ) : products.length === 0 ? (
                 <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No products yet. Click "Sync products" to import from Shopify.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -481,11 +513,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
                         </p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <span style={{
-                          fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100,
-                          background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7',
-                          color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706',
-                        }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7', color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706' }}>
                           {order.status === 'plan_generated' ? '✓ Plan ready' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
                         </span>
                         {order.token && (
@@ -533,10 +561,14 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #6EE7B7', marginBottom: 16 }}>
                   <span style={{ fontSize: 20 }}>✓</span>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 600, fontSize: 13, color: '#059669', margin: '0 0 2px' }}>Store connected</p>
                     <p style={{ fontSize: 12, color: '#065F46', margin: 0 }}>{installation.shop_domain}</p>
                   </div>
+                  <button onClick={handleDisconnectStore} disabled={disconnecting}
+                    style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer', opacity: disconnecting ? 0.7 : 1 }}>
+                    {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+                  </button>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <div style={{ flex: 1, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
