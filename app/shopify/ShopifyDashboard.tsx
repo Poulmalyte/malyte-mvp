@@ -23,13 +23,8 @@ const inputStyle: React.CSSProperties = {
 }
 
 const CATEGORIES = [
-  'Nutrition',
-  'Fitness',
-  'Mental Coaching',
-  'Wellness',
-  'Skincare',
-  'Business Coaching',
-  'Other',
+  'Nutrition', 'Fitness', 'Mental Coaching', 'Wellness',
+  'Skincare', 'Business Coaching', 'Other',
 ]
 
 type QuestionType = 'text' | 'select'
@@ -51,29 +46,13 @@ interface ShopifyProduct {
   duration_weeks: number
 }
 
-function QuestionBuilder({ questions, setQuestions }: {
-  questions: Question[]
-  setQuestions: (qs: Question[]) => void
-}) {
-  function addQuestion() {
-    setQuestions([...questions, { id: crypto.randomUUID(), question_text: '', question_type: 'text', options: [] }])
-  }
-  function updateQuestion(id: string, field: keyof Question, value: any) {
-    setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q))
-  }
-  function removeQuestion(id: string) {
-    if (questions.length <= 4) return
-    setQuestions(questions.filter(q => q.id !== id))
-  }
-  function addOption(qid: string) {
-    setQuestions(questions.map(q => q.id === qid ? { ...q, options: [...q.options, ''] } : q))
-  }
-  function updateOption(qid: string, i: number, val: string) {
-    setQuestions(questions.map(q => q.id === qid ? { ...q, options: q.options.map((o, j) => j === i ? val : o) } : q))
-  }
-  function removeOption(qid: string, i: number) {
-    setQuestions(questions.map(q => q.id === qid ? { ...q, options: q.options.filter((_, j) => j !== i) } : q))
-  }
+function QuestionBuilder({ questions, setQuestions }: { questions: Question[], setQuestions: (qs: Question[]) => void }) {
+  function addQuestion() { setQuestions([...questions, { id: crypto.randomUUID(), question_text: '', question_type: 'text', options: [] }]) }
+  function updateQuestion(id: string, field: keyof Question, value: any) { setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q)) }
+  function removeQuestion(id: string) { if (questions.length <= 4) return; setQuestions(questions.filter(q => q.id !== id)) }
+  function addOption(qid: string) { setQuestions(questions.map(q => q.id === qid ? { ...q, options: [...q.options, ''] } : q)) }
+  function updateOption(qid: string, i: number, val: string) { setQuestions(questions.map(q => q.id === qid ? { ...q, options: q.options.map((o, j) => j === i ? val : o) } : q)) }
+  function removeOption(qid: string, i: number) { setQuestions(questions.map(q => q.id === qid ? { ...q, options: q.options.filter((_, j) => j !== i) } : q)) }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -81,20 +60,14 @@ function QuestionBuilder({ questions, setQuestions }: {
         <div key={q.id} style={{ background: '#F5F7FA', borderRadius: 10, padding: 16, border: '1px solid #E8EDF8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <span style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 600 }}>Question {i + 1}</span>
-            {questions.length > 4 && (
-              <button onClick={() => removeQuestion(q.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer' }}>Remove</button>
-            )}
+            {questions.length > 4 && <button onClick={() => removeQuestion(q.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer' }}>Remove</button>}
           </div>
-          <input type="text" value={q.question_text} onChange={e => updateQuestion(q.id, 'question_text', e.target.value)}
-            placeholder="e.g. What is your main goal?" style={{ ...inputStyle, marginBottom: 10 }} />
+          <input type="text" value={q.question_text} onChange={e => updateQuestion(q.id, 'question_text', e.target.value)} placeholder="e.g. What is your main goal?" style={{ ...inputStyle, marginBottom: 10 }} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {(['text', 'select'] as QuestionType[]).map(type => (
               <button key={type} onClick={() => updateQuestion(q.id, 'question_type', type)}
-                style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                  border: `1px solid ${q.question_type === type ? '#7C5CFC' : '#E8EDF8'}`,
-                  background: q.question_type === type ? '#EDE9FE' : '#fff',
-                  color: q.question_type === type ? '#7C5CFC' : '#94A3B8' }}>
-                {type === 'text' ? '✏️ Open answer' : '☑️ Multiple choice'}
+                style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${q.question_type === type ? '#7C5CFC' : '#E8EDF8'}`, background: q.question_type === type ? '#EDE9FE' : '#fff', color: q.question_type === type ? '#7C5CFC' : '#94A3B8' }}>
+                {type === 'text' ? 'Open answer' : 'Multiple choice'}
               </button>
             ))}
           </div>
@@ -102,24 +75,16 @@ function QuestionBuilder({ questions, setQuestions }: {
             <div>
               {q.options.map((opt, j) => (
                 <div key={j} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                  <input type="text" value={opt} onChange={e => updateOption(q.id, j, e.target.value)}
-                    placeholder={`Option ${j + 1}`}
-                    style={{ flex: 1, padding: '7px 10px', borderRadius: 7, border: '1px solid #E8EDF8', fontSize: 12, outline: 'none' }} />
-                  <button onClick={() => removeOption(q.id, j)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}>✕</button>
+                  <input type="text" value={opt} onChange={e => updateOption(q.id, j, e.target.value)} placeholder={`Option ${j + 1}`} style={{ flex: 1, padding: '7px 10px', borderRadius: 7, border: '1px solid #E8EDF8', fontSize: 12, outline: 'none' }} />
+                  <button onClick={() => removeOption(q.id, j)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}>x</button>
                 </div>
               ))}
-              <button onClick={() => addOption(q.id)}
-                style={{ fontSize: 11, color: '#7C5CFC', background: 'none', border: '1px dashed #C4B5FD', borderRadius: 7, padding: '5px 12px', cursor: 'pointer' }}>
-                + Add option
-              </button>
+              <button onClick={() => addOption(q.id)} style={{ fontSize: 11, color: '#7C5CFC', background: 'none', border: '1px dashed #C4B5FD', borderRadius: 7, padding: '5px 12px', cursor: 'pointer' }}>+ Add option</button>
             </div>
           )}
         </div>
       ))}
-      <button onClick={addQuestion}
-        style={{ padding: '10px', borderRadius: 10, border: '1px dashed #C4B5FD', background: 'transparent', color: '#94A3B8', fontSize: 13, cursor: 'pointer' }}>
-        + Add question
-      </button>
+      <button onClick={addQuestion} style={{ padding: '10px', borderRadius: 10, border: '1px dashed #C4B5FD', background: 'transparent', color: '#94A3B8', fontSize: 13, cursor: 'pointer' }}>+ Add question</button>
     </div>
   )
 }
@@ -137,7 +102,6 @@ interface Props {
 
 export default function ShopifyDashboard({ expertId, expertName, expert, userEmail, isGoogleUser, totalOrders, plansGenerated, hasInstallation }: Props) {
   const router = useRouter()
-
   const [installation, setInstallation] = useState<any>(null)
   const [products, setProducts] = useState<ShopifyProduct[]>([])
   const [orders, setOrders] = useState<any[]>([])
@@ -155,8 +119,8 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [disconnecting, setDisconnecting] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
-  const [profileName, setProfileName] = useState(expert?.name || '')
-  const [profileSurname, setProfileSurname] = useState(expert?.surname || '')
+  // Settings state — brand-first
+  const [brandName, setBrandName] = useState(expert?.name || '')
   const [profileCategory, setProfileCategory] = useState(expert?.category || 'Wellness')
   const [profileEmail, setProfileEmail] = useState(userEmail)
   const [profilePassword, setProfilePassword] = useState('')
@@ -174,6 +138,8 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     setLoading(true)
     const { data: inst } = await supabase.from('shopify_installations').select('*').eq('expert_id', expertId).maybeSingle()
     setInstallation(inst)
+    // Auto-popola brand name dallo store Shopify se disponibile
+    if (inst?.shop_name && !brandName) setBrandName(inst.shop_name)
     if (inst) {
       const { data: prods } = await supabase.from('shopify_products').select('*').eq('shop', inst.shop_domain).order('created_at', { ascending: false })
       setProducts(prods || [])
@@ -210,9 +176,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     if (!confirm('Are you sure you want to disconnect your store? This will remove all synced products.')) return
     setDisconnecting(true)
     await supabase.from('shopify_installations').delete().eq('id', installation.id)
-    setInstallation(null)
-    setProducts([])
-    setOrders([])
+    setInstallation(null); setProducts([]); setOrders([])
     setDisconnecting(false)
   }
 
@@ -253,55 +217,26 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     setSavingProduct(shopifyProductId)
     const questions = productQuestions[shopifyProductId] || []
     const validQuestions = questions.filter(q => q.question_text.trim())
-    await supabase.from('shopify_products').update({
-      questions: validQuestions,
-      plan_type: productPlanType[shopifyProductId] || 'weekly',
-      duration_weeks: productDuration[shopifyProductId] || 4,
-      updated_at: new Date().toISOString()
-    }).eq('shop', installation.shop_domain).eq('shopify_product_id', shopifyProductId)
+    await supabase.from('shopify_products').update({ questions: validQuestions, plan_type: productPlanType[shopifyProductId] || 'weekly', duration_weeks: productDuration[shopifyProductId] || 4, updated_at: new Date().toISOString() }).eq('shop', installation.shop_domain).eq('shopify_product_id', shopifyProductId)
     setSavingProduct(null)
     await loadData()
   }
 
   async function handleSaveProfile() {
     setProfileMsg(null)
-    if (!profileName.trim()) {
-      setProfileMsg({ type: 'error', text: 'Name is required.' })
-      return
-    }
-    if (profilePassword && profilePassword.length < 6) {
-      setProfileMsg({ type: 'error', text: 'Password must be at least 6 characters.' })
-      return
-    }
-    if (profilePassword && profilePassword !== profileConfirmPassword) {
-      setProfileMsg({ type: 'error', text: 'Passwords do not match.' })
-      return
-    }
+    if (!brandName.trim()) { setProfileMsg({ type: 'error', text: 'Brand name is required.' }); return }
+    if (profilePassword && profilePassword.length < 6) { setProfileMsg({ type: 'error', text: 'Password must be at least 6 characters.' }); return }
+    if (profilePassword && profilePassword !== profileConfirmPassword) { setProfileMsg({ type: 'error', text: 'Passwords do not match.' }); return }
     setSavingProfile(true)
-    const body: Record<string, any> = {
-      name: profileName,
-      surname: profileSurname,
-      category: profileCategory,
-    }
+    const body: Record<string, any> = { name: brandName, category: profileCategory }
     if (profileEmail.trim() !== userEmail) body.email = profileEmail.trim()
     if (profilePassword) body.password = profilePassword
-    const res = await fetch('/api/shopify/update-profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    const res = await fetch('/api/shopify/update-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const json = await res.json()
     setSavingProfile(false)
-    if (!res.ok) {
-      setProfileMsg({ type: 'error', text: json.error || 'Error saving profile.' })
-      return
-    }
+    if (!res.ok) { setProfileMsg({ type: 'error', text: json.error || 'Error saving profile.' }); return }
     setMethodCategory(profileCategory)
-    if (json.emailChanged) {
-      setProfileMsg({ type: 'success', text: 'Profile saved. Check your new email inbox to confirm the address change.' })
-    } else {
-      setProfileMsg({ type: 'success', text: 'Profile saved successfully.' })
-    }
+    setProfileMsg({ type: 'success', text: json.emailChanged ? 'Profile saved. Check your new email to confirm the address change.' : 'Profile saved successfully.' })
     setProfilePassword('')
     setProfileConfirmPassword('')
   }
@@ -309,25 +244,15 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   async function handleSaveMethodCategory() {
     setSavingMethodCategory(true)
     setMethodCategoryMsg(null)
-    const res = await fetch('/api/shopify/update-profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category: methodCategory }),
-    })
+    const res = await fetch('/api/shopify/update-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: methodCategory }) })
     const json = await res.json()
     setSavingMethodCategory(false)
-    if (!res.ok) {
-      setMethodCategoryMsg({ type: 'error', text: json.error || 'Error saving category.' })
-    } else {
-      setProfileCategory(methodCategory)
-      setMethodCategoryMsg({ type: 'success', text: 'Category saved.' })
-      setTimeout(() => setMethodCategoryMsg(null), 3000)
-    }
+    if (!res.ok) { setMethodCategoryMsg({ type: 'error', text: json.error || 'Error saving category.' }) }
+    else { setProfileCategory(methodCategory); setMethodCategoryMsg({ type: 'success', text: 'Category saved.' }); setTimeout(() => setMethodCategoryMsg(null), 3000) }
   }
 
   const hasPdfOnAnyProduct = products.some(p => p.pdf_path)
   const hasQuestionsOnAnyProduct = products.some(p => (p.questions || []).filter((q: Question) => q.question_text?.trim()).length >= 4)
-
   const onboardingSteps = [
     { label: 'App installed', done: true },
     { label: 'Connect your Shopify store', done: !!installation },
@@ -335,7 +260,6 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     { label: 'Configure buyer questions', done: hasQuestionsOnAnyProduct },
     { label: 'Ready to sell', done: hasPdfOnAnyProduct && hasQuestionsOnAnyProduct && !!installation },
   ]
-
   const onboardingComplete = onboardingSteps.every(s => s.done)
   const onboardingProgress = onboardingSteps.filter(s => s.done).length
 
@@ -352,33 +276,19 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
             <div>
               <a href="/shopify/home" style={{ textDecoration: 'none' }}>
-                <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>
-                  malyte<span style={{ color: '#7C5CFC' }}>.</span>
-                </span>
+                <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>malyte<span style={{ color: '#7C5CFC' }}>.</span></span>
               </a>
-              <p style={{ color: '#94A3B8', fontSize: 12, margin: '2px 0 0' }}>Shopify App · {expertName}</p>
+              <p style={{ color: '#94A3B8', fontSize: 12, margin: '2px 0 0' }}>Shopify App · {brandName || expertName}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {installation && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #6EE7B7', padding: '4px 12px', borderRadius: 100 }}>
-                  ✓ {installation.shop_domain}
-                </span>
-              )}
-              <button onClick={handleSignOut} disabled={signingOut}
-                style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, border: '1px solid #E8EDF8', background: '#F8FAFC', color: '#64748B', cursor: 'pointer', opacity: signingOut ? 0.7 : 1 }}>
+              {installation && <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #6EE7B7', padding: '4px 12px', borderRadius: 100 }}>✓ {installation.shop_domain}</span>}
+              <button onClick={handleSignOut} disabled={signingOut} style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, border: '1px solid #E8EDF8', background: '#F8FAFC', color: '#64748B', cursor: 'pointer', opacity: signingOut ? 0.7 : 1 }}>
                 {signingOut ? 'Signing out…' : 'Sign out'}
               </button>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
-            {[
-              { label: 'Overview', value: 'overview' },
-              { label: 'My Method', value: 'method' },
-              { label: 'Products', value: 'products' },
-              { label: 'Customers', value: 'customers' },
-              { label: 'Orders', value: 'orders' },
-              { label: 'Settings', value: 'settings' },
-            ].map(t => (
+            {[{ label: 'Overview', value: 'overview' }, { label: 'My Method', value: 'method' }, { label: 'Products', value: 'products' }, { label: 'Customers', value: 'customers' }, { label: 'Orders', value: 'orders' }, { label: 'Settings', value: 'settings' }].map(t => (
               <button key={t.value} onClick={() => setActiveTab(t.value as any)}
                 style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: activeTab === t.value ? '#7C5CFC' : '#94A3B8', borderBottom: activeTab === t.value ? '2px solid #7C5CFC' : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {t.label}
@@ -393,18 +303,13 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
         {activeTab === 'overview' && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
-              {[
-                { label: 'Total orders', value: String(orders.length || totalOrders), color: '#7C5CFC', bg: '#EDE9FE' },
-                { label: 'Plans generated', value: String(orders.filter((o: any) => o.status === 'plan_generated').length || plansGenerated), color: '#059669', bg: '#D1FDF3' },
-                { label: 'Products configured', value: String(products.filter(p => p.pdf_path).length), color: '#6385FF', bg: '#EEF2FF' },
-              ].map((kpi, i) => (
+              {[{ label: 'Total orders', value: String(orders.length || totalOrders), color: '#7C5CFC', bg: '#EDE9FE' }, { label: 'Plans generated', value: String(orders.filter((o: any) => o.status === 'plan_generated').length || plansGenerated), color: '#059669', bg: '#D1FDF3' }, { label: 'Products configured', value: String(products.filter(p => p.pdf_path).length), color: '#6385FF', bg: '#EEF2FF' }].map((kpi, i) => (
                 <div key={i} style={{ background: kpi.bg, borderRadius: 12, padding: '16px' }}>
                   <p style={{ fontSize: 10, color: '#64748B', marginBottom: 4, fontWeight: 500 }}>{kpi.label}</p>
                   <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 28, fontWeight: 800, color: kpi.color, margin: 0 }}>{kpi.value}</p>
                 </div>
               ))}
             </div>
-
             {!onboardingComplete && (
               <div style={card}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -421,7 +326,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                   {onboardingSteps.map((step, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0, background: step.done ? '#7C5CFC' : '#F1F5F9', border: `2px solid ${step.done ? '#7C5CFC' : '#E8EDF8'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {step.done ? <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span> : <span style={{ color: '#CBD5E1', fontSize: 10, fontWeight: 700 }}>{i + 1}</span>}
+                        {step.done ? <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>v</span> : <span style={{ color: '#CBD5E1', fontSize: 10, fontWeight: 700 }}>{i + 1}</span>}
                       </div>
                       <span style={{ fontSize: 13, color: step.done ? '#64748B' : '#0F172A', fontWeight: step.done ? 400 : 600, textDecoration: step.done ? 'line-through' : 'none' }}>{step.label}</span>
                     </div>
@@ -429,14 +334,12 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                 </div>
               </div>
             )}
-
             {onboardingComplete && (
               <div style={{ ...card, background: '#F0FDF4', border: '1px solid #6EE7B7' }}>
-                <p style={{ fontWeight: 700, fontSize: 14, color: '#059669', margin: '0 0 4px' }}>🎉 You're all set!</p>
+                <p style={{ fontWeight: 700, fontSize: 14, color: '#059669', margin: '0 0 4px' }}>You are all set!</p>
                 <p style={{ fontSize: 13, color: '#065F46', margin: 0 }}>Your Malyte app is fully configured.</p>
               </div>
             )}
-
             {!installation && (
               <div style={card}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Connect your store</p>
@@ -444,17 +347,16 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                 <div style={{ display: 'flex', gap: 10 }}>
                   <input type="text" value={shopInput} onChange={e => setShopInput(e.target.value)} placeholder="your-store.myshopify.com" style={{ ...inputStyle, flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleConnectShop()} />
                   <button onClick={handleConnectShop} disabled={connectingShop || !shopInput.trim()} style={{ padding: '12px 20px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', opacity: connectingShop ? 0.7 : 1 }}>
-                    {connectingShop ? 'Connecting…' : 'Connect →'}
+                    {connectingShop ? 'Connecting…' : 'Connect'}
                   </button>
                 </div>
               </div>
             )}
-
             {orders.length > 0 && (
               <div style={card}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                   <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Recent orders</p>
-                  <button onClick={() => setActiveTab('orders')} style={{ fontSize: 12, color: '#7C5CFC', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View all →</button>
+                  <button onClick={() => setActiveTab('orders')} style={{ fontSize: 12, color: '#7C5CFC', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View all</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {orders.slice(0, 3).map((order: any) => (
@@ -464,7 +366,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                         <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                       </div>
                       <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7', color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706' }}>
-                        {order.status === 'plan_generated' ? '✓ Plan generated' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
+                        {order.status === 'plan_generated' ? 'Plan generated' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
                       </span>
                     </div>
                   ))}
@@ -478,9 +380,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
           <>
             <div style={card}>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Your category</p>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>
-                Select the category that best describes your expertise. This is used to personalise plans for your clients.
-              </p>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>Select the category that best describes your expertise.</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
                 {CATEGORIES.map(cat => (
                   <button key={cat} onClick={() => setMethodCategory(cat)}
@@ -494,14 +394,11 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                   {methodCategoryMsg.text}
                 </div>
               )}
-              <button onClick={handleSaveMethodCategory} disabled={savingMethodCategory}
-                style={{ padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingMethodCategory ? 0.7 : 1 }}>
+              <button onClick={handleSaveMethodCategory} disabled={savingMethodCategory} style={{ padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingMethodCategory ? 0.7 : 1 }}>
                 {savingMethodCategory ? 'Saving…' : 'Save category'}
               </button>
             </div>
-            <div style={card}>
-              <MethodSection expert={{ ...expert, category: methodCategory }} />
-            </div>
+            <div style={card}><MethodSection expert={{ ...expert, category: methodCategory }} /></div>
           </>
         )}
 
@@ -510,7 +407,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
             {installation && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
                 <button onClick={handleSyncProducts} disabled={syncingProducts} style={{ padding: '9px 18px', borderRadius: 100, fontSize: 12, fontWeight: 600, border: '1px solid #E8EDF8', background: '#F8FAFC', color: '#64748B', cursor: 'pointer', opacity: syncingProducts ? 0.7 : 1 }}>
-                  {syncingProducts ? 'Syncing…' : '🔄 Sync products'}
+                  {syncingProducts ? 'Syncing…' : 'Sync products'}
                 </button>
               </div>
             )}
@@ -531,23 +428,22 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                       <div key={product.shopify_product_id} style={{ border: `1px solid ${isReady ? '#6EE7B7' : '#E8EDF8'}`, borderRadius: 12, overflow: 'hidden' }}>
                         <div onClick={() => setExpandedProduct(isExpanded ? null : product.shopify_product_id)} style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: isReady ? '#F0FDF4' : '#F8FAFC' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontSize: 16 }}>{isReady ? '✅' : '⚙️'}</span>
                             <div>
                               <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px' }}>{product.shopify_product_title}</p>
                               <div style={{ display: 'flex', gap: 8 }}>
-                                <span style={{ fontSize: 11, color: hasPdf ? '#059669' : '#EF4444' }}>{hasPdf ? '✓ PDF' : '✗ No PDF'}</span>
-                                <span style={{ fontSize: 11, color: hasQuestions ? '#059669' : '#EF4444' }}>{hasQuestions ? '✓ Questions' : '✗ Questions needed'}</span>
+                                <span style={{ fontSize: 11, color: hasPdf ? '#059669' : '#EF4444' }}>{hasPdf ? 'PDF ok' : 'No PDF'}</span>
+                                <span style={{ fontSize: 11, color: hasQuestions ? '#059669' : '#EF4444' }}>{hasQuestions ? 'Questions ok' : 'Questions needed'}</span>
                               </div>
                             </div>
                           </div>
-                          <span style={{ color: '#94A3B8', fontSize: 12 }}>{isExpanded ? '▲' : '▼'}</span>
+                          <span style={{ color: '#94A3B8', fontSize: 12 }}>{isExpanded ? 'v' : '>'}</span>
                         </div>
                         {isExpanded && (
                           <div style={{ padding: '20px 16px', borderTop: '1px solid #E8EDF8' }}>
                             <div style={{ marginBottom: 20 }}>
                               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PLAN TYPE</label>
                               <div style={{ display: 'flex', gap: 10 }}>
-                                {[{ value: 'weekly', label: '📅 Weekly plan', desc: 'New plan every week with check-ins' }, { value: 'guide', label: '📖 One-time guide', desc: 'Personalized guide, no expiry' }].map(opt => (
+                                {[{ value: 'weekly', label: 'Weekly plan', desc: 'New plan every week with check-ins' }, { value: 'guide', label: 'One-time guide', desc: 'Personalized guide, no expiry' }].map(opt => (
                                   <button key={opt.value} type="button" onClick={() => setProductPlanType(prev => ({ ...prev, [product.shopify_product_id]: opt.value as 'weekly' | 'guide' }))}
                                     style={{ flex: 1, padding: '12px', borderRadius: 10, textAlign: 'left', cursor: 'pointer', border: `1px solid ${productPlanType[product.shopify_product_id] === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: productPlanType[product.shopify_product_id] === opt.value ? '#EDE9FE' : '#F8FAFC' }}>
                                     <div style={{ fontWeight: 600, fontSize: 12, color: productPlanType[product.shopify_product_id] === opt.value ? '#7C5CFC' : '#0F172A', marginBottom: 2 }}>{opt.label}</div>
@@ -573,12 +469,12 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PDF PLAN</label>
                               {hasPdf && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#F0FDF4', borderRadius: 8, border: '1px solid #6EE7B7', marginBottom: 10 }}>
-                                  <span>📄</span><span style={{ fontSize: 12, color: '#059669', fontWeight: 500 }}>PDF uploaded ✓</span>
+                                  <span style={{ fontSize: 12, color: '#059669', fontWeight: 500 }}>PDF uploaded</span>
                                 </div>
                               )}
                               <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', border: '2px dashed #E8EDF8', borderRadius: 10, cursor: 'pointer', background: '#F8FAFC' }}>
                                 <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPdf(product.shopify_product_id, f) }} />
-                                <span style={{ fontSize: 13, color: uploadingPdf === product.shopify_product_id ? '#94A3B8' : '#7C5CFC', fontWeight: 600 }}>{uploadingPdf === product.shopify_product_id ? 'Uploading…' : hasPdf ? '🔄 Replace PDF' : '+ Upload PDF'}</span>
+                                <span style={{ fontSize: 13, color: uploadingPdf === product.shopify_product_id ? '#94A3B8' : '#7C5CFC', fontWeight: 600 }}>{uploadingPdf === product.shopify_product_id ? 'Uploading…' : hasPdf ? 'Replace PDF' : '+ Upload PDF'}</span>
                               </label>
                             </div>
                             <div style={{ marginBottom: 20 }}>
@@ -603,12 +499,9 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
 
         {activeTab === 'customers' && (
           <div style={card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Customers ({orders.length})</p>
-            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>Customers ({orders.length})</p>
             {orders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>👥</div>
                 <p style={{ color: '#94A3B8', fontSize: 14, marginBottom: 6 }}>No customers yet.</p>
                 <p style={{ color: '#CBD5E1', fontSize: 12 }}>Customers will appear here once they purchase a product from your Shopify store.</p>
               </div>
@@ -619,22 +512,17 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                   const initials = order.buyer_email ? order.buyer_email.slice(0, 2).toUpperCase() : '?'
                   return (
                     <div key={order.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: '#fff' }}>
-                        {initials}
-                      </div>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: '#fff' }}>{initials}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.buyer_email || 'Unknown'}</p>
                         <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{product?.shopify_product_title || 'Product'} · {new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7', color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706' }}>
-                          {order.status === 'plan_generated' ? '✓ Plan ready' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
+                          {order.status === 'plan_generated' ? 'Plan ready' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
                         </span>
                         {order.token && (
-                          <a href={`/plan/${order.token}`} target="_blank" rel="noopener noreferrer"
-                            style={{ fontSize: 12, fontWeight: 600, color: '#7C5CFC', textDecoration: 'none', background: '#EDE9FE', padding: '4px 12px', borderRadius: 100, border: '1px solid #C4B5FD' }}>
-                            View plan →
-                          </a>
+                          <a href={`/plan/${order.token}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 600, color: '#7C5CFC', textDecoration: 'none', background: '#EDE9FE', padding: '4px 12px', borderRadius: 100, border: '1px solid #C4B5FD' }}>View plan</a>
                         )}
                       </div>
                     </div>
@@ -659,7 +547,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                       <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7', color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706' }}>
-                      {order.status === 'plan_generated' ? '✓ Plan generated' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
+                      {order.status === 'plan_generated' ? 'Plan generated' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
                     </span>
                   </div>
                 ))}
@@ -672,16 +560,16 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
           <>
             <div style={card}>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 20 }}>Profile</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>FIRST NAME</label>
-                  <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Your first name" style={inputStyle} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>LAST NAME</label>
-                  <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} placeholder="Your last name" style={inputStyle} />
-                </div>
+
+              {/* Brand name — auto-popolato da Shopify */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>BRAND NAME</label>
+                <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Your brand name" style={inputStyle} />
+                {installation?.shop_domain && (
+                  <p style={{ fontSize: 11, color: '#94A3B8', margin: '6px 0 0' }}>Auto-populated from your Shopify store: {installation.shop_domain}</p>
+                )}
               </div>
+
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>CATEGORY</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -693,14 +581,17 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                   ))}
                 </div>
               </div>
+
               <div style={{ height: 1, background: '#F1F5F9', margin: '20px 0' }} />
+
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>EMAIL</label>
                 <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} placeholder="your@email.com" style={inputStyle} />
                 {profileEmail.trim() !== userEmail && (
-                  <p style={{ fontSize: 11, color: '#F59E0B', margin: '6px 0 0' }}>⚠ You will receive a confirmation email to verify the new address.</p>
+                  <p style={{ fontSize: 11, color: '#F59E0B', margin: '6px 0 0' }}>You will receive a confirmation email to verify the new address.</p>
                 )}
               </div>
+
               {!isGoogleUser ? (
                 <>
                   <div style={{ marginBottom: 14 }}>
@@ -716,14 +607,16 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                 </>
               ) : (
                 <div style={{ padding: '10px 14px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E8EDF8', marginBottom: 14 }}>
-                  <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>🔒 Password change is not available for Google accounts.</p>
+                  <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>Password change is not available for Google accounts.</p>
                 </div>
               )}
+
               {profileMsg && (
                 <div style={{ padding: '10px 14px', borderRadius: 8, marginBottom: 14, background: profileMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${profileMsg.type === 'success' ? '#6EE7B7' : '#FECACA'}`, color: profileMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
                   {profileMsg.text}
                 </div>
               )}
+
               <button onClick={handleSaveProfile} disabled={savingProfile}
                 style={{ width: '100%', padding: '12px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingProfile ? 0.7 : 1 }}>
                 {savingProfile ? 'Saving…' : 'Save profile'}
@@ -735,7 +628,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               {installation ? (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #6EE7B7', marginBottom: 16 }}>
-                    <span style={{ fontSize: 20 }}>✓</span>
+                    <span style={{ fontSize: 20 }}>v</span>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontWeight: 600, fontSize: 13, color: '#059669', margin: '0 0 2px' }}>Store connected</p>
                       <p style={{ fontSize: 12, color: '#065F46', margin: 0 }}>{installation.shop_domain}</p>
@@ -762,7 +655,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                   <div style={{ display: 'flex', gap: 10 }}>
                     <input type="text" value={shopInput} onChange={e => setShopInput(e.target.value)} placeholder="your-store.myshopify.com" style={{ ...inputStyle, flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleConnectShop()} />
                     <button onClick={handleConnectShop} disabled={connectingShop || !shopInput.trim()} style={{ padding: '12px 20px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', opacity: connectingShop ? 0.7 : 1 }}>
-                      {connectingShop ? 'Connecting…' : 'Connect →'}
+                      {connectingShop ? 'Connecting…' : 'Connect'}
                     </button>
                   </div>
                 </div>
