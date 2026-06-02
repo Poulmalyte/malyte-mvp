@@ -7,19 +7,15 @@ export default async function ShopifyPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/shopify/login')
 
-  // Cerca profilo expert
   let { data: expert } = await supabase
     .from('experts')
     .select('*')
     .eq('id', user.id)
     .maybeSingle()
 
-  // Se non esiste, crea automaticamente profilo expert base
   if (!expert) {
     const slug = `expert-${user.id.slice(0, 8)}`
     const name = user.email?.split('@')[0] || 'Expert'
-
-    // Upsert profile
     await supabase.from('profiles').upsert({
       id: user.id,
       name,
@@ -27,15 +23,12 @@ export default async function ShopifyPage() {
       consent_terms: true,
       consent_timestamp: new Date().toISOString(),
     }, { onConflict: 'id' })
-
-    // Upsert expert
     const { data: newExpert } = await supabase.from('experts').upsert({
       id: user.id,
       name,
       slug,
       category: 'Wellness',
     }, { onConflict: 'id' }).select().single()
-
     expert = newExpert
   }
 
@@ -54,12 +47,15 @@ export default async function ShopifyPage() {
 
   const totalOrders = orders?.length || 0
   const plansGenerated = orders?.filter((o: any) => o.status === 'plan_generated').length || 0
+  const isGoogleUser = user.app_metadata?.provider === 'google'
 
   return (
     <ShopifyDashboard
       expertId={user.id}
       expertName={expert.name || user.email || ''}
       expert={expert}
+      userEmail={user.email || ''}
+      isGoogleUser={isGoogleUser}
       totalOrders={totalOrders}
       plansGenerated={plansGenerated}
       hasInstallation={!!installation}

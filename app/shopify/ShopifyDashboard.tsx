@@ -15,12 +15,22 @@ const card: React.CSSProperties = {
   border: '1px solid #E8EDF8', padding: '24px', marginBottom: 16,
 }
 
-const input: React.CSSProperties = {
+const inputStyle: React.CSSProperties = {
   width: '100%', padding: '12px 14px', borderRadius: 10,
   border: '1px solid #E8EDF8', fontSize: 13, color: '#0F172A',
   background: '#F8FAFC', outline: 'none', fontFamily: 'inherit',
   boxSizing: 'border-box', lineHeight: 1.6,
 }
+
+const CATEGORIES = [
+  'Nutrition',
+  'Fitness',
+  'Mental Coaching',
+  'Wellness',
+  'Skincare',
+  'Business Coaching',
+  'Other',
+]
 
 type QuestionType = 'text' | 'select'
 
@@ -76,7 +86,7 @@ function QuestionBuilder({ questions, setQuestions }: {
             )}
           </div>
           <input type="text" value={q.question_text} onChange={e => updateQuestion(q.id, 'question_text', e.target.value)}
-            placeholder="e.g. What is your main goal?" style={{ ...input, marginBottom: 10 }} />
+            placeholder="e.g. What is your main goal?" style={{ ...inputStyle, marginBottom: 10 }} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {(['text', 'select'] as QuestionType[]).map(type => (
               <button key={type} onClick={() => updateQuestion(q.id, 'question_type', type)}
@@ -118,13 +128,16 @@ interface Props {
   expertId: string
   expertName: string
   expert: any
+  userEmail: string
+  isGoogleUser: boolean
   totalOrders: number
   plansGenerated: number
   hasInstallation: boolean
 }
 
-export default function ShopifyDashboard({ expertId, expertName, expert, totalOrders, plansGenerated, hasInstallation }: Props) {
+export default function ShopifyDashboard({ expertId, expertName, expert, userEmail, isGoogleUser, totalOrders, plansGenerated, hasInstallation }: Props) {
   const router = useRouter()
+
   const [installation, setInstallation] = useState<any>(null)
   const [products, setProducts] = useState<ShopifyProduct[]>([])
   const [orders, setOrders] = useState<any[]>([])
@@ -141,6 +154,19 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
   const [activeTab, setActiveTab] = useState<'overview' | 'method' | 'products' | 'customers' | 'orders' | 'settings'>('overview')
   const [disconnecting, setDisconnecting] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+
+  const [profileName, setProfileName] = useState(expert?.name || '')
+  const [profileSurname, setProfileSurname] = useState(expert?.surname || '')
+  const [profileCategory, setProfileCategory] = useState(expert?.category || 'Wellness')
+  const [profileEmail, setProfileEmail] = useState(userEmail)
+  const [profilePassword, setProfilePassword] = useState('')
+  const [profileConfirmPassword, setProfileConfirmPassword] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+
+  const [methodCategory, setMethodCategory] = useState(expert?.category || 'Wellness')
+  const [savingMethodCategory, setSavingMethodCategory] = useState(false)
+  const [methodCategoryMsg, setMethodCategoryMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -227,9 +253,76 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
     setSavingProduct(shopifyProductId)
     const questions = productQuestions[shopifyProductId] || []
     const validQuestions = questions.filter(q => q.question_text.trim())
-    await supabase.from('shopify_products').update({ questions: validQuestions, plan_type: productPlanType[shopifyProductId] || 'weekly', duration_weeks: productDuration[shopifyProductId] || 4, updated_at: new Date().toISOString() }).eq('shop', installation.shop_domain).eq('shopify_product_id', shopifyProductId)
+    await supabase.from('shopify_products').update({
+      questions: validQuestions,
+      plan_type: productPlanType[shopifyProductId] || 'weekly',
+      duration_weeks: productDuration[shopifyProductId] || 4,
+      updated_at: new Date().toISOString()
+    }).eq('shop', installation.shop_domain).eq('shopify_product_id', shopifyProductId)
     setSavingProduct(null)
     await loadData()
+  }
+
+  async function handleSaveProfile() {
+    setProfileMsg(null)
+    if (!profileName.trim()) {
+      setProfileMsg({ type: 'error', text: 'Name is required.' })
+      return
+    }
+    if (profilePassword && profilePassword.length < 6) {
+      setProfileMsg({ type: 'error', text: 'Password must be at least 6 characters.' })
+      return
+    }
+    if (profilePassword && profilePassword !== profileConfirmPassword) {
+      setProfileMsg({ type: 'error', text: 'Passwords do not match.' })
+      return
+    }
+    setSavingProfile(true)
+    const body: Record<string, any> = {
+      name: profileName,
+      surname: profileSurname,
+      category: profileCategory,
+    }
+    if (profileEmail.trim() !== userEmail) body.email = profileEmail.trim()
+    if (profilePassword) body.password = profilePassword
+    const res = await fetch('/api/shopify/update-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const json = await res.json()
+    setSavingProfile(false)
+    if (!res.ok) {
+      setProfileMsg({ type: 'error', text: json.error || 'Error saving profile.' })
+      return
+    }
+    setMethodCategory(profileCategory)
+    if (json.emailChanged) {
+      setProfileMsg({ type: 'success', text: 'Profile saved. Check your new email inbox to confirm the address change.' })
+    } else {
+      setProfileMsg({ type: 'success', text: 'Profile saved successfully.' })
+    }
+    setProfilePassword('')
+    setProfileConfirmPassword('')
+  }
+
+  async function handleSaveMethodCategory() {
+    setSavingMethodCategory(true)
+    setMethodCategoryMsg(null)
+    const res = await fetch('/api/shopify/update-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: methodCategory }),
+    })
+    const json = await res.json()
+    setSavingMethodCategory(false)
+    if (!res.ok) {
+      setMethodCategoryMsg({ type: 'error', text: json.error || 'Error saving category.' })
+    } else {
+      setProfileCategory(methodCategory)
+      setMethodCategoryMsg({ type: 'success', text: 'Category saved.' })
+      setTimeout(() => setMethodCategoryMsg(null), 3000)
+    }
   }
 
   const hasPdfOnAnyProduct = products.some(p => p.pdf_path)
@@ -259,17 +352,19 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
             <div>
               <a href="/shopify/home" style={{ textDecoration: 'none' }}>
-                <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>malyte<span style={{ color: '#7C5CFC' }}>.</span></span>
+                <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>
+                  malyte<span style={{ color: '#7C5CFC' }}>.</span>
+                </span>
               </a>
               <p style={{ color: '#94A3B8', fontSize: 12, margin: '2px 0 0' }}>Shopify App · {expertName}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {installation && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #6EE7B7', padding: '4px 12px', borderRadius: 100 }}>✓ {installation.shop_domain}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #6EE7B7', padding: '4px 12px', borderRadius: 100 }}>
+                  ✓ {installation.shop_domain}
+                </span>
               )}
-              <button
-                onClick={handleSignOut}
-                disabled={signingOut}
+              <button onClick={handleSignOut} disabled={signingOut}
                 style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, border: '1px solid #E8EDF8', background: '#F8FAFC', color: '#64748B', cursor: 'pointer', opacity: signingOut ? 0.7 : 1 }}>
                 {signingOut ? 'Signing out…' : 'Sign out'}
               </button>
@@ -347,7 +442,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Connect your store</p>
                 <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>Enter your Shopify store URL to connect it to Malyte.</p>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <input type="text" value={shopInput} onChange={e => setShopInput(e.target.value)} placeholder="your-store.myshopify.com" style={{ ...input, flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleConnectShop()} />
+                  <input type="text" value={shopInput} onChange={e => setShopInput(e.target.value)} placeholder="your-store.myshopify.com" style={{ ...inputStyle, flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleConnectShop()} />
                   <button onClick={handleConnectShop} disabled={connectingShop || !shopInput.trim()} style={{ padding: '12px 20px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', opacity: connectingShop ? 0.7 : 1 }}>
                     {connectingShop ? 'Connecting…' : 'Connect →'}
                   </button>
@@ -380,9 +475,34 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
         )}
 
         {activeTab === 'method' && (
-          <div style={card}>
-            <MethodSection expert={expert} />
-          </div>
+          <>
+            <div style={card}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Your category</p>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>
+                Select the category that best describes your expertise. This is used to personalise plans for your clients.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {CATEGORIES.map(cat => (
+                  <button key={cat} onClick={() => setMethodCategory(cat)}
+                    style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${methodCategory === cat ? '#7C5CFC' : '#E8EDF8'}`, background: methodCategory === cat ? '#EDE9FE' : '#F8FAFC', color: methodCategory === cat ? '#7C5CFC' : '#64748B' }}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              {methodCategoryMsg && (
+                <div style={{ padding: '10px 14px', borderRadius: 8, marginBottom: 12, background: methodCategoryMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${methodCategoryMsg.type === 'success' ? '#6EE7B7' : '#FECACA'}`, color: methodCategoryMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
+                  {methodCategoryMsg.text}
+                </div>
+              )}
+              <button onClick={handleSaveMethodCategory} disabled={savingMethodCategory}
+                style={{ padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingMethodCategory ? 0.7 : 1 }}>
+                {savingMethodCategory ? 'Saving…' : 'Save category'}
+              </button>
+            </div>
+            <div style={card}>
+              <MethodSection expert={{ ...expert, category: methodCategory }} />
+            </div>
+          </>
         )}
 
         {activeTab === 'products' && (
@@ -484,9 +604,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
         {activeTab === 'customers' && (
           <div style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>
-                Customers ({orders.length})
-              </p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Customers ({orders.length})</p>
             </div>
             {orders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
@@ -505,12 +623,8 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
                         {initials}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {order.buyer_email || 'Unknown'}
-                        </p>
-                        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>
-                          {product?.shopify_product_title || 'Product'} · {new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
+                        <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.buyer_email || 'Unknown'}</p>
+                        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{product?.shopify_product_title || 'Product'} · {new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7', color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706' }}>
@@ -555,44 +669,106 @@ export default function ShopifyDashboard({ expertId, expertName, expert, totalOr
         )}
 
         {activeTab === 'settings' && (
-          <div style={card}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Store settings</p>
-            {installation ? (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #6EE7B7', marginBottom: 16 }}>
-                  <span style={{ fontSize: 20 }}>✓</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 600, fontSize: 13, color: '#059669', margin: '0 0 2px' }}>Store connected</p>
-                    <p style={{ fontSize: 12, color: '#065F46', margin: 0 }}>{installation.shop_domain}</p>
-                  </div>
-                  <button onClick={handleDisconnectStore} disabled={disconnecting}
-                    style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer', opacity: disconnecting ? 0.7 : 1 }}>
-                    {disconnecting ? 'Disconnecting…' : 'Disconnect'}
-                  </button>
+          <>
+            <div style={card}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 20 }}>Profile</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>FIRST NAME</label>
+                  <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Your first name" style={inputStyle} />
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ flex: 1, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
-                    <p style={{ fontSize: 11, color: '#94A3B8', margin: '0 0 4px', fontWeight: 600 }}>Subscription status</p>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', margin: 0, textTransform: 'capitalize' }}>{installation.subscription_status || 'pending'}</p>
-                  </div>
-                  <div style={{ flex: 1, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
-                    <p style={{ fontSize: 11, color: '#94A3B8', margin: '0 0 4px', fontWeight: 600 }}>Plan</p>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: '#7C5CFC', margin: 0 }}>Malyte Pro · $9.99/mo</p>
-                  </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>LAST NAME</label>
+                  <input type="text" value={profileSurname} onChange={e => setProfileSurname(e.target.value)} placeholder="Your last name" style={inputStyle} />
                 </div>
               </div>
-            ) : (
-              <div>
-                <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20 }}>Connect your Shopify store to get started.</p>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <input type="text" value={shopInput} onChange={e => setShopInput(e.target.value)} placeholder="your-store.myshopify.com" style={{ ...input, flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleConnectShop()} />
-                  <button onClick={handleConnectShop} disabled={connectingShop || !shopInput.trim()} style={{ padding: '12px 20px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', opacity: connectingShop ? 0.7 : 1 }}>
-                    {connectingShop ? 'Connecting…' : 'Connect →'}
-                  </button>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>CATEGORY</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {CATEGORIES.map(cat => (
+                    <button key={cat} onClick={() => setProfileCategory(cat)}
+                      style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${profileCategory === cat ? '#7C5CFC' : '#E8EDF8'}`, background: profileCategory === cat ? '#EDE9FE' : '#F8FAFC', color: profileCategory === cat ? '#7C5CFC' : '#64748B' }}>
+                      {cat}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
+              <div style={{ height: 1, background: '#F1F5F9', margin: '20px 0' }} />
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>EMAIL</label>
+                <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} placeholder="your@email.com" style={inputStyle} />
+                {profileEmail.trim() !== userEmail && (
+                  <p style={{ fontSize: 11, color: '#F59E0B', margin: '6px 0 0' }}>⚠ You will receive a confirmation email to verify the new address.</p>
+                )}
+              </div>
+              {!isGoogleUser ? (
+                <>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>NEW PASSWORD</label>
+                    <input type="password" value={profilePassword} onChange={e => setProfilePassword(e.target.value)} placeholder="Leave blank to keep current password" style={inputStyle} />
+                  </div>
+                  {profilePassword && (
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>CONFIRM NEW PASSWORD</label>
+                      <input type="password" value={profileConfirmPassword} onChange={e => setProfileConfirmPassword(e.target.value)} placeholder="Repeat new password" style={inputStyle} />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ padding: '10px 14px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E8EDF8', marginBottom: 14 }}>
+                  <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>🔒 Password change is not available for Google accounts.</p>
+                </div>
+              )}
+              {profileMsg && (
+                <div style={{ padding: '10px 14px', borderRadius: 8, marginBottom: 14, background: profileMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${profileMsg.type === 'success' ? '#6EE7B7' : '#FECACA'}`, color: profileMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
+                  {profileMsg.text}
+                </div>
+              )}
+              <button onClick={handleSaveProfile} disabled={savingProfile}
+                style={{ width: '100%', padding: '12px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingProfile ? 0.7 : 1 }}>
+                {savingProfile ? 'Saving…' : 'Save profile'}
+              </button>
+            </div>
+
+            <div style={card}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Store settings</p>
+              {installation ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #6EE7B7', marginBottom: 16 }}>
+                    <span style={{ fontSize: 20 }}>✓</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 600, fontSize: 13, color: '#059669', margin: '0 0 2px' }}>Store connected</p>
+                      <p style={{ fontSize: 12, color: '#065F46', margin: 0 }}>{installation.shop_domain}</p>
+                    </div>
+                    <button onClick={handleDisconnectStore} disabled={disconnecting}
+                      style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer', opacity: disconnecting ? 0.7 : 1 }}>
+                      {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ flex: 1, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
+                      <p style={{ fontSize: 11, color: '#94A3B8', margin: '0 0 4px', fontWeight: 600 }}>Subscription status</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', margin: 0, textTransform: 'capitalize' }}>{installation.subscription_status || 'pending'}</p>
+                    </div>
+                    <div style={{ flex: 1, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
+                      <p style={{ fontSize: 11, color: '#94A3B8', margin: '0 0 4px', fontWeight: 600 }}>Plan</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#7C5CFC', margin: 0 }}>Malyte Pro · $9.99/mo</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16 }}>Connect your Shopify store to get started.</p>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <input type="text" value={shopInput} onChange={e => setShopInput(e.target.value)} placeholder="your-store.myshopify.com" style={{ ...inputStyle, flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleConnectShop()} />
+                    <button onClick={handleConnectShop} disabled={connectingShop || !shopInput.trim()} style={{ padding: '12px 20px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', opacity: connectingShop ? 0.7 : 1 }}>
+                      {connectingShop ? 'Connecting…' : 'Connect →'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
       </div>
