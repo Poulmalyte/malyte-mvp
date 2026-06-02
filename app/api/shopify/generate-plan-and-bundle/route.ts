@@ -1,4 +1,3 @@
-// placeholder
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
@@ -187,6 +186,7 @@ Return exactly this JSON:
       shop_domain: shopDomain,
     }
 
+    // Salva customer
     let customerId: string | null = null
     if (customer_email) {
       const { data: existingCustomer } = await supabaseAdmin
@@ -223,9 +223,46 @@ Return exactly this JSON:
       }
     }
 
+    // Salva piano in brand_plans con token univoco
+    const { data: savedPlan } = await supabaseAdmin
+      .from('brand_plans')
+      .insert({
+        merchant_id,
+        customer_id: customerId,
+        customer_email: customer_email || null,
+        merchant_name: merchant?.name || '',
+        merchant_slug: merchant?.slug || '',
+        category: merchant?.category || 'Skincare',
+        week_number: 1,
+        plan_data: result.plan,
+        package_data: result.package,
+        customer_summary: result.customer_summary,
+        status: 'active',
+      })
+      .select('token')
+      .single()
+
+    const planToken = savedPlan?.token
+    const planUrl = planToken ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'}/routine/${planToken}` : null
+
+    // Invia email via Supabase se email fornita
+    if (customer_email && planUrl) {
+      try {
+        await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email: customer_email,
+        })
+        // Usa inviteUserByEmail per mandare email custom — non disponibile direttamente
+        // Usiamo una edge function o semplicemente salviamo il token e lo mostriamo in UI
+      } catch {
+        // Email fallback — mostriamo link in UI
+      }
+    }
+
+    // Log eventi
     await supabaseAdmin.from('event_stream').insert([
       { merchant_id, customer_id: customerId, event_type: 'quiz_completed', event_data: { quiz_answers, category: merchant?.category } },
-      { merchant_id, customer_id: customerId, event_type: 'plan_generated', event_data: { week: 1 } },
+      { merchant_id, customer_id: customerId, event_type: 'plan_generated', event_data: { week: 1, plan_token: planToken } },
       { merchant_id, customer_id: customerId, event_type: 'package_generated', event_data: { package_name: result.package.package_name, total_price: totalPrice, stage: 1 } },
     ])
 
@@ -235,6 +272,8 @@ Return exactly this JSON:
       customer_summary: result.customer_summary,
       plan: result.plan,
       package: result.package,
+      plan_token: planToken,
+      plan_url: planUrl,
     })
 
   } catch (err: any) {
