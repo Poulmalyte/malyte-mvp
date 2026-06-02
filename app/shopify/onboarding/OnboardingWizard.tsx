@@ -111,7 +111,7 @@ export default function OnboardingWizard({ merchant, merchantProfile, catalogIte
           {currentStep === 1 && <Step1Identity initialData={merchantData} onComplete={handleStep1Complete} />}
           {currentStep === 2 && <Step2Catalog merchantId={merchant?.id} hasInstallation={!!installation} initialItems={catalogItemsState} onComplete={handleStep2Complete} onBack={handleBack} />}
           {currentStep === 3 && <Step3Intake category={merchantData.category || merchant?.category || 'Skincare'} initialQuestions={merchantData.customer_questions} onComplete={handleStep3Complete} onBack={handleBack} />}
-          {currentStep === 4 && <Step4Preview onComplete={handleStep4Complete} onBack={handleBack} />}
+          {currentStep === 4 && <Step4Preview onComplete={handleStep4Complete} onBack={handleBack} category={merchantData.category || merchant?.category || 'Skincare'} />}
           {currentStep === 5 && <Step5GoLive merchant={merchant} merchantProfile={merchantData} catalogItemsCount={catalogItemsState.length} onComplete={handleStep5Complete} />}
         </div>
       </div>
