@@ -195,7 +195,16 @@ function PlanScreen({ result, brandName, category, shopDomain, packageViewed, se
   result: any, brandName: string, category: string, shopDomain: string | null,
   packageViewed: boolean, setPackageViewed: (v: boolean) => void
 }) {
-  const { plan, package: pkg, customer_summary } = result
+  const { plan, package: pkg, customer_summary, plan_url } = result
+  const [copied, setCopied] = useState(false)
+
+  function handleCopyLink() {
+    if (plan_url) {
+      navigator.clipboard.writeText(plan_url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
 
   function handleAddToCart() {
     setPackageViewed(true)
@@ -212,7 +221,7 @@ function PlanScreen({ result, brandName, category, shopDomain, packageViewed, se
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {item.price && <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>€{Number(item.price).toFixed(2)}</span>}
           {item.product_url && (
-            <a href={item.product_url} target="_blank" rel="noopener noreferrer"
+            <a href={item.product_url} target='_blank' rel='noopener noreferrer'
               style={{ fontSize: 11, fontWeight: 600, color: '#7C5CFC', textDecoration: 'none', background: '#EDE9FE', padding: '3px 10px', borderRadius: 100, whiteSpace: 'nowrap' }}>
               View →
             </a>
@@ -231,7 +240,6 @@ function PlanScreen({ result, brandName, category, shopDomain, packageViewed, se
           <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 22, color: '#0F172A' }}>{brandName}</span>
         </div>
       </div>
-
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 24px 80px' }}>
         <div style={{ background: 'linear-gradient(135deg, #7C5CFC, #06B6D4)', borderRadius: 20, padding: '24px', marginBottom: 20, color: '#fff' }}>
           <p style={{ fontSize: 12, fontWeight: 600, opacity: 0.8, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Your personalised plan · Week 1</p>
@@ -241,26 +249,42 @@ function PlanScreen({ result, brandName, category, shopDomain, packageViewed, se
           {customer_summary && <p style={{ fontSize: 13, opacity: 0.9, margin: 0, lineHeight: 1.5 }}>{customer_summary}</p>}
         </div>
 
+        {plan_url && (
+          <div style={{ background: '#F0FDF4', borderRadius: 14, border: '1px solid #6EE7B7', padding: '16px 20px', marginBottom: 20 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#059669', margin: '0 0 8px' }}>Bookmark your plan</p>
+            <p style={{ fontSize: 12, color: '#065F46', margin: '0 0 12px', lineHeight: 1.5 }}>Your plan is saved and accessible anytime at this link.</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1, padding: '10px 12px', background: '#fff', borderRadius: 8, border: '1px solid #6EE7B7', fontSize: 11, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {plan_url}
+              </div>
+              <button onClick={handleCopyLink}
+                style={{ padding: '10px 16px', borderRadius: 8, fontWeight: 700, fontSize: 12, background: copied ? '#059669' : '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {plan?.weekly_notes && (
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E8EDF8', padding: '16px 20px', marginBottom: 20 }}>
-            <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6, fontStyle: 'italic' }}>"{plan.weekly_notes}"</p>
+            <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6, fontStyle: 'italic' }}>{plan.weekly_notes}</p>
           </div>
         )}
 
         {plan?.morning_routine?.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>☀️ Morning routine</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>Morning routine</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {plan.morning_routine.map((item: any, i: number) => <RoutineItem key={i} item={item} color="#F59E0B" bg="#FFFBEB" border="#FDE68A" />)}
+              {plan.morning_routine.map((item: any, i: number) => <RoutineItem key={i} item={item} color='#F59E0B' bg='#FFFBEB' border='#FDE68A' />)}
             </div>
           </div>
         )}
 
         {plan?.evening_routine?.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#6385FF', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>🌙 Evening routine</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#6385FF', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>Evening routine</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {plan.evening_routine.map((item: any, i: number) => <RoutineItem key={i} item={item} color="#6385FF" bg="#EEF2FF" border="#C7D2FE" />)}
+              {plan.evening_routine.map((item: any, i: number) => <RoutineItem key={i} item={item} color='#6385FF' bg='#EEF2FF' border='#C7D2FE' />)}
             </div>
           </div>
         )}
@@ -286,9 +310,7 @@ function PlanScreen({ result, brandName, category, shopDomain, packageViewed, se
                     <p style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.product_title}</p>
                     {item.reason && <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{item.reason}</p>}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    {item.price && <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>€{Number(item.price).toFixed(2)}</span>}
-                  </div>
+                  {item.price && <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', flexShrink: 0, marginLeft: 8 }}>€{Number(item.price).toFixed(2)}</span>}
                 </div>
               ))}
             </div>
@@ -315,7 +337,7 @@ function PlanScreen({ result, brandName, category, shopDomain, packageViewed, se
         <div style={{ background: '#F5F3FF', borderRadius: 14, border: '1px solid #DDD6FE', padding: '16px 20px' }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: '#7C5CFC', margin: '0 0 8px' }}>Your routine evolves with you</p>
           <p style={{ fontSize: 12, color: '#5B21B6', margin: 0, lineHeight: 1.6 }}>
-            Every week your plan adapts based on your progress. New products are introduced at exactly the right moment — never too much, never too soon.
+            Every week your plan adapts based on your progress. New products are introduced at exactly the right moment.
           </p>
         </div>
       </div>
