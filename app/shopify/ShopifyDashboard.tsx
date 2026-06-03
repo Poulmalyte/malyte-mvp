@@ -115,7 +115,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [productPlanType, setProductPlanType] = useState<Record<string, 'weekly' | 'guide'>>({})
   const [productDuration, setProductDuration] = useState<Record<string, number>>({})
   const [syncingProducts, setSyncingProducts] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'method' | 'products' | 'customers' | 'orders' | 'settings'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'method' | 'products' | 'customers' | 'orders' | 'analytics' | 'settings'>('overview')
   const [disconnecting, setDisconnecting] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
@@ -131,6 +131,8 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [methodCategory, setMethodCategory] = useState(expert?.category || 'Wellness')
   const [savingMethodCategory, setSavingMethodCategory] = useState(false)
   const [methodCategoryMsg, setMethodCategoryMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [analyticsData, setAnalyticsData] = useState<any>(null)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
@@ -251,6 +253,15 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     else { setProfileCategory(methodCategory); setMethodCategoryMsg({ type: 'success', text: 'Category saved.' }); setTimeout(() => setMethodCategoryMsg(null), 3000) }
   }
 
+  async function loadAnalytics() {
+    if (analyticsData) return
+    setLoadingAnalytics(true)
+    const res = await fetch('/api/shopify/analytics')
+    const json = await res.json()
+    if (json.ok) setAnalyticsData(json)
+    setLoadingAnalytics(false)
+  }
+
   const hasPdfOnAnyProduct = products.some(p => p.pdf_path)
   const hasQuestionsOnAnyProduct = products.some(p => (p.questions || []).filter((q: Question) => q.question_text?.trim()).length >= 4)
   const onboardingSteps = [
@@ -288,7 +299,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
             </div>
           </div>
           <div style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
-            {[{ label: 'Overview', value: 'overview' }, { label: 'My Method', value: 'method' }, { label: 'Products', value: 'products' }, { label: 'Customers', value: 'customers' }, { label: 'Orders', value: 'orders' }, { label: 'Settings', value: 'settings' }].map(t => (
+            {[{ label: 'Overview', value: 'overview' }, { label: 'My Method', value: 'method' }, { label: 'Products', value: 'products' }, { label: 'Customers', value: 'customers' }, { label: 'Orders', value: 'orders' }, { label: 'Analytics', value: 'analytics' }, { label: 'Settings', value: 'settings' }].map(t => (
               <button key={t.value} onClick={() => setActiveTab(t.value as any)}
                 style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: activeTab === t.value ? '#7C5CFC' : '#94A3B8', borderBottom: activeTab === t.value ? '2px solid #7C5CFC' : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {t.label}
@@ -554,6 +565,10 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <AnalyticsTab data={analyticsData} loading={loadingAnalytics} onLoad={loadAnalytics} />
         )}
 
         {activeTab === 'settings' && (
