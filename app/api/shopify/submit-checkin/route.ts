@@ -39,7 +39,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Verifica scheduled_checkin
     const { data: scheduledCheckin } = await supabaseAdmin
       .from('scheduled_checkins')
       .select('*')
@@ -49,7 +48,6 @@ export async function POST(request: Request) {
     if (!scheduledCheckin) return NextResponse.json({ error: 'Check-in not found' }, { status: 404 })
     if (scheduledCheckin.status === 'completed') return NextResponse.json({ error: 'Already completed' }, { status: 400 })
 
-    // Carica brand_plan
     const { data: brandPlan } = await supabaseAdmin
       .from('brand_plans')
       .select('*')
@@ -63,7 +61,6 @@ export async function POST(request: Request) {
     const category = brandPlan.category || 'Skincare'
     const nextWeek = (week_number || 1) + 1
 
-    // Carica merchant + profile
     const { data: merchant } = await supabaseAdmin
       .from('merchants').select('*').eq('id', merchant_id).single()
 
@@ -73,7 +70,6 @@ export async function POST(request: Request) {
     const { data: installation } = await supabaseAdmin
       .from('shopify_installations').select('shop_domain').eq('expert_id', merchant_id).maybeSingle()
 
-    // Carica catalog items con tag
     const { data: catalogItems } = await supabaseAdmin
       .from('catalog_items')
       .select('*, catalog_item_tags(*)')
@@ -107,7 +103,6 @@ export async function POST(request: Request) {
       }
     })
 
-    // Calcola adherence_score dai check-in answers
     const adherenceMap: Record<string, number> = {
       'Great — did it every day': 1.0, 'All of them': 1.0, 'Perfectly': 1.0,
       'Good — most days': 0.75, 'Most': 0.75, 'Mostly': 0.75,
@@ -126,7 +121,6 @@ export async function POST(request: Request) {
     const improvementScore = improvementMap[answers.improvement || answers.energy || ''] || 3
     const hasReaction = answers.reaction && (answers.reaction.includes('irritation') || answers.reaction.includes('stopped'))
 
-    // Salva checkin_event con dati grezzi
     await supabaseAdmin.from('checkin_events').insert({
       customer_id,
       merchant_id,
@@ -142,7 +136,6 @@ export async function POST(request: Request) {
       triggered_plan_update: true,
     })
 
-    // Genera piano aggiornato con Claude
     const systemPrompt = `You are a ${category} expert updating a customer's personalized plan based on their weekly check-in.
 
 Brand: ${merchant?.name || 'this brand'}
@@ -170,13 +163,13 @@ ${JSON.stringify(answers, null, 2)}
 Adherence: ${adherenceScore * 100}%
 Had reactions: ${hasReaction ? 'YES — be careful' : 'No'}
 
-Generate the updated Week ${nextWeek} plan. Keep what's working, adjust what's not.
+Generate the updated Week ${nextWeek} plan.
 
 Return exactly this JSON:
 {
   "headline": "Week ${nextWeek} plan headline",
   "week": ${nextWeek},
-  "adaptation_note": "1-2 sentences explaining what changed and why based on their check-in",
+  "adaptation_note": "1-2 sentences explaining what changed and why",
   "morning_routine": [
     {
       "product_id": "catalog_item_uuid",
@@ -205,7 +198,6 @@ Return exactly this JSON:
     try { newPlan = JSON.parse(clean) }
     catch { newPlan = brandPlan.plan_data }
 
-    // Arricchisci routine con prezzi e URL
     const enrichRoutine = (routine: any[]) => routine.map(item => {
       const catalogItem = productsContext.find(p => p.id === item.product_id)
       return { ...item, price: catalogItem?.price || null, product_url: catalogItem?.product_url || null, variant_id: catalogItem?.variant_id || null }
@@ -214,7 +206,6 @@ Return exactly this JSON:
     newPlan.morning_routine = enrichRoutine(newPlan.morning_routine || [])
     newPlan.evening_routine = enrichRoutine(newPlan.evening_routine || [])
 
-    // Salva nuovo brand_plan
     const { data: newBrandPlan } = await supabaseAdmin
       .from('brand_plans')
       .insert({
@@ -230,21 +221,18 @@ Return exactly this JSON:
         customer_summary: brandPlan.customer_summary,
         status: 'active',
       })
-      .select('token')
+      .select('id, token')
       .single()
 
     const newPlanToken = newBrandPlan?.token
 
-    // Marca scheduled_checkin come completato
     await supabaseAdmin
       .from('scheduled_checkins')
       .update({ status: 'completed', completed_at: new Date().toISOString() })
       .eq('checkin_token', checkin_token)
 
-    // Crea next scheduled_checkin (settimana prossima)
     const nextScheduledFor = new Date()
     nextScheduledFor.setDate(nextScheduledFor.getDate() + 7)
-
     const checkinTemplate = CHECKIN_TEMPLATES[category] || CHECKIN_TEMPLATES['Skincare']
 
     await supabaseAdmin.from('scheduled_checkins').insert({
@@ -257,7 +245,33 @@ Return exactly this JSON:
       questions_template: checkinTemplate,
     })
 
-    // Log eventi
+    // Invia email reminder check-in via Resend
+    if (brandPlan.customer_email && newPlanToken) {
+      try {
+        const { sendCheckinReminderEmail } = await import('@/lib/email/resend')
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
+
+        const { data: nextCheckin } = await supabaseAdmin
+          .from('scheduled_checkins')
+          .select('checkin_token')
+          .eq('brand_plan_id', (newBrandPlan as any)?.id)
+          .eq('status', 'pending')
+          .maybeSingle()
+
+        if (nextCheckin?.checkin_token) {
+          await sendCheckinReminderEmail({
+            to: brandPlan.customer_email,
+            brandName: brandPlan.merchant_name || 'your brand',
+            checkinUrl: `${appUrl}/checkin/${nextCheckin.checkin_token}`,
+            weekNumber: nextWeek,
+            planUrl: `${appUrl}/routine/${newPlanToken}`,
+          })
+        }
+      } catch (emailErr) {
+        console.error('Checkin reminder email error:', emailErr)
+      }
+    }
+
     await supabaseAdmin.from('event_stream').insert([
       { merchant_id, customer_id, event_type: 'checkin_completed', event_data: { week_number, answers, adherence_score: adherenceScore } },
       { merchant_id, customer_id, event_type: 'plan_updated', event_data: { week: nextWeek, previous_week: week_number, new_plan_token: newPlanToken } },

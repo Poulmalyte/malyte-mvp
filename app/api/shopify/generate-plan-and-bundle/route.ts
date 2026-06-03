@@ -285,6 +285,21 @@ Return exactly this JSON:
       })
     }
 
+    // Invia email piano via Resend
+    if (customer_email && planUrl) {
+      try {
+        const { sendPlanEmail } = await import('@/lib/email/resend')
+        await sendPlanEmail({
+          to: customer_email,
+          brandName: merchant?.name || 'your brand',
+          planUrl,
+          customerSummary: result.customer_summary,
+        })
+      } catch (emailErr) {
+        console.error('Email send error:', emailErr)
+      }
+    }
+
     // Log eventi
     await supabaseAdmin.from('event_stream').insert([
       { merchant_id, customer_id: customerId, event_type: 'quiz_completed', event_data: { quiz_answers, category } },
