@@ -9,6 +9,27 @@ const supabaseAdmin = createClient(
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
+const CHECKIN_TEMPLATES: Record<string, any[]> = {
+  Skincare: [
+    { id: 'routine', text: 'How did your routine go this week?', type: 'select', options: ['Great — did it every day', 'Good — most days', 'Difficult — a few days', 'Did not follow it'] },
+    { id: 'improvement', text: 'Have you noticed any improvements?', type: 'select', options: ['Yes, a lot', 'A little', 'No change', 'It got worse'] },
+    { id: 'reaction', text: 'Any reactions or irritations?', type: 'select', options: ['None at all', 'Slight redness', 'Some irritation', 'Yes, I stopped a product'] },
+    { id: 'comment', text: 'Anything else you want to share?', type: 'text' },
+  ],
+  Fitness: [
+    { id: 'adherence', text: 'How many sessions did you complete?', type: 'select', options: ['All of them', 'Most', 'About half', 'Very few'] },
+    { id: 'energy', text: 'How was your energy level?', type: 'select', options: ['High', 'Good', 'Average', 'Low'] },
+    { id: 'soreness', text: 'How was your recovery?', type: 'select', options: ['Great', 'Some soreness', 'Very sore', 'Had an issue'] },
+    { id: 'comment', text: 'Anything else?', type: 'text' },
+  ],
+  Nutrition: [
+    { id: 'adherence', text: 'How well did you follow the protocol?', type: 'select', options: ['Perfectly', 'Mostly', 'Partially', 'Not at all'] },
+    { id: 'digestion', text: 'How was your digestion?', type: 'select', options: ['Great', 'Good', 'Some issues', 'Bad'] },
+    { id: 'energy', text: 'How was your energy?', type: 'select', options: ['High', 'Good', 'Average', 'Low'] },
+    { id: 'comment', text: 'Anything else?', type: 'text' },
+  ],
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -73,7 +94,9 @@ export async function POST(request: Request) {
       }
     })
 
-    const systemPrompt = `You are a ${merchant?.category || 'wellness'} expert creating a personalized plan for a customer.
+    const category = merchant?.category || 'Skincare'
+
+    const systemPrompt = `You are a ${category} expert creating a personalized plan for a customer.
 
 Brand: ${merchant?.name || 'this brand'}
 Philosophy: ${merchantProfile?.philosophy || 'Not specified'}
@@ -232,36 +255,39 @@ Return exactly this JSON:
         customer_email: customer_email || null,
         merchant_name: merchant?.name || '',
         merchant_slug: merchant?.slug || '',
-        category: merchant?.category || 'Skincare',
+        category,
         week_number: 1,
         plan_data: result.plan,
         package_data: result.package,
         customer_summary: result.customer_summary,
         status: 'active',
       })
-      .select('token')
+      .select('id, token')
       .single()
 
     const planToken = savedPlan?.token
     const planUrl = planToken ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'}/routine/${planToken}` : null
 
-    // Invia email via Supabase se email fornita
-    if (customer_email && planUrl) {
-      try {
-        await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
-          email: customer_email,
-        })
-        // Usa inviteUserByEmail per mandare email custom — non disponibile direttamente
-        // Usiamo una edge function o semplicemente salviamo il token e lo mostriamo in UI
-      } catch {
-        // Email fallback — mostriamo link in UI
-      }
+    // Crea scheduled_checkin automaticamente per settimana 1
+    if (savedPlan?.id) {
+      const checkinScheduledFor = new Date()
+      checkinScheduledFor.setDate(checkinScheduledFor.getDate() + 7)
+      const template = CHECKIN_TEMPLATES[category] || CHECKIN_TEMPLATES['Skincare']
+
+      await supabaseAdmin.from('scheduled_checkins').insert({
+        customer_id: customerId,
+        merchant_id,
+        brand_plan_id: savedPlan.id,
+        week_number: 1,
+        scheduled_for: checkinScheduledFor.toISOString(),
+        status: 'pending',
+        questions_template: template,
+      })
     }
 
     // Log eventi
     await supabaseAdmin.from('event_stream').insert([
-      { merchant_id, customer_id: customerId, event_type: 'quiz_completed', event_data: { quiz_answers, category: merchant?.category } },
+      { merchant_id, customer_id: customerId, event_type: 'quiz_completed', event_data: { quiz_answers, category } },
       { merchant_id, customer_id: customerId, event_type: 'plan_generated', event_data: { week: 1, plan_token: planToken } },
       { merchant_id, customer_id: customerId, event_type: 'package_generated', event_data: { package_name: result.package.package_name, total_price: totalPrice, stage: 1 } },
     ])
