@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
   const { data: installation } = await supabaseAdmin
     .from('shopify_installations')
-    .select('access_token')
+    .select('access_token, expert_id')
     .eq('shop_domain', shop)
     .maybeSingle()
 
@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
         customer_email: buyerEmail,
         token,
         status: 'pending',
+        merchant_id: installation?.expert_id || null,
       }, { onConflict: 'shop_domain,shopify_order_id' })
 
     console.log('[Webhook] upsert error:', JSON.stringify(error))
