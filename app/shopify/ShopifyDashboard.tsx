@@ -668,3 +668,96 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     </div>
   )
 }
+
+function AnalyticsTab({ data, loading, onLoad }: { data: any, loading: boolean, onLoad: () => void }) {
+  if (!data && !loading) { onLoad(); }
+
+  if (loading || !data) return (
+    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+      <p style={{ color: '#94A3B8', fontSize: 14 }}>Loading analytics…</p>
+    </div>
+  )
+
+  const { overview, funnel, recent_customers } = data
+
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+        {[
+          { label: 'Total customers', value: String(overview.total_customers), color: '#7C5CFC', bg: '#EDE9FE' },
+          { label: 'Check-ins done', value: String(overview.completed_checkins), color: '#059669', bg: '#D1FDF3' },
+          { label: 'Avg CSS', value: overview.avg_css > 0 ? Math.round(overview.avg_css * 100) + '%' : '—', color: '#6385FF', bg: '#EEF2FF' },
+        ].map((kpi, i) => (
+          <div key={i} style={{ background: kpi.bg, borderRadius: 12, padding: '16px' }}>
+            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 4, fontWeight: 500 }}>{kpi.label}</p>
+            <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 28, fontWeight: 800, color: kpi.color, margin: 0 }}>{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+        {[
+          { label: 'Plans generated', value: String(overview.total_plans), color: '#7C5CFC', bg: '#F5F3FF' },
+          { label: 'Avg week', value: overview.avg_week > 0 ? 'W' + overview.avg_week : '—', color: '#D97706', bg: '#FEF3C7' },
+          { label: 'Pending check-ins', value: String(overview.pending_checkins), color: '#64748B', bg: '#F8FAFC' },
+        ].map((kpi, i) => (
+          <div key={i} style={{ background: kpi.bg, borderRadius: 12, padding: '16px', border: '1px solid #E8EDF8' }}>
+            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 4, fontWeight: 500 }}>{kpi.label}</p>
+            <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 24, fontWeight: 800, color: kpi.color, margin: 0 }}>{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px', marginBottom: 16 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Journey A Funnel</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {[
+            { label: 'Quiz completed', value: funnel.quiz_completed, color: '#7C5CFC' },
+            { label: 'Plan generated', value: funnel.plan_generated, color: '#6385FF' },
+            { label: 'Bundle generated', value: funnel.package_generated, color: '#06B6D4' },
+            { label: 'Check-in completed', value: funnel.checkin_completed, color: '#059669' },
+          ].map((step, i) => {
+            const max = funnel.quiz_completed || 1
+            const pct = Math.round((step.value / max) * 100)
+            return (
+              <div key={i}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: '#64748B' }}>{step.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: step.color }}>{step.value} ({pct}%)</span>
+                </div>
+                <div style={{ height: 6, background: '#F1F5F9', borderRadius: 100 }}>
+                  <div style={{ height: '100%', width: pct + '%', background: step.color, borderRadius: 100 }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      {recent_customers?.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px' }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Recent customers</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {recent_customers.map((customer: any, i: number) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E8EDF8' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #7C5CFC, #06B6D4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', flexShrink: 0 }}>
+                  {customer.email?.slice(0, 2).toUpperCase() || '?'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{customer.email || 'Unknown'}</p>
+                  <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>Week {customer.current_week} · {customer.total_checkins} check-in{customer.total_checkins !== 1 ? 's' : ''}</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: '#EDE9FE', color: '#7C5CFC' }}>W{customer.current_week}</span>
+                  {customer.plan_token && (
+                    <a href={'/routine/' + customer.plan_token} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: 11, fontWeight: 600, color: '#7C5CFC', textDecoration: 'none', background: '#EDE9FE', padding: '3px 10px', borderRadius: 100 }}>
+                      View →
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
