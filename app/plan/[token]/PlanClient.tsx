@@ -214,10 +214,10 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
   const totalWeeks = shopifyProduct?.duration_weeks || 4
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif", padding: '24px 16px' }}>
-      <div style={{ maxWidth: 620, margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif", padding: '16px 16px 48px' }}>
+      <div style={{ maxWidth: 560, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 24, color: '#0F172A' }}>
+          <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 22, color: '#0F172A' }}>
             malyte<span style={{ color: '#7C5CFC' }}>.</span>
           </span>
           <p style={{ color: '#64748B', fontSize: 14, marginTop: 8 }}>Your personalized plan is ready to be generated.</p>
@@ -247,7 +247,7 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
             </div>
             {authError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 14 }}>{authError}</p>}
             <button onClick={handleAuth} disabled={authLoading}
-              style={{ width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#7C5CFC', color: '#fff', border: 'none', cursor: authLoading ? 'not-allowed' : 'pointer', opacity: authLoading ? 0.7 : 1, marginBottom: 14 }}>
+              style={{ width: '100%', padding: '16px', borderRadius: 12, fontWeight: 700, fontSize: 15, background: '#7C5CFC', color: '#fff', border: 'none', cursor: authLoading ? 'not-allowed' : 'pointer', opacity: authLoading ? 0.7 : 1, marginBottom: 14 }}>
               {authLoading ? 'Loading…' : authMode === 'signup' ? 'Create account & continue →' : 'Log in & continue →'}
             </button>
             <p style={{ textAlign: 'center', fontSize: 13, color: '#64748B' }}>
