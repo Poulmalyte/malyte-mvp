@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
   console.log('[Webhook] installation found:', !!installation)
 
   const accessToken = installation?.access_token as string | undefined
+  let lastToken = ''
 
   for (const item of order.line_items || []) {
     const shopifyProductId = String(item.product_id)
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
     if (!shopifyProduct) continue
 
     const token = crypto.randomBytes(32).toString('hex')
+    lastToken = token
 
     const { error } = await supabaseAdmin
       .from('shopify_orders')
@@ -133,20 +135,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
-    // Invia email followup via Resend
-    if (buyerEmail) {
-      try {
-        const { sendFollowupEmail } = await import('@/lib/email/resend')
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
-        await sendFollowupEmail({
-          to: buyerEmail,
-          brandName: shop.replace('.myshopify.com', ''),
-          followupUrl: appUrl + '/order-followup/' + token,
-        })
-      } catch (emailErr) {
-        console.error('Followup email error:', emailErr)
-      }
+  // Invia email followup via Resend
+  if (buyerEmail && lastToken) {
+    try {
+      const { sendFollowupEmail } = await import('@/lib/email/resend')
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
+      await sendFollowupEmail({
+        to: buyerEmail,
+        brandName: shop.replace('.myshopify.com', ''),
+        followupUrl: `${appUrl}/order-followup/${lastToken}`,
+      })
+    } catch (emailErr) {
+      console.error('Followup email error:', emailErr)
     }
   }
+
   return NextResponse.json({ ok: true })
 }
