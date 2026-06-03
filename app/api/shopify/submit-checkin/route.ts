@@ -124,7 +124,7 @@ export async function POST(request: Request) {
 
     const adherenceScore = adherenceMap[answers.routine || answers.adherence || ''] || 0.5
     const improvementScore = improvementMap[answers.improvement || answers.energy || ''] || 3
-    const hasReaction = answers.reaction && answers.reaction.includes('irritation' || 'stopped')
+    const hasReaction = answers.reaction && (answers.reaction.includes('irritation') || answers.reaction.includes('stopped'))
 
     // Salva checkin_event con dati grezzi
     await supabaseAdmin.from('checkin_events').insert({
@@ -250,7 +250,7 @@ Return exactly this JSON:
     await supabaseAdmin.from('scheduled_checkins').insert({
       customer_id,
       merchant_id,
-      brand_plan_id: newBrandPlan?.id || brand_plan_id,
+      brand_plan_id: (newBrandPlan as any)?.id || brand_plan_id,
       week_number: nextWeek,
       scheduled_for: nextScheduledFor.toISOString(),
       status: 'pending',
