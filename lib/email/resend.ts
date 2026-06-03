@@ -125,3 +125,49 @@ export async function sendCheckinReminderEmail({
     `,
   })
 }
+export async function sendFollowupEmail({
+  to,
+  brandName,
+  followupUrl,
+}: {
+  to: string
+  brandName: string
+  followupUrl: string
+}) {
+  return resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Get the most out of your ${brandName} order`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F5F7FA;font-family:'Inter',Arial,sans-serif;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 24px;">
+    <div style="margin-bottom:24px;">
+      <span style="font-size:22px;font-weight:800;color:#0F172A;">${brandName}</span>
+    </div>
+    <div style="background:#fff;border-radius:16px;border:1px solid #E8EDF8;padding:28px;margin-bottom:20px;">
+      <p style="font-size:12px;font-weight:600;color:#7C5CFC;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.08em;">Your order is confirmed</p>
+      <h1 style="font-size:22px;font-weight:800;color:#0F172A;margin:0 0 12px;line-height:1.3;">Get a personalised routine for your products</h1>
+      <p style="font-size:14px;color:#64748B;margin:0 0 20px;line-height:1.6;">
+        Answer 4 quick questions and we'll build a routine specifically around what you just bought — so you get the best possible results.
+      </p>
+      <a href="${followupUrl}" style="display:block;text-align:center;padding:14px 24px;background:linear-gradient(135deg,#7C5CFC,#06B6D4);color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;">
+        Build my personalised routine →
+      </a>
+    </div>
+    <div style="background:#F5F3FF;border-radius:12px;border:1px solid #DDD6FE;padding:16px;margin-bottom:20px;">
+      <p style="font-size:12px;color:#5B21B6;margin:0;line-height:1.6;">
+        ✓ Free · Takes less than 2 minutes · Your plan is saved permanently
+      </p>
+    </div>
+    <p style="font-size:11px;color:#94A3B8;text-align:center;margin:0;">
+      ${brandName} · <a href="${APP_URL}" style="color:#94A3B8;">app.malyte.com</a>
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  })
+}

@@ -133,5 +133,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
+    // Invia email followup via Resend
+    if (buyerEmail) {
+      try {
+        const { sendFollowupEmail } = await import('@/lib/email/resend')
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
+        await sendFollowupEmail({
+          to: buyerEmail,
+          brandName: shop.replace('.myshopify.com', ''),
+          followupUrl: appUrl + '/order-followup/' + token,
+        })
+      } catch (emailErr) {
+        console.error('Followup email error:', emailErr)
+      }
+    }
+  }
   return NextResponse.json({ ok: true })
 }
