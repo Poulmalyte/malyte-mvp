@@ -42,8 +42,18 @@ const FALLBACK_QUESTIONS: Question[] = [
   { id: '5', text: 'What results are you hoping to see in the first month?', type: 'text', enabled: true },
 ]
 
-export default function Step3Intake({ category, initialQuestions, onComplete, onBack }: { category: string, initialQuestions?: Question[], onComplete: (data: any) => void, onBack: () => void }) {
-  const defaultQs = initialQuestions?.length ? initialQuestions : DEFAULT_QUESTIONS[category] || FALLBACK_QUESTIONS
+interface Props {
+  category: string
+  initialQuestions?: Question[]
+  onComplete: (data: any) => void
+  onBack: () => void
+}
+
+export default function Step3Intake({ category, initialQuestions, onComplete, onBack }: Props) {
+  const defaultQs = initialQuestions?.length
+    ? initialQuestions
+    : DEFAULT_QUESTIONS[category] || FALLBACK_QUESTIONS
+
   const [questions, setQuestions] = useState<Question[]>(defaultQs)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -56,39 +66,63 @@ export default function Step3Intake({ category, initialQuestions, onComplete, on
   }
 
   function addQuestion() {
-    const newQ: Question = { id: crypto.randomUUID(), text: '', type: 'text', enabled: true }
+    const newQ: Question = {
+      id: crypto.randomUUID(),
+      text: '',
+      type: 'text',
+      enabled: true,
+    }
     setQuestions(qs => [...qs, newQ])
     setEditingId(newQ.id)
   }
 
   const enabledCount = questions.filter(q => q.enabled).length
 
+  function handleContinue() {
+    const enabled = questions.filter(q => q.enabled && q.text.trim())
+    onComplete({ customer_questions: enabled })
+  }
+
   return (
     <div>
       <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 6px', fontFamily: "'Satoshi', sans-serif" }}>Customer Intake</h2>
-      <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 8px', lineHeight: 1.6 }}>These questions will be shown to your customers before their plan is generated.</p>
-      <p style={{ fontSize: 12, color: '#94A3B8', margin: '0 0 24px' }}>{enabledCount} question{enabledCount !== 1 ? 's' : ''} active</p>
+      <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 8px', lineHeight: 1.6 }}>
+        These questions will be shown to your customers before their plan is generated.
+      </p>
+      <p style={{ fontSize: 12, color: '#94A3B8', margin: '0 0 24px' }}>
+        {enabledCount} question{enabledCount !== 1 ? 's' : ''} active · Toggle to enable/disable
+      </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
         {questions.map((q, i) => (
-          <div key={q.id} style={{ padding: '14px 16px', borderRadius: 12, border: '1px solid #E8EDF8', background: '#F8FAFC', opacity: q.enabled ? 1 : 0.5 }}>
+          <div key={q.id} style={{ padding: '14px 16px', borderRadius: 12, border: `1px solid ${q.enabled ? '#E8EDF8' : '#F1F5F9'}`, background: q.enabled ? '#F8FAFC' : '#F8FAFC', opacity: q.enabled ? 1 : 0.5 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', minWidth: 20, paddingTop: 2 }}>Q{i + 1}</span>
               <div style={{ flex: 1 }}>
                 {editingId === q.id ? (
-                  <input autoFocus type="text" value={q.text} onChange={e => updateText(q.id, e.target.value)} onBlur={() => setEditingId(null)}
-                    style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid #7C5CFC', fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  <input
+                    autoFocus
+                    type="text"
+                    value={q.text}
+                    onChange={e => updateText(q.id, e.target.value)}
+                    onBlur={() => setEditingId(null)}
+                    style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid #7C5CFC', fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
                 ) : (
-                  <p style={{ fontSize: 13, fontWeight: 500, color: '#0F172A', margin: '0 0 4px', cursor: 'text' }} onClick={() => setEditingId(q.id)}>
-                    {q.text || <span style={{ color: '#94A3B8' }}>Click to edit</span>}
+                  <p style={{ fontSize: 13, fontWeight: 500, color: '#0F172A', margin: '0 0 4px', cursor: 'text' }}
+                    onClick={() => setEditingId(q.id)}>
+                    {q.text || <span style={{ color: '#94A3B8' }}>Click to edit question</span>}
                   </p>
                 )}
-                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#EDE9FE', color: '#7C5CFC', fontWeight: 600 }}>
-                  {q.type === 'text' ? 'Open answer' : q.type === 'select' ? 'Single choice' : 'Multi choice'}
-                </span>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#EDE9FE', color: '#7C5CFC', fontWeight: 600 }}>
+                    {q.type === 'text' ? '✏️ Open' : q.type === 'select' ? '☑️ Single choice' : '☑️ Multi choice'}
+                  </span>
+                  {q.options && <span style={{ fontSize: 11, color: '#94A3B8' }}>{q.options.length} options</span>}
+                </div>
               </div>
               <button onClick={() => toggleQuestion(q.id)}
-                style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid #E8EDF8', background: q.enabled ? '#F0FDF4' : '#F1F5F9', color: q.enabled ? '#059669' : '#94A3B8' }}>
+                style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: `1px solid ${q.enabled ? '#E8EDF8' : '#E8EDF8'}`, background: q.enabled ? '#F0FDF4' : '#F1F5F9', color: q.enabled ? '#059669' : '#94A3B8' }}>
                 {q.enabled ? 'On' : 'Off'}
               </button>
             </div>
@@ -96,15 +130,16 @@ export default function Step3Intake({ category, initialQuestions, onComplete, on
         ))}
       </div>
 
-      <button onClick={addQuestion} style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1px dashed #C4B5FD', background: 'transparent', color: '#94A3B8', fontSize: 13, cursor: 'pointer', marginBottom: 20 }}>
+      <button onClick={addQuestion}
+        style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1px dashed #C4B5FD', background: 'transparent', color: '#94A3B8', fontSize: 13, cursor: 'pointer', marginBottom: 20 }}>
         + Add custom question
       </button>
 
       <div style={{ display: 'flex', gap: 10 }}>
-        <button onClick={onBack} style={{ flex: 1, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#F8FAFC', color: '#64748B', border: '1px solid #E8EDF8', cursor: 'pointer' }}>Back</button>
-        <button onClick={() => onComplete({ customer_questions: questions.filter(q => q.enabled && q.text.trim()) })}
+        <button onClick={onBack} style={{ flex: 1, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#F8FAFC', color: '#64748B', border: '1px solid #E8EDF8', cursor: 'pointer' }}>← Back</button>
+        <button onClick={handleContinue}
           style={{ flex: 2, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer' }}>
-          Continue
+          Continue →
         </button>
       </div>
     </div>
