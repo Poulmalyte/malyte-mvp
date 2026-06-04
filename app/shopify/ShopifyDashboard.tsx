@@ -791,7 +791,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                   <p style={{ fontSize: 11, color: '#94A3B8', margin: '6px 0 0' }}>Duration of the intensive program phase</p>
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>AFTER COMPLETION</label>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>AFTER PROGRAM ENDS</label>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {[{ label: 'Stop', value: 'stop' }, { label: 'Continue current frequency', value: 'continue' }, { label: 'Monthly follow-up', value: 'monthly' }, { label: 'Quarterly follow-up', value: 'quarterly' }].map(opt => (
                       <button key={opt.value} onClick={() => setJourneySettings(prev => ({ ...prev, after_completion: opt.value }))}
