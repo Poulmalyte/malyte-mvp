@@ -259,8 +259,51 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
 
   async function loadBrandQuestions() {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    const { data } = await supabase.from('merchant_profiles').select('customer_questions').eq('merchant_id', expertId).maybeSingle()
-    if (data && data.customer_questions && data.customer_questions.length > 0) setBrandQuestions(data.customer_questions)
+    const { data } = await supabase.from('merchant_profiles').select('customer_questions, customer').eq('merchant_id', expertId).maybeSingle()
+    if (data && data.customer_questions && data.customer_questions.length > 0) {
+      setBrandQuestions(data.customer_questions)
+      return
+    }
+    const cat = (expert?.category || 'Skincare').replace(' ', '')
+    const defaults: Record<string, any[]> = {
+      Skincare: [
+        { id: '1', text: 'What is your skin type?', type: 'select', options: ['Dry', 'Oily', 'Combination', 'Normal', 'Sensitive'], enabled: true },
+        { id: '2', text: 'What are your main skin concerns?', type: 'multiselect', options: ['Hydration', 'Anti-aging', 'Brightening', 'Acne', 'Redness', 'Uneven texture'], enabled: true },
+        { id: '3', text: 'Any known sensitivities or allergies?', type: 'text', enabled: true },
+        { id: '4', text: 'How would you describe your current routine?', type: 'select', options: ['No routine', 'Basic 2-3 steps', 'Full routine 5+ steps'], enabled: true },
+        { id: '5', text: 'How much time can you dedicate to your skincare routine daily?', type: 'select', options: ['Under 2 minutes', '2-5 minutes', '5-10 minutes', '10+ minutes'], enabled: true },
+        { id: '6', text: 'What is your age range?', type: 'select', options: ['Under 18', '18-24', '25-34', '35-44', '45-54', '55+'], enabled: false },
+      ],
+      Fitness: [
+        { id: '1', text: 'What is your main fitness goal?', type: 'select', options: ['Lose weight', 'Build muscle', 'Improve endurance', 'Stay active'], enabled: true },
+        { id: '2', text: 'What is your current fitness level?', type: 'select', options: ['Beginner', 'Intermediate', 'Advanced'], enabled: true },
+        { id: '3', text: 'How many days per week can you train?', type: 'select', options: ['2-3 days', '4-5 days', '6-7 days'], enabled: true },
+        { id: '4', text: 'Where do you usually train?', type: 'select', options: ['Home', 'Gym', 'Outdoors', 'Mixed'], enabled: true },
+        { id: '5', text: 'Any injuries or limitations we should know about?', type: 'text', enabled: true },
+      ],
+      Nutrition: [
+        { id: '1', text: 'What is your main nutrition goal?', type: 'select', options: ['Lose weight', 'Gain muscle', 'Improve energy', 'Eat healthier'], enabled: true },
+        { id: '2', text: 'Do you follow any specific diet?', type: 'select', options: ['No restrictions', 'Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free'], enabled: true },
+        { id: '3', text: 'Any food allergies?', type: 'text', enabled: true },
+        { id: '4', text: 'How active are you daily?', type: 'select', options: ['Sedentary', 'Lightly active', 'Moderately active', 'Very active'], enabled: true },
+        { id: '5', text: 'What is your biggest nutrition challenge?', type: 'select', options: ['Portion control', 'Cravings', 'Meal planning', 'Lack of energy', 'Consistency', 'Other'], enabled: true },
+      ],
+      Wellness: [
+        { id: '1', text: 'What is your main wellness goal?', type: 'select', options: ['Better sleep', 'More energy', 'Less stress', 'Better focus', 'Overall wellbeing'], enabled: true },
+        { id: '2', text: 'How would you rate your stress level?', type: 'select', options: ['Low', 'Moderate', 'High', 'Very high'], enabled: true },
+        { id: '3', text: 'How many hours do you sleep on average?', type: 'select', options: ['Less than 5', '5-6 hours', '6-7 hours', '7-8 hours', '8+ hours'], enabled: true },
+        { id: '4', text: 'How much time can you dedicate daily to wellness habits?', type: 'select', options: ['5 min', '10 min', '20 min', '30+ min'], enabled: true },
+        { id: '5', text: 'What habit would you most like to improve?', type: 'select', options: ['Sleep', 'Hydration', 'Stress management', 'Exercise', 'Mindfulness'], enabled: true },
+      ],
+      MentalCoaching: [
+        { id: '1', text: 'What is your primary goal?', type: 'select', options: ['Confidence', 'Productivity', 'Focus', 'Motivation', 'Emotional resilience'], enabled: true },
+        { id: '2', text: 'How often do you feel overwhelmed?', type: 'select', options: ['Rarely', 'Sometimes', 'Often', 'Very often'], enabled: true },
+        { id: '3', text: 'What is your biggest current challenge?', type: 'select', options: ['Stress', 'Procrastination', 'Low motivation', 'Work-life balance', 'Self-confidence'], enabled: true },
+        { id: '4', text: 'How much time can you dedicate daily?', type: 'select', options: ['5 min', '10 min', '20 min', '30+ min'], enabled: true },
+        { id: '5', text: 'What outcome would make this program successful for you?', type: 'text', enabled: true },
+      ],
+    }
+    setBrandQuestions(defaults[cat] || defaults.Skincare)
   }
 
   async function saveBrandQuestions() {
