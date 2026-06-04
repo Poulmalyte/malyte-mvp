@@ -264,7 +264,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   async function loadJourneySettings() {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
     const { data } = await supabase.from('merchant_profiles').select('checkin_frequency_days, max_journey_weeks, abandonment_days, reengage_email').eq('merchant_id', expertId).maybeSingle()
-    if (data) setJourneySettings({ checkin_frequency_days: data.checkin_frequency_days || 7, max_journey_weeks: data.max_journey_weeks || 8, abandonment_days: data.abandonment_days || 21, reengage_email: data.reengage_email !== false, program_duration_weeks: data.program_duration_weeks || 8, after_completion: data.after_completion || 'stop' })
+    if (data) setJourneySettings({ checkin_frequency_days: (data as any).checkin_frequency_days || 7, max_journey_weeks: (data as any).max_journey_weeks || 8, abandonment_days: (data as any).abandonment_days || 21, reengage_email: (data as any).reengage_email !== false, program_duration_weeks: (data as any).program_duration_weeks || 8, after_completion: (data as any).after_completion || 'stop' })
   }
 
   async function saveJourneySettings() {
