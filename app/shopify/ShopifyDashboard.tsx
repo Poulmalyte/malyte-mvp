@@ -133,6 +133,9 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [methodCategoryMsg, setMethodCategoryMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [analyticsData, setAnalyticsData] = useState<any>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+  const [brandQuestions, setBrandQuestions] = useState<Question[]>([])
+  const [savingBrandQuestions, setSavingBrandQuestions] = useState(false)
+  const [brandQuestionsMsg, setBrandQuestionsMsg] = useState<{ type: "success" | "error", text: string } | null>(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -251,6 +254,25 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     setSavingMethodCategory(false)
     if (!res.ok) { setMethodCategoryMsg({ type: 'error', text: json.error || 'Error saving category.' }) }
     else { setProfileCategory(methodCategory); setMethodCategoryMsg({ type: 'success', text: 'Category saved.' }); setTimeout(() => setMethodCategoryMsg(null), 3000) }
+  }
+
+  async function loadBrandQuestions() {
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('merchant_profiles').select('customer_questions').eq('merchant_id', user.id).maybeSingle()
+    if (data && data.customer_questions && data.customer_questions.length > 0) setBrandQuestions(data.customer_questions)
+  }
+
+  async function saveBrandQuestions() {
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    setSavingBrandQuestions(true)
+    const { error } = await supabase.from('merchant_profiles').update({ customer_questions: brandQuestions }).eq('merchant_id', user.id)
+    setBrandQuestionsMsg(error ? { type: 'error', text: 'Error saving.' } : { type: 'success', text: 'Questions saved!' })
+    setSavingBrandQuestions(false)
+    setTimeout(() => setBrandQuestionsMsg(null), 3000)
   }
 
   async function loadAnalytics() {
@@ -410,6 +432,25 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               </button>
             </div>
             <div style={card}><MethodSection expert={{ ...expert, category: methodCategory }} /></div>
+            <div style={card}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Customer quiz questions</p>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>These are the questions your customers answer before getting their plan. Changes take effect immediately on your quiz page.</p>
+              {brandQuestions.length === 0 ? (
+                <button onClick={loadBrandQuestions} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#F8FAFC', border: '1px solid #E8EDF8', color: '#64748B', cursor: 'pointer' }}>Load current questions</button>
+              ) : (
+                <>
+                  <QuestionBuilder questions={brandQuestions} setQuestions={setBrandQuestions} />
+                  {brandQuestionsMsg && (
+                    <div style={{ padding: '10px 14px', borderRadius: 8, margin: '12px 0', background: brandQuestionsMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (brandQuestionsMsg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: brandQuestionsMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
+                      {brandQuestionsMsg.text}
+                    </div>
+                  )}
+                  <button onClick={saveBrandQuestions} disabled={savingBrandQuestions} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingBrandQuestions ? 0.7 : 1 }}>
+                    {savingBrandQuestions ? 'Saving…' : 'Save questions'}
+                  </button>
+                </>
+              )}
+            </div>
           </>
         )}
 
