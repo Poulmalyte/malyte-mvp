@@ -138,6 +138,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [brandQuestionsMsg, setBrandQuestionsMsg] = useState<{ type: "success" | "error", text: string } | null>(null)
 
   useEffect(() => { loadData() }, [])
+  useEffect(() => { if (activeTab === 'method' && brandQuestions.length === 0) { loadBrandQuestions() } }, [activeTab])
 
   async function loadData() {
     setLoading(true)
