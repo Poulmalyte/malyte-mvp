@@ -257,19 +257,17 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   }
 
   async function loadBrandQuestions() {
+    if (!expert?.id) return
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data } = await supabase.from('merchant_profiles').select('customer_questions').eq('merchant_id', user.id).maybeSingle()
+    const { data } = await supabase.from('merchant_profiles').select('customer_questions').eq('merchant_id', expert.id).maybeSingle()
     if (data && data.customer_questions && data.customer_questions.length > 0) setBrandQuestions(data.customer_questions)
   }
 
   async function saveBrandQuestions() {
+    if (!expert?.id) return
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
     setSavingBrandQuestions(true)
-    const { error } = await supabase.from('merchant_profiles').update({ customer_questions: brandQuestions }).eq('merchant_id', user.id)
+    const { error } = await supabase.from('merchant_profiles').update({ customer_questions: brandQuestions }).eq('merchant_id', expert.id)
     setBrandQuestionsMsg(error ? { type: 'error', text: 'Error saving.' } : { type: 'success', text: 'Questions saved!' })
     setSavingBrandQuestions(false)
     setTimeout(() => setBrandQuestionsMsg(null), 3000)
