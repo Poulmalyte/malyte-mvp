@@ -754,17 +754,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                   </div>
                   <p style={{ fontSize: 11, color: '#94A3B8', margin: '6px 0 0' }}>Skincare/Fitness: 7 days · Supplements/Haircare: 14 days · Wellness: 30 days</p>
                 </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>MAX JOURNEY DURATION</label>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {[{ label: '4 weeks', value: 4 }, { label: '8 weeks', value: 8 }, { label: '12 weeks', value: 12 }].map(opt => (
-                      <button key={opt.value} onClick={() => setJourneySettings(prev => ({ ...prev, max_journey_weeks: opt.value }))}
-                        style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${journeySettings.max_journey_weeks === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: journeySettings.max_journey_weeks === opt.value ? '#EDE9FE' : '#F8FAFC', color: journeySettings.max_journey_weeks === opt.value ? '#7C5CFC' : '#64748B' }}>
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>ABANDONMENT WINDOW</label>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
