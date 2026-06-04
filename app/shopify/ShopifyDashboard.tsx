@@ -136,9 +136,13 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [brandQuestions, setBrandQuestions] = useState<Question[]>([])
   const [savingBrandQuestions, setSavingBrandQuestions] = useState(false)
   const [brandQuestionsMsg, setBrandQuestionsMsg] = useState<{ type: "success" | "error", text: string } | null>(null)
+  const [journeySettings, setJourneySettings] = useState({ checkin_frequency_days: 7, max_journey_weeks: 8, abandonment_days: 21, reengage_email: true })
+  const [savingJourney, setSavingJourney] = useState(false)
+  const [journeyMsg, setJourneyMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => { loadData() }, [])
   useEffect(() => { if (activeTab === 'method' && brandQuestions.length === 0) { loadBrandQuestions() } }, [activeTab])
+  useEffect(() => { if (activeTab === 'settings') { loadJourneySettings() } }, [activeTab])
 
   async function loadData() {
     setLoading(true)
@@ -255,6 +259,21 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     setSavingMethodCategory(false)
     if (!res.ok) { setMethodCategoryMsg({ type: 'error', text: json.error || 'Error saving category.' }) }
     else { setProfileCategory(methodCategory); setMethodCategoryMsg({ type: 'success', text: 'Category saved.' }); setTimeout(() => setMethodCategoryMsg(null), 3000) }
+  }
+
+  async function loadJourneySettings() {
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const { data } = await supabase.from('merchant_profiles').select('checkin_frequency_days, max_journey_weeks, abandonment_days, reengage_email').eq('merchant_id', expertId).maybeSingle()
+    if (data) setJourneySettings({ checkin_frequency_days: data.checkin_frequency_days || 7, max_journey_weeks: data.max_journey_weeks || 8, abandonment_days: data.abandonment_days || 21, reengage_email: data.reengage_email !== false })
+  }
+
+  async function saveJourneySettings() {
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    setSavingJourney(true)
+    const { error } = await supabase.from('merchant_profiles').update(journeySettings).eq('merchant_id', expertId)
+    setJourneyMsg(error ? { type: 'error', text: 'Error saving.' } : { type: 'success', text: 'Journey settings saved!' })
+    setSavingJourney(false)
+    setTimeout(() => setJourneyMsg(null), 3000)
   }
 
   async function loadBrandQuestions() {
@@ -719,6 +738,65 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               </button>
             </div>
 
+            <div style={card}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Journey settings</p>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>Configure how your customers experience their personalised journey.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>CHECK-IN FREQUENCY</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[{ label: 'Every 7 days', value: 7 }, { label: 'Every 14 days', value: 14 }, { label: 'Every 30 days', value: 30 }].map(opt => (
+                      <button key={opt.value} onClick={() => setJourneySettings(prev => ({ ...prev, checkin_frequency_days: opt.value }))}
+                        style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${journeySettings.checkin_frequency_days === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: journeySettings.checkin_frequency_days === opt.value ? '#EDE9FE' : '#F8FAFC', color: journeySettings.checkin_frequency_days === opt.value ? '#7C5CFC' : '#64748B' }}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 11, color: '#94A3B8', margin: '6px 0 0' }}>Skincare/Fitness: 7 days · Supplements/Haircare: 14 days · Wellness: 30 days</p>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>MAX JOURNEY DURATION</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[{ label: '4 weeks', value: 4 }, { label: '8 weeks', value: 8 }, { label: '12 weeks', value: 12 }].map(opt => (
+                      <button key={opt.value} onClick={() => setJourneySettings(prev => ({ ...prev, max_journey_weeks: opt.value }))}
+                        style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${journeySettings.max_journey_weeks === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: journeySettings.max_journey_weeks === opt.value ? '#EDE9FE' : '#F8FAFC', color: journeySettings.max_journey_weeks === opt.value ? '#7C5CFC' : '#64748B' }}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>ABANDONMENT WINDOW</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[{ label: '14 days', value: 14 }, { label: '21 days', value: 21 }, { label: '30 days', value: 30 }].map(opt => (
+                      <button key={opt.value} onClick={() => setJourneySettings(prev => ({ ...prev, abandonment_days: opt.value }))}
+                        style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${journeySettings.abandonment_days === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: journeySettings.abandonment_days === opt.value ? '#EDE9FE' : '#F8FAFC', color: journeySettings.abandonment_days === opt.value ? '#7C5CFC' : '#64748B' }}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 11, color: '#94A3B8', margin: '6px 0 0' }}>Days without check-in before sending the pause email</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', margin: '0 0 2px' }}>Re-engagement email</p>
+                    <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>Send "We've paused your journey" after abandonment window</p>
+                  </div>
+                  <button onClick={() => setJourneySettings(prev => ({ ...prev, reengage_email: !prev.reengage_email }))}
+                    style={{ width: 44, height: 24, borderRadius: 100, border: 'none', cursor: 'pointer', background: journeySettings.reengage_email ? '#7C5CFC' : '#E8EDF8', position: 'relative', transition: 'background 0.2s' }}>
+                    <span style={{ position: 'absolute', top: 2, left: journeySettings.reengage_email ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+                  </button>
+                </div>
+              </div>
+              {journeyMsg && (
+                <div style={{ padding: '10px 14px', borderRadius: 8, margin: '16px 0 0', background: journeyMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${journeyMsg.type === 'success' ? '#6EE7B7' : '#FECACA'}`, color: journeyMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
+                  {journeyMsg.text}
+                </div>
+              )}
+              <button onClick={saveJourneySettings} disabled={savingJourney} style={{ marginTop: 16, width: '100%', padding: '12px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingJourney ? 0.7 : 1 }}>
+                {savingJourney ? 'Saving…' : 'Save journey settings'}
+              </button>
+            </div>
             <div style={card}>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Store settings</p>
               {installation ? (
