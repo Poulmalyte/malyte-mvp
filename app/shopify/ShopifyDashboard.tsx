@@ -136,7 +136,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [brandQuestions, setBrandQuestions] = useState<Question[]>([])
   const [savingBrandQuestions, setSavingBrandQuestions] = useState(false)
   const [brandQuestionsMsg, setBrandQuestionsMsg] = useState<{ type: "success" | "error", text: string } | null>(null)
-  const [journeySettings, setJourneySettings] = useState({ checkin_frequency_days: 7, max_journey_weeks: 8, abandonment_days: 21, reengage_email: true })
+  const [journeySettings, setJourneySettings] = useState({ checkin_frequency_days: 7, max_journey_weeks: 8, abandonment_days: 21, reengage_email: true, program_duration_weeks: 8, after_completion: 'stop' })
   const [savingJourney, setSavingJourney] = useState(false)
   const [journeyMsg, setJourneyMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -264,7 +264,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   async function loadJourneySettings() {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
     const { data } = await supabase.from('merchant_profiles').select('checkin_frequency_days, max_journey_weeks, abandonment_days, reengage_email').eq('merchant_id', expertId).maybeSingle()
-    if (data) setJourneySettings({ checkin_frequency_days: data.checkin_frequency_days || 7, max_journey_weeks: data.max_journey_weeks || 8, abandonment_days: data.abandonment_days || 21, reengage_email: data.reengage_email !== false })
+    if (data) setJourneySettings({ checkin_frequency_days: data.checkin_frequency_days || 7, max_journey_weeks: data.max_journey_weeks || 8, abandonment_days: data.abandonment_days || 21, reengage_email: data.reengage_email !== false, program_duration_weeks: data.program_duration_weeks || 8, after_completion: data.after_completion || 'stop' })
   }
 
   async function saveJourneySettings() {
@@ -788,6 +788,30 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                   </button>
                 </div>
               </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>PROGRAM DURATION</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[{ label: '4 weeks', value: 4 }, { label: '8 weeks', value: 8 }, { label: '12 weeks', value: 12 }, { label: 'No limit', value: 0 }].map(opt => (
+                      <button key={opt.value} onClick={() => setJourneySettings(prev => ({ ...prev, program_duration_weeks: opt.value }))}
+                        style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${journeySettings.program_duration_weeks === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: journeySettings.program_duration_weeks === opt.value ? '#EDE9FE' : '#F8FAFC', color: journeySettings.program_duration_weeks === opt.value ? '#7C5CFC' : '#64748B' }}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 11, color: '#94A3B8', margin: '6px 0 0' }}>Duration of the intensive program phase</p>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 8 }}>AFTER COMPLETION</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[{ label: 'Stop', value: 'stop' }, { label: 'Monthly follow-up', value: 'monthly' }, { label: 'Quarterly follow-up', value: 'quarterly' }].map(opt => (
+                      <button key={opt.value} onClick={() => setJourneySettings(prev => ({ ...prev, after_completion: opt.value }))}
+                        style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${journeySettings.after_completion === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: journeySettings.after_completion === opt.value ? '#EDE9FE' : '#F8FAFC', color: journeySettings.after_completion === opt.value ? '#7C5CFC' : '#64748B' }}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 11, color: '#94A3B8', margin: '6px 0 0' }}>What happens when the program ends — Monthly: check-in every 30 days · Quarterly: every 90 days</p>
+                </div>
               {journeyMsg && (
                 <div style={{ padding: '10px 14px', borderRadius: 8, margin: '16px 0 0', background: journeyMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${journeyMsg.type === 'success' ? '#6EE7B7' : '#FECACA'}`, color: journeyMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
                   {journeyMsg.text}
