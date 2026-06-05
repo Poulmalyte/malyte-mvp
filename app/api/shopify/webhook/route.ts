@@ -20,6 +20,14 @@ function verifyWebhook(body: string, hmac: string): boolean {
   }
 }
 
+// Calcola attribution window in base ai giorni trascorsi dal quiz
+function getAttributionWindow(daysSinceQuiz: number): { window: string; within: boolean } {
+  if (daysSinceQuiz <= 30) return { window: '30d', within: true }
+  if (daysSinceQuiz <= 60) return { window: '60d', within: true }
+  if (daysSinceQuiz <= 90) return { window: '90d', within: true }
+  return { window: 'beyond', within: false }
+}
+
 export async function POST(request: NextRequest) {
   const hmac = request.headers.get('x-shopify-hmac-sha256') || ''
   const topic = request.headers.get('x-shopify-topic') || ''
@@ -31,6 +39,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // ── GDPR handlers (invariati) ──────────────────────────────────────────────
+
   if (topic === 'customers/data_request') {
     console.log(`[GDPR] Data request for shop: ${shop}`)
     return NextResponse.json({ ok: true })
@@ -41,6 +51,7 @@ export async function POST(request: NextRequest) {
     const email = payload.customer?.email
     if (email) {
       await supabaseAdmin.from('shopify_orders').delete().eq('shop_domain', shop).eq('buyer_email', email)
+      await supabaseAdmin.from('attributed_orders').delete().eq('customer_email', email.toLowerCase())
     }
     return NextResponse.json({ ok: true })
   }
@@ -48,6 +59,9 @@ export async function POST(request: NextRequest) {
   if (topic === 'shop/redact') {
     await supabaseAdmin.from('shopify_installations').delete().eq('shop_domain', shop)
     await supabaseAdmin.from('shopify_orders').delete().eq('shop_domain', shop)
+    await supabaseAdmin.from('attributed_orders').delete().eq('merchant_id',
+      (await supabaseAdmin.from('merchants').select('id').eq('shop_domain', shop).maybeSingle())?.data?.id
+    )
     return NextResponse.json({ ok: true })
   }
 
@@ -55,8 +69,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
+  // ── orders/paid ────────────────────────────────────────────────────────────
+
   const order = JSON.parse(body)
-  const buyerEmail = order.customer?.email || order.email
+  const buyerEmail = (order.customer?.email || order.email || '').toLowerCase().trim()
 
   console.log('[Webhook] order id:', order.id)
   console.log('[Webhook] buyerEmail:', buyerEmail)
@@ -77,7 +93,10 @@ export async function POST(request: NextRequest) {
   console.log('[Webhook] installation found:', !!installation)
 
   const accessToken = installation?.access_token as string | undefined
+  const merchantId = installation?.expert_id as string | undefined
   let lastToken = ''
+
+  // ── Flusso piano esistente (invariato) ────────────────────────────────────
 
   for (const item of order.line_items || []) {
     const shopifyProductId = String(item.product_id)
@@ -107,7 +126,7 @@ export async function POST(request: NextRequest) {
         customer_email: buyerEmail,
         token,
         status: 'pending',
-        merchant_id: installation?.expert_id || null,
+        merchant_id: merchantId || null,
       }, { onConflict: 'shop_domain,shopify_order_id' })
 
     console.log('[Webhook] upsert error:', JSON.stringify(error))
@@ -136,7 +155,87 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Invia email followup via Resend
+  // ── Revenue Attribution ────────────────────────────────────────────────────
+
+  if (merchantId) {
+    try {
+      // Livello 1: cerca un piano Malyte per questo cliente
+      const { data: existingPlan } = await supabaseAdmin
+        .from('brand_plans')
+        .select('token, created_at, status')
+        .eq('merchant_id', merchantId)
+        .ilike('buyer_email', buyerEmail)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (existingPlan) {
+        const orderValue = parseFloat(order.total_price || '0')
+        const orderCurrency = order.currency || 'EUR'
+        const orderPaidAt = new Date(order.processed_at || order.created_at)
+        const quizCompletedAt = new Date(existingPlan.created_at)
+        const daysSinceQuiz = Math.floor((orderPaidAt.getTime() - quizCompletedAt.getTime()) / (1000 * 60 * 60 * 24))
+        const { window: attributionWindow, within: withinWindow } = getAttributionWindow(daysSinceQuiz)
+
+        // Livello 2: verifica se i prodotti dell'ordine matchano catalog_items del merchant
+        const orderProductIds = (order.line_items || []).map((i: { product_id: number }) => String(i.product_id))
+
+        const { data: matchedCatalogItems } = await supabaseAdmin
+          .from('catalog_items')
+          .select('id, shopify_product_id, price')
+          .eq('merchant_id', merchantId)
+          .in('shopify_product_id', orderProductIds)
+
+        const recommendationMatch = (matchedCatalogItems?.length ?? 0) > 0
+        const matchedProductIds = matchedCatalogItems?.map(p => p.id) ?? []
+
+        // Valore dei soli prodotti matchati
+        const matchedProductsValue = (order.line_items || []).reduce(
+          (sum: number, item: { product_id: number; price: string; quantity: number }) => {
+            const isMatched = matchedCatalogItems?.some(c => c.shopify_product_id === String(item.product_id))
+            return isMatched ? sum + parseFloat(item.price) * item.quantity : sum
+          }, 0
+        )
+
+        await supabaseAdmin
+          .from('attributed_orders')
+          .upsert({
+            merchant_id: merchantId,
+            shopify_order_id: String(order.id),
+            shopify_order_number: String(order.order_number || order.id),
+            order_value: orderValue,
+            order_currency: orderCurrency,
+            order_paid_at: orderPaidAt.toISOString(),
+            customer_email: buyerEmail,
+            plan_token: existingPlan.token,
+            quiz_completed_at: quizCompletedAt.toISOString(),
+            attribution_type: 'direct',
+            recommendation_match: recommendationMatch,
+            matched_product_ids: matchedProductIds,
+            matched_products_value: matchedProductsValue,
+            days_since_quiz: daysSinceQuiz,
+            attribution_window: attributionWindow,
+            within_window: withinWindow,
+          }, { onConflict: 'merchant_id,shopify_order_id' })
+
+        console.log('[Attribution] order attributed:', {
+          email: buyerEmail,
+          orderValue,
+          daysSinceQuiz,
+          attributionWindow,
+          recommendationMatch,
+        })
+      } else {
+        console.log('[Attribution] no Malyte plan found for:', buyerEmail)
+      }
+    } catch (attrErr) {
+      // Attribution non deve mai bloccare il flusso piano
+      console.error('[Attribution] error (non-blocking):', attrErr)
+    }
+  }
+
+  // ── Email followup (invariata) ─────────────────────────────────────────────
+
   if (buyerEmail && lastToken) {
     try {
       const { sendFollowupEmail } = await import('@/lib/email/resend')
