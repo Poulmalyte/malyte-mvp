@@ -98,10 +98,38 @@ export async function GET() {
       }
     })
 
-    // Settimana media dei clienti (indica retention)
+    // Settimana media dei clienti
     const avgWeek = activePlans.length > 0
       ? activePlans.reduce((sum, p) => sum + (p.week_number || 1), 0) / activePlans.length
       : 0
+
+    // ── Revenue Attribution ──────────────────────────────────────────────────
+    const { data: attributedOrders } = await supabaseAdmin
+      .from('attributed_orders')
+      .select('order_value, matched_products_value, recommendation_match, within_window, days_since_quiz, attribution_window, order_currency')
+      .eq('merchant_id', merchant_id)
+
+    const allAttributed = attributedOrders || []
+    const withinWindow = allAttributed.filter(o => o.within_window)
+
+    const revenueInfluenced = withinWindow.reduce((sum, o) => sum + (o.order_value || 0), 0)
+    const revenueMatched = withinWindow.reduce((sum, o) => sum + (o.matched_products_value || 0), 0)
+    const ordersInfluenced = withinWindow.length
+    const ordersWithProductMatch = withinWindow.filter(o => o.recommendation_match).length
+    const currency = allAttributed[0]?.order_currency || 'EUR'
+
+    // Conversion rate = clienti che hanno acquistato / clienti con piano
+    const conversionRate = totalCustomers > 0
+      ? Math.round((ordersInfluenced / totalCustomers) * 100)
+      : 0
+
+    // Breakdown per attribution window
+    const windowBreakdown = {
+      '30d': allAttributed.filter(o => o.attribution_window === '30d').length,
+      '60d': allAttributed.filter(o => o.attribution_window === '60d').length,
+      '90d': allAttributed.filter(o => o.attribution_window === '90d').length,
+      'beyond': allAttributed.filter(o => o.attribution_window === 'beyond').length,
+    }
 
     return NextResponse.json({
       ok: true,
@@ -121,6 +149,15 @@ export async function GET() {
         checkin_rate: planGenerated > 0 ? Math.round((checkinCompleted / planGenerated) * 100) : 0,
       },
       recent_customers: recentCustomers,
+      revenue: {
+        revenue_influenced: Math.round(revenueInfluenced * 100) / 100,
+        revenue_matched: Math.round(revenueMatched * 100) / 100,
+        orders_influenced: ordersInfluenced,
+        orders_with_product_match: ordersWithProductMatch,
+        conversion_rate: conversionRate,
+        currency,
+        window_breakdown: windowBreakdown,
+      },
     })
 
   } catch (err: any) {

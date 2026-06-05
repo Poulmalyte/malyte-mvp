@@ -919,6 +919,52 @@ function AnalyticsTab({ data, loading, onLoad }: { data: any, loading: boolean, 
           })}
         </div>
       </div>
+      {/* ── Revenue Attribution ── */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px', marginBottom: 16 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Revenue Attribution</p>
+        {!data.revenue || data.revenue.orders_influenced === 0 ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <p style={{ color: '#94A3B8', fontSize: 13, marginBottom: 4 }}>No attributed orders yet.</p>
+            <p style={{ color: '#CBD5E1', fontSize: 12 }}>Orders from customers who completed a Malyte quiz will appear here.</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+              {[
+                { label: 'Revenue Influenced', value: data.revenue.currency + ' ' + data.revenue.revenue_influenced.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 0 }), color: '#059669', bg: '#D1FDF3', sub: 'within 90 days of quiz' },
+                { label: 'Orders Influenced', value: String(data.revenue.orders_influenced), color: '#7C5CFC', bg: '#EDE9FE', sub: data.revenue.orders_with_product_match + ' product match' },
+                { label: 'Conversion Rate', value: data.revenue.conversion_rate + '%', color: '#6385FF', bg: '#EEF2FF', sub: 'customers who repurchased' },
+              ].map((kpi, i) => (
+                <div key={i} style={{ background: kpi.bg, borderRadius: 12, padding: '16px' }}>
+                  <p style={{ fontSize: 10, color: '#64748B', marginBottom: 4, fontWeight: 500 }}>{kpi.label}</p>
+                  <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 22, fontWeight: 800, color: kpi.color, margin: '0 0 4px' }}>{kpi.value}</p>
+                  <p style={{ fontSize: 10, color: '#94A3B8', margin: 0 }}>{kpi.sub}</p>
+                </div>
+              ))}
+            </div>
+            {data.revenue.revenue_matched > 0 && (
+              <div style={{ padding: '12px 16px', background: '#F0FDF4', borderRadius: 10, border: '1px solid #6EE7B7', marginBottom: 12 }}>
+                <p style={{ fontSize: 12, color: '#059669', fontWeight: 600, margin: '0 0 2px' }}>{data.revenue.currency} {data.revenue.revenue_matched.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} from recommended products</p>
+                <p style={{ fontSize: 11, color: '#065F46', margin: 0 }}>Customers purchased exactly the products Malyte recommended</p>
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {[
+                { label: '≤ 30 days', value: data.revenue.window_breakdown['30d'] },
+                { label: '31-60 days', value: data.revenue.window_breakdown['60d'] },
+                { label: '61-90 days', value: data.revenue.window_breakdown['90d'] },
+                { label: '> 90 days', value: data.revenue.window_breakdown['beyond'] },
+              ].map((w, i) => (
+                <div key={i} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E8EDF8', textAlign: 'center' }}>
+                  <p style={{ fontSize: 10, color: '#94A3B8', margin: '0 0 4px' }}>{w.label}</p>
+                  <p style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>{w.value}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
       {recent_customers?.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px' }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Recent customers</p>
