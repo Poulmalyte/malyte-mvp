@@ -1,21 +1,16 @@
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
 
 async function requireAdmin(supabase: any) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
-  const { data } = await supabase
-    .from('admin_users')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
+  const { data } = await supabase.from('admin_users').select('id').eq('user_id', user.id).single()
   return data ? user : null
 }
 
 export async function GET() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -30,15 +25,8 @@ export async function GET() {
   const iso30 = thirtyDaysAgo.toISOString()
 
   const [
-    merchantsRes,
-    totalCustomersRes,
-    quizRes,
-    checkinsRes,
-    ordersRes,
-    revenueRes,
-    activeRes,
-    newCustomersRes,
-    recentRevenueRes,
+    merchantsRes, totalCustomersRes, quizRes, checkinsRes,
+    ordersRes, revenueRes, activeRes, newCustomersRes, recentRevenueRes,
   ] = await Promise.all([
     supabase.from('merchants').select('id', { count: 'exact', head: true }),
     supabase.from('customers').select('id', { count: 'exact', head: true }),
@@ -46,24 +34,13 @@ export async function GET() {
     supabase.from('scheduled_checkins').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
     supabase.from('attributed_orders').select('id', { count: 'exact', head: true }),
     supabase.from('attributed_orders').select('order_value'),
-    // Active merchants: hanno almeno un customer_profile negli ultimi 30d
-    supabase.from('customer_profiles')
-      .select('merchant_id')
-      .gte('created_at', iso30),
-    // Nuovi customers ultimi 30d
-    supabase.from('customers')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', iso30),
-    // Revenue ultimi 30d
-    supabase.from('attributed_orders')
-      .select('order_value')
-      .gte('created_at', iso30),
+    supabase.from('customer_profiles').select('merchant_id').gte('created_at', iso30),
+    supabase.from('customers').select('id', { count: 'exact', head: true }).gte('created_at', iso30),
+    supabase.from('attributed_orders').select('order_value').gte('created_at', iso30),
   ])
 
-  const totalRevenue = (revenueRes.data || [])
-    .reduce((sum: number, o: any) => sum + (parseFloat(o.order_value) || 0), 0)
-  const recentRevenue = (recentRevenueRes.data || [])
-    .reduce((sum: number, o: any) => sum + (parseFloat(o.order_value) || 0), 0)
+  const totalRevenue = (revenueRes.data || []).reduce((s: number, o: any) => s + (parseFloat(o.order_value) || 0), 0)
+  const recentRevenue = (recentRevenueRes.data || []).reduce((s: number, o: any) => s + (parseFloat(o.order_value) || 0), 0)
   const activeMerchantIds = new Set((activeRes.data || []).map((r: any) => r.merchant_id))
 
   return NextResponse.json({

@@ -14,8 +14,7 @@ export async function GET(
   context: { params: Promise<{ seller_id: string }> }
 ) {
   const { seller_id } = await context.params
-
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -30,17 +29,8 @@ export async function GET(
     supabase.from('merchant_customers').select('customer_id').eq('merchant_id', seller_id),
     supabase.from('customer_profiles').select('customer_id, created_at').eq('merchant_id', seller_id),
     supabase.from('scheduled_checkins').select('id').eq('merchant_id', seller_id).eq('status', 'completed'),
-    supabase.from('attributed_orders')
-      .select('id, order_id, order_value, attribution_type, created_at, customer_id')
-      .eq('merchant_id', seller_id)
-      .order('created_at', { ascending: false })
-      .limit(50),
-    supabase.from('scheduled_checkins')
-      .select('id, customer_id, status, completed_at, created_at')
-      .eq('merchant_id', seller_id)
-      .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
-      .limit(50),
+    supabase.from('attributed_orders').select('id, order_id, order_value, attribution_type, created_at, customer_id').eq('merchant_id', seller_id).order('created_at', { ascending: false }).limit(50),
+    supabase.from('scheduled_checkins').select('id, customer_id, status, completed_at, created_at').eq('merchant_id', seller_id).eq('status', 'completed').order('completed_at', { ascending: false }).limit(50),
   ])
 
   if (!merchantRes.data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -49,9 +39,7 @@ export async function GET(
   const totalRevenue = orders.reduce((s: number, o: any) => s + (parseFloat(o.order_value) || 0), 0)
   const uniqueCustomers = new Set((mcRes.data || []).map((mc: any) => mc.customer_id))
   const customersWithOrders = new Set(orders.map((o: any) => o.customer_id))
-  const conversionRate = uniqueCustomers.size > 0
-    ? parseFloat(((customersWithOrders.size / uniqueCustomers.size) * 100).toFixed(1))
-    : 0
+  const conversionRate = uniqueCustomers.size > 0 ? parseFloat(((customersWithOrders.size / uniqueCustomers.size) * 100).toFixed(1)) : 0
 
   const emailMatch = orders.filter((o: any) => o.attribution_type === 'email_match')
   const productMatch = orders.filter((o: any) => o.attribution_type === 'product_match')
@@ -65,27 +53,15 @@ export async function GET(
     for (const c of custs || []) emailMap[c.id] = c.email
   }
 
-  const recentOrders = orders.map((o: any) => ({
-    ...o,
-    customer_email: emailMap[o.customer_id] || '—',
-  }))
-
   return NextResponse.json({
     merchant: merchantRes.data,
-    stats: {
-      customers: uniqueCustomers.size,
-      quizCompletions: (profilesRes.data || []).length,
-      checkinsCompleted: (checkinsRes.data || []).length,
-      ordersInfluenced: orders.length,
-      revenueInfluenced: totalRevenue,
-      conversionRate,
-    },
+    stats: { customers: uniqueCustomers.size, quizCompletions: (profilesRes.data || []).length, checkinsCompleted: (checkinsRes.data || []).length, ordersInfluenced: orders.length, revenueInfluenced: totalRevenue, conversionRate },
     attribution: {
       emailMatch: { count: emailMatch.length, revenue: rev(emailMatch) },
       productMatch: { count: productMatch.length, revenue: rev(productMatch) },
       temporalMatch: { count: temporalMatch.length, revenue: rev(temporalMatch) },
     },
-    recentOrders,
+    recentOrders: orders.map((o: any) => ({ ...o, customer_email: emailMap[o.customer_id] || '—' })),
     recentCheckins: recentCheckinsRes.data || [],
   })
 }
