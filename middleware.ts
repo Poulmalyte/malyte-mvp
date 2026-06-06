@@ -1,22 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getCurrencyFromCountry } from '@/lib/currency'
 
-const EXPERT_ROUTES = ['/dashboard', '/onboarding', '/profile']
-const CLIENT_ROUTES = ['/my-plans', '/account']
-const AUTH_ROUTES = ['/login', '/signup']
-
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const pathname = req.nextUrl.pathname
-
-  const country = req.headers.get('x-vercel-ip-country') ?? null
-  const currency = getCurrencyFromCountry(country)
-  res.cookies.set('user_currency', currency, {
-    path: '/',
-    maxAge: 60 * 60 * 24,
-    sameSite: 'lax',
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: { headers: request.headers },
   })
 
   const supabase = createServerClient(
@@ -24,75 +12,37 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return req.cookies.getAll() },
+        getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            res.cookies.set(name, value, options)
-          )
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request: { headers: request.headers } })
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
         },
       },
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const isProtected = [...EXPERT_ROUTES, ...CLIENT_ROUTES].some(r => pathname.startsWith(r))
-
-  if (!session && isProtected) {
-    return NextResponse.redirect(new URL('/login', req.url))
-  }
-
-  if (session) {
-    const isAuthRoute = AUTH_ROUTES.some(r => pathname.startsWith(r))
-    const isExpertRoute = EXPERT_ROUTES.some(r => pathname.startsWith(r))
-    const isClientRoute = CLIENT_ROUTES.some(r => pathname.startsWith(r))
-    const isOnboardingClient = pathname === '/client-onboarding'
-    const isOnboardingExpert = pathname === '/onboarding'
-
-    if (!isAuthRoute && !isOnboardingClient && !isOnboardingExpert) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, name, country')
-        .eq('id', session.user.id)
-        .single()
-
-      const role = profile?.role || 'client'
-
-      // Solo i client vengono mandati a client-onboarding se mancano dati
-      if (role === 'client' && (!profile?.name || !profile?.country)) {
-        return NextResponse.redirect(new URL('/client-onboarding', req.url))
-      }
-
-      // Gli expert senza name vengono mandati a /onboarding
-      if (role === 'expert' && !profile?.name && !isOnboardingExpert) {
-        return NextResponse.redirect(new URL('/onboarding', req.url))
-      }
-
-      if (role === 'expert' && isClientRoute) {
-        return NextResponse.redirect(new URL('/dashboard', req.url))
-      }
-
-      if (role === 'client' && isExpertRoute) {
-        return NextResponse.redirect(new URL('/my-plans', req.url))
-      }
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
     }
+    // Check admin_users table server-side
+    const { data: adminData } = await supabase
+      .from('admin_users')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
 
-    if (isAuthRoute) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single()
-      const role = profile?.role || 'client'
-      return NextResponse.redirect(new URL(role === 'expert' ? '/dashboard' : '/my-plans', req.url))
+    if (!adminData) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
 
-  return res
+  return response
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/|auth/).*)',
-  ],
+  matcher: ['/admin/:path*'],
 }
