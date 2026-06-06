@@ -25,8 +25,13 @@ export async function GET() {
 
   const [ordersRes, recentOrdersRes, dailyRes, webhookRes] = await Promise.all([
     supabase.from('attributed_orders').select('id, attribution_type, order_value'),
-    supabase.from('attributed_orders').select('id, order_id, order_value, attribution_type, created_at, merchant_id, customer_id').order('created_at', { ascending: false }).limit(50),
-    supabase.from('attributed_orders').select('created_at, order_value').gte('created_at', thirtyDaysAgo.toISOString()).order('created_at', { ascending: true }),
+    supabase.from('attributed_orders')
+      .select('id, shopify_order_number, order_value, attribution_type, created_at, merchant_id, customer_email')
+      .order('created_at', { ascending: false }).limit(50),
+    supabase.from('attributed_orders')
+      .select('created_at, order_value')
+      .gte('created_at', thirtyDaysAgo.toISOString())
+      .order('created_at', { ascending: true }),
     supabase.from('webhook_logs').select('status').gte('received_at', thirtyDaysAgo.toISOString()),
   ])
 
@@ -50,19 +55,13 @@ export async function GET() {
   const merchantIds = [...new Set((recentOrdersRes.data || []).map((o: any) => o.merchant_id))]
   let merchantMap: Record<string, string> = {}
   if (merchantIds.length > 0) {
-    const { data: merchants } = await supabase.from('merchants').select('id, shopify_domain').in('id', merchantIds)
-    for (const m of merchants || []) merchantMap[m.id] = m.shopify_domain
-  }
-  const customerIds = [...new Set((recentOrdersRes.data || []).map((o: any) => o.customer_id).filter(Boolean))]
-  let emailMap: Record<string, string> = {}
-  if (customerIds.length > 0) {
-    const { data: custs } = await supabase.from('customers').select('id, email').in('id', customerIds)
-    for (const c of custs || []) emailMap[c.id] = c.email
+    const { data: merch } = await supabase.from('merchants').select('id, shopify_shop_domain').in('id', merchantIds)
+    for (const m of merch || []) merchantMap[m.id] = m.shopify_shop_domain
   }
 
   return NextResponse.json({
     totals: { attributedOrders: totalOrders, emailMatch, productMatch, temporalMatch, unmatchedOrders: Math.max(0, totalWebhooks - totalOrders), attributionRate },
     dailyChart,
-    recentOrders: (recentOrdersRes.data || []).map((o: any) => ({ ...o, shopifyDomain: merchantMap[o.merchant_id] || '—', customer_email: emailMap[o.customer_id] || '—' })),
+    recentOrders: (recentOrdersRes.data || []).map((o: any) => ({ ...o, shopifyDomain: merchantMap[o.merchant_id] || '—' })),
   })
 }

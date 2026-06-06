@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 async function requireAdmin(supabase: any) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -9,11 +10,7 @@ async function requireAdmin(supabase: any) {
   return data ? user : null
 }
 
-export async function GET(
-  _req: Request,
-  context: { params: Promise<{ seller_id: string }> }
-) {
-  const { seller_id } = await context.params
+export async function GET(request: NextRequest) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,44 +21,87 @@ export async function GET(
   const user = await requireAdmin(supabase)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
-  const [merchantRes, mcRes, profilesRes, checkinsRes, ordersRes, recentCheckinsRes] = await Promise.all([
-    supabase.from('merchants').select('*').eq('id', seller_id).single(),
-    supabase.from('merchant_customers').select('customer_id').eq('merchant_id', seller_id),
-    supabase.from('customer_profiles').select('customer_id, created_at').eq('merchant_id', seller_id),
-    supabase.from('scheduled_checkins').select('id').eq('merchant_id', seller_id).eq('status', 'completed'),
-    supabase.from('attributed_orders').select('id, order_id, order_value, attribution_type, created_at, customer_id').eq('merchant_id', seller_id).order('created_at', { ascending: false }).limit(50),
-    supabase.from('scheduled_checkins').select('id, customer_id, status, completed_at, created_at').eq('merchant_id', seller_id).eq('status', 'completed').order('completed_at', { ascending: false }).limit(50),
+  const { searchParams } = new URL(request.url)
+  const search = searchParams.get('search') || ''
+  const sortBy = searchParams.get('sort') || 'created_at'
+  const order = searchParams.get('order') || 'desc'
+  const page = parseInt(searchParams.get('page') || '1')
+  const limit = 50
+  const offset = (page - 1) * limit
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  let query = supabase
+    .from('merchants')
+    .select('id, name, shopify_shop_domain, created_at, category, is_published', { count: 'exact' })
+
+  if (search) query = query.or(`name.ilike.%${search}%,shopify_shop_domain.ilike.%${search}%`)
+  query = query.order('created_at', { ascending: order === 'asc' }).range(offset, offset + limit - 1)
+
+  const { data: merchants, count, error } = await query
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!merchants || merchants.length === 0) return NextResponse.json({ sellers: [], total: 0 })
+
+  const merchantIds = merchants.map((m: any) => m.id)
+
+  const [mcRes, profilesRes, checkinsRes, ordersRes, lastActivityRes] = await Promise.all([
+    supabase.from('merchant_customers').select('merchant_id, customer_id').in('merchant_id', merchantIds),
+    supabase.from('customer_profiles').select('merchant_id, created_at').in('merchant_id', merchantIds),
+    supabase.from('scheduled_checkins').select('merchant_id').in('merchant_id', merchantIds).eq('status', 'completed'),
+    supabase.from('attributed_orders').select('merchant_id, order_value').in('merchant_id', merchantIds),
+    supabase.from('customer_profiles').select('merchant_id, created_at').in('merchant_id', merchantIds).order('created_at', { ascending: false }),
   ])
 
-  if (!merchantRes.data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const customersByMerchant: Record<string, Set<string>> = {}
+  for (const mc of mcRes.data || []) {
+    if (!customersByMerchant[mc.merchant_id]) customersByMerchant[mc.merchant_id] = new Set()
+    customersByMerchant[mc.merchant_id].add(mc.customer_id)
+  }
+  const quizByMerchant: Record<string, number> = {}
+  for (const p of profilesRes.data || []) quizByMerchant[p.merchant_id] = (quizByMerchant[p.merchant_id] || 0) + 1
 
-  const orders = ordersRes.data || []
-  const totalRevenue = orders.reduce((s: number, o: any) => s + (parseFloat(o.order_value) || 0), 0)
-  const uniqueCustomers = new Set((mcRes.data || []).map((mc: any) => mc.customer_id))
-  const customersWithOrders = new Set(orders.map((o: any) => o.customer_id))
-  const conversionRate = uniqueCustomers.size > 0 ? parseFloat(((customersWithOrders.size / uniqueCustomers.size) * 100).toFixed(1)) : 0
+  const checkinsByMerchant: Record<string, number> = {}
+  for (const c of checkinsRes.data || []) checkinsByMerchant[c.merchant_id] = (checkinsByMerchant[c.merchant_id] || 0) + 1
 
-  const emailMatch = orders.filter((o: any) => o.attribution_type === 'email_match')
-  const productMatch = orders.filter((o: any) => o.attribution_type === 'product_match')
-  const temporalMatch = orders.filter((o: any) => o.attribution_type === 'temporal_match')
-  const rev = (arr: any[]) => arr.reduce((s: number, o: any) => s + (parseFloat(o.order_value) || 0), 0)
-
-  const customerIds = [...new Set(orders.map((o: any) => o.customer_id).filter(Boolean))]
-  let emailMap: Record<string, string> = {}
-  if (customerIds.length > 0) {
-    const { data: custs } = await supabase.from('customers').select('id, email').in('id', customerIds)
-    for (const c of custs || []) emailMap[c.id] = c.email
+  const ordersByMerchant: Record<string, { count: number; revenue: number }> = {}
+  for (const o of ordersRes.data || []) {
+    if (!ordersByMerchant[o.merchant_id]) ordersByMerchant[o.merchant_id] = { count: 0, revenue: 0 }
+    ordersByMerchant[o.merchant_id].count++
+    ordersByMerchant[o.merchant_id].revenue += parseFloat(o.order_value) || 0
+  }
+  const lastActivityByMerchant: Record<string, string> = {}
+  for (const a of lastActivityRes.data || []) {
+    if (!lastActivityByMerchant[a.merchant_id]) lastActivityByMerchant[a.merchant_id] = a.created_at
   }
 
-  return NextResponse.json({
-    merchant: merchantRes.data,
-    stats: { customers: uniqueCustomers.size, quizCompletions: (profilesRes.data || []).length, checkinsCompleted: (checkinsRes.data || []).length, ordersInfluenced: orders.length, revenueInfluenced: totalRevenue, conversionRate },
-    attribution: {
-      emailMatch: { count: emailMatch.length, revenue: rev(emailMatch) },
-      productMatch: { count: productMatch.length, revenue: rev(productMatch) },
-      temporalMatch: { count: temporalMatch.length, revenue: rev(temporalMatch) },
-    },
-    recentOrders: orders.map((o: any) => ({ ...o, customer_email: emailMap[o.customer_id] || '—' })),
-    recentCheckins: recentCheckinsRes.data || [],
+  let sellers = merchants.map((m: any) => {
+    const customers = customersByMerchant[m.id]?.size || 0
+    const quizCompletions = quizByMerchant[m.id] || 0
+    const checkins = checkinsByMerchant[m.id] || 0
+    const orders = ordersByMerchant[m.id] || { count: 0, revenue: 0 }
+    const lastActivity = lastActivityByMerchant[m.id] || null
+    const isActive = lastActivity ? new Date(lastActivity) > thirtyDaysAgo : false
+    const status = isActive ? 'Active' : 'Inactive'
+
+    return {
+      id: m.id,
+      shopName: m.name,
+      shopifyDomain: m.shopify_shop_domain,
+      installDate: m.created_at,
+      plan: m.category,
+      billingStatus: m.is_published ? 'published' : 'draft',
+      customers,
+      quizCompletions,
+      checkinsCompleted: checkins,
+      ordersInfluenced: orders.count,
+      revenueInfluenced: orders.revenue,
+      lastActivity,
+      status,
+    }
   })
+
+  if (sortBy === 'revenue') sellers.sort((a: any, b: any) => b.revenueInfluenced - a.revenueInfluenced)
+  else if (sortBy === 'customers') sellers.sort((a: any, b: any) => b.customers - a.customers)
+
+  return NextResponse.json({ sellers, total: count || 0 })
 }
