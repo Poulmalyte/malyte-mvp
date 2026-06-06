@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
 async function requireAdmin(supabase: any) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -9,8 +9,10 @@ async function requireAdmin(supabase: any) {
   return data ? user : null
 }
 
-export async function GET(_req: Request, { params }: any) {
-  const { seller_id } = await params
+export async function GET(req: NextRequest) {
+  const seller_id = req.nextUrl.pathname.split('/').at(-1)
+  if (!seller_id) return NextResponse.json({ error: 'Missing seller_id' }, { status: 400 })
+
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
