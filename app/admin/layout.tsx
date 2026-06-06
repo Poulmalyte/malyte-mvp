@@ -3,102 +3,98 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  LayoutDashboard,
-  Store,
-  GitMerge,
-  Activity,
-  Users,
-  ChevronLeft,
-  LogOut,
-  Shield,
-} from 'lucide-react'
 
-const NAV_ITEMS = [
-  { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
-  { href: '/admin/sellers', label: 'Sellers', icon: Store },
-  { href: '/admin/attribution', label: 'Attribution', icon: GitMerge },
-  { href: '/admin/health', label: 'System Health', icon: Activity },
-  { href: '/admin/engagement', label: 'Engagement', icon: Users },
+const NAV = [
+  { href: '/admin', label: 'Overview', icon: '◎', exact: true },
+  { href: '/admin/sellers', label: 'Sellers', icon: '⊞' },
+  { href: '/admin/attribution', label: 'Attribution', icon: '⟡' },
+  { href: '/admin/health', label: 'System Health', icon: '⚡' },
+  { href: '/admin/engagement', label: 'Engagement', icon: '◈' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
 
-  const isActive = (href: string, exact?: boolean) => {
-    if (exact) return pathname === href
-    return pathname.startsWith(href)
-  }
+  const isActive = (href: string, exact?: boolean) =>
+    exact ? pathname === href : pathname.startsWith(href)
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a] text-white overflow-hidden">
-      {/* Sidebar */}
-      <aside
-        className={`flex flex-col border-r border-white/[0.06] transition-all duration-200 ${
-          collapsed ? 'w-16' : 'w-56'
-        }`}
-        style={{ background: '#0d0d0d' }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-white/[0.06]">
+    <div style={{ display: 'flex', height: '100vh', background: '#F5F7FA', overflow: 'hidden' }}>
+      <aside style={{
+        width: collapsed ? 56 : 220,
+        minWidth: collapsed ? 56 : 220,
+        background: '#fff',
+        borderRight: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'width 0.2s, min-width 0.2s',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          padding: '20px 16px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+        }}>
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center">
-                <Shield size={12} className="text-black" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 8,
+                background: 'var(--violet)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontSize: 12, fontWeight: 700,
+              }}>M</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Satoshi, sans-serif' }}>Malyte</div>
+                <div style={{ fontSize: 10, color: 'var(--muted)' }}>Admin Panel</div>
               </div>
-              <span className="text-sm font-semibold tracking-wide text-white/90">
-                Malyte Admin
-              </span>
             </div>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-1.5 rounded hover:bg-white/[0.06] text-white/40 hover:text-white/80 transition-colors ml-auto"
-          >
-            <ChevronLeft
-              size={14}
-              className={`transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`}
-            />
+          <button onClick={() => setCollapsed(!collapsed)} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--muted)', fontSize: 14, padding: 4,
+          }}>
+            {collapsed ? '→' : '←'}
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-2 py-4 space-y-0.5">
-          {NAV_ITEMS.map((item) => {
+        <nav style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {NAV.map(item => {
             const active = isActive(item.href, item.exact)
-            const Icon = item.icon
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                  active
-                    ? 'bg-emerald-500/10 text-emerald-400 font-medium'
-                    : 'text-white/40 hover:text-white/80 hover:bg-white/[0.04]'
-                }`}
-              >
-                <Icon size={16} className="shrink-0" />
+              <Link key={item.href} href={item.href} style={{
+                display: 'flex', alignItems: 'center',
+                gap: 10, padding: '10px 12px',
+                borderRadius: 8,
+                background: active ? 'var(--violet-dim)' : 'transparent',
+                color: active ? 'var(--violet)' : 'var(--muted)',
+                fontWeight: active ? 600 : 400,
+                fontSize: 13,
+                justifyContent: collapsed ? 'center' : 'flex-start',
+              }}>
+                <span style={{ fontSize: 15, flexShrink: 0 }}>{item.icon}</span>
                 {!collapsed && <span>{item.label}</span>}
               </Link>
             )
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="px-2 py-4 border-t border-white/[0.06]">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-all"
-          >
-            <LogOut size={16} className="shrink-0" />
+        <div style={{ padding: '12px 8px', borderTop: '1px solid var(--border)' }}>
+          <Link href="/dashboard" style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 12px', borderRadius: 8,
+            color: 'var(--muted)', fontSize: 13,
+            justifyContent: collapsed ? 'center' : 'flex-start',
+          }}>
+            <span>↗</span>
             {!collapsed && <span>Exit Admin</span>}
           </Link>
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 overflow-auto">
+      <main style={{ flex: 1, overflow: 'auto' }}>
         {children}
       </main>
     </div>

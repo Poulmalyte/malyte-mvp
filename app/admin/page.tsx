@@ -1,10 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  Store, Users, ClipboardList, CheckSquare,
-  ShoppingCart, TrendingUp, ArrowUpRight, Activity
-} from 'lucide-react'
 
 interface OverviewData {
   totalSellers: number
@@ -18,41 +14,24 @@ interface OverviewData {
   last30dCustomerGrowth: number
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  accent = false,
-}: {
-  label: string
-  value: string | number
-  sub?: string
-  icon: any
-  accent?: boolean
-}) {
+function Card({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: boolean }) {
   return (
-    <div
-      className={`rounded-xl border p-5 flex flex-col gap-4 ${
-        accent
-          ? 'border-emerald-500/20 bg-emerald-500/5'
-          : 'border-white/[0.06] bg-white/[0.02]'
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-white/40 uppercase tracking-widest font-medium">{label}</span>
-        <div className={`p-2 rounded-lg ${accent ? 'bg-emerald-500/10' : 'bg-white/[0.04]'}`}>
-          <Icon size={14} className={accent ? 'text-emerald-400' : 'text-white/40'} />
-        </div>
+    <div style={{
+      background: '#fff',
+      border: `1px solid ${accent ? 'var(--violet-light)' : 'var(--border)'}`,
+      borderRadius: 12,
+      padding: '20px 24px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        {label}
       </div>
-      <div>
-        <div className={`text-3xl font-bold tracking-tight ${accent ? 'text-emerald-400' : 'text-white'}`}>
-          {value}
-        </div>
-        {sub && (
-          <div className="text-xs text-white/30 mt-1">{sub}</div>
-        )}
+      <div style={{ fontSize: 28, fontWeight: 700, color: accent ? 'var(--violet)' : 'var(--text)', fontFamily: 'Satoshi, sans-serif' }}>
+        {value}
       </div>
+      {sub && <div style={{ fontSize: 12, color: 'var(--muted-light)' }}>{sub}</div>}
     </div>
   )
 }
@@ -66,97 +45,59 @@ function fmt(n: number) {
 export default function AdminOverviewPage() {
   const [data, setData] = useState<OverviewData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/overview')
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false) })
-      .catch(() => { setError('Failed to load'); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
 
   if (loading) return (
-    <div className="flex items-center justify-center h-full min-h-[400px]">
-      <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
+      <div style={{ color: 'var(--muted)', fontSize: 14 }}>Caricamento...</div>
     </div>
   )
 
-  if (error || !data) return (
-    <div className="p-8 text-red-400 text-sm">{error || 'No data'}</div>
-  )
+  if (!data) return <div style={{ padding: 32, color: 'var(--danger)' }}>Errore nel caricamento</div>
 
   return (
-    <div className="p-8 max-w-7xl">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold text-white tracking-tight">Overview</h1>
-        <p className="text-sm text-white/30 mt-1">Platform-wide metrics — live</p>
+    <div style={{ padding: 32, maxWidth: 1100 }}>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Overview</h1>
+        <p style={{ fontSize: 13, color: 'var(--muted)' }}>Platform-wide metrics — live</p>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard
-          label="Total Sellers"
-          value={data.totalSellers}
-          sub={`${data.activeSellers} active last 30d`}
-          icon={Store}
-        />
-        <StatCard
-          label="Active Sellers"
-          value={data.activeSellers}
-          sub="≥1 quiz in last 30 days"
-          icon={Activity}
-        />
-        <StatCard
-          label="Total Customers"
-          value={data.totalCustomers.toLocaleString()}
-          sub={`+${data.last30dCustomerGrowth} last 30d`}
-          icon={Users}
-        />
-        <StatCard
-          label="Quiz Completions"
-          value={data.totalQuizCompletions.toLocaleString()}
-          icon={ClipboardList}
-        />
-        <StatCard
-          label="Check-ins Completed"
-          value={data.totalCheckins.toLocaleString()}
-          icon={CheckSquare}
-        />
-        <StatCard
-          label="Orders Influenced"
-          value={data.totalAttributedOrders.toLocaleString()}
-          icon={ShoppingCart}
-        />
-        <StatCard
-          label="Total Revenue Influenced"
-          value={fmt(data.totalRevenueInfluenced)}
-          icon={TrendingUp}
-          accent
-        />
-        <StatCard
-          label="Revenue (Last 30d)"
-          value={fmt(data.last30dRevenueInfluenced)}
-          sub="ultimi 30 giorni"
-          icon={ArrowUpRight}
-          accent
-        />
-        <StatCard
-          label="Customer Growth (30d)"
-          value={data.last30dCustomerGrowth.toLocaleString()}
-          sub="nuovi email unici"
-          icon={Users}
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <Card label="Total Sellers" value={data.totalSellers} sub={`${data.activeSellers} attivi ultimi 30gg`} />
+        <Card label="Active Sellers" value={data.activeSellers} sub="≥1 quiz in 30 giorni" />
+        <Card label="Total Customers" value={data.totalCustomers.toLocaleString()} sub={`+${data.last30dCustomerGrowth} ultimi 30gg`} />
+        <Card label="Quiz Completions" value={data.totalQuizCompletions.toLocaleString()} />
+        <Card label="Check-ins Completed" value={data.totalCheckins.toLocaleString()} />
+        <Card label="Orders Influenced" value={data.totalAttributedOrders.toLocaleString()} />
+        <Card label="Total Revenue Influenced" value={fmt(data.totalRevenueInfluenced)} accent />
+        <Card label="Revenue (Last 30d)" value={fmt(data.last30dRevenueInfluenced)} sub="ultimi 30 giorni" accent />
+        <Card label="Customer Growth (30d)" value={data.last30dCustomerGrowth.toLocaleString()} sub="nuovi email unici" />
       </div>
 
-      {/* Formula reference */}
-      <div className="mt-10 border border-white/[0.04] rounded-xl p-5 bg-white/[0.01]">
-        <p className="text-xs text-white/20 font-mono uppercase tracking-widest mb-3">Formule</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-white/30">
-          <div><span className="text-white/50">Active Seller</span> — merchant con ≥1 quiz negli ultimi 30gg</div>
-          <div><span className="text-white/50">Customer</span> — email unica in quiz_responses</div>
-          <div><span className="text-white/50">Revenue Influenced</span> — SUM(attributed_orders.order_value)</div>
-          <div><span className="text-white/50">Orders Influenced</span> — COUNT(attributed_orders)</div>
+      <div style={{
+        marginTop: 32, background: '#fff', border: '1px solid var(--border)',
+        borderRadius: 12, padding: 20,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+          Formule
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {[
+            ['Active Seller', 'merchant con ≥1 quiz negli ultimi 30gg'],
+            ['Customer', 'email unica in customers'],
+            ['Revenue Influenced', 'SUM(attributed_orders.order_value)'],
+            ['Orders Influenced', 'COUNT(attributed_orders)'],
+          ].map(([k, v]) => (
+            <div key={k} style={{ fontSize: 12, color: 'var(--muted)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{k}</span> — {v}
+            </div>
+          ))}
         </div>
       </div>
     </div>
