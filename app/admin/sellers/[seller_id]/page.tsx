@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 
 interface SellerDetail {
   merchant: any
@@ -31,10 +30,10 @@ function fmt(n: number) {
 
 function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="border border-white/[0.06] rounded-xl p-4 bg-white/[0.02]">
-      <div className="text-xs text-white/30 uppercase tracking-widest font-medium mb-2">{label}</div>
-      <div className="text-2xl font-bold text-white">{value}</div>
-      {sub && <div className="text-xs text-white/20 mt-1">{sub}</div>}
+    <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px' }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'Satoshi, sans-serif' }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: 'var(--muted-light)', marginTop: 4 }}>{sub}</div>}
     </div>
   )
 }
@@ -42,16 +41,13 @@ function Stat({ label, value, sub }: { label: string; value: string | number; su
 function AttrBar({ label, count, revenue, total }: { label: string; count: number; revenue: number; total: number }) {
   const pct = total > 0 ? (count / total) * 100 : 0
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-white/50">{label}</span>
-        <span className="text-white/70">{count} orders · {fmt(revenue)}</span>
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</span>
+        <span style={{ color: 'var(--muted)' }}>{count} orders · {fmt(revenue)}</span>
       </div>
-      <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-        <div
-          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
+      <div style={{ height: 6, background: 'var(--border)', borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--violet)', borderRadius: 999, transition: 'width 0.5s ease' }} />
       </div>
     </div>
   )
@@ -72,43 +68,38 @@ export default function SellerDetailPage() {
   }, [sellerId])
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+      <div style={{ color: 'var(--muted)', fontSize: 14 }}>Caricamento...</div>
     </div>
   )
 
   if (!data?.merchant) return (
-    <div className="p-8 text-red-400 text-sm">Seller non trovato</div>
+    <div style={{ padding: 32, color: 'var(--danger)', fontSize: 14 }}>Seller non trovato</div>
   )
 
   const { merchant, stats, attribution, recentOrders, recentCheckins } = data
   const totalAttr = attribution.emailMatch.count + attribution.productMatch.count + attribution.temporalMatch.count
 
   return (
-    <div className="p-8 max-w-5xl">
-      {/* Back */}
-      <Link href="/admin/sellers" className="flex items-center gap-2 text-white/30 hover:text-white/70 text-sm mb-6 transition-colors">
-        <ArrowLeft size={14} />
-        Back to Sellers
+    <div style={{ padding: 32, maxWidth: 900 }}>
+      <Link href="/admin/sellers" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>
+        ← Back to Sellers
       </Link>
 
-      {/* Store info */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-white">{merchant.shop_name || merchant.shopify_domain}</h1>
-            <p className="text-sm text-white/30 mt-0.5">{merchant.shopify_domain}</p>
-          </div>
-          <div className="text-right text-xs text-white/30">
-            <div>Installato: {new Date(merchant.created_at).toLocaleDateString('it-IT')}</div>
-            <div className="mt-0.5 capitalize">Piano: <span className="text-white/60">{merchant.plan || '—'}</span></div>
-            <div className="mt-0.5 capitalize">Billing: <span className="text-white/60">{merchant.billing_status || '—'}</span></div>
-          </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+            {merchant.name || merchant.shopify_shop_domain}
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--muted)' }}>{merchant.shopify_shop_domain}</p>
+        </div>
+        <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--muted)' }}>
+          <div>Installato: {new Date(merchant.created_at).toLocaleDateString('it-IT')}</div>
+          <div style={{ marginTop: 4 }}>Categoria: <span style={{ color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{merchant.category || '—'}</span></div>
         </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
         <Stat label="Customers" value={stats.customers} />
         <Stat label="Quiz Completions" value={stats.quizCompletions} />
         <Stat label="Check-ins Completed" value={stats.checkinsCompleted} />
@@ -117,101 +108,84 @@ export default function SellerDetailPage() {
         <Stat label="Conversion Rate" value={`${stats.conversionRate}%`} sub="customers → buyer" />
       </div>
 
-      {/* Attribution breakdown */}
-      <div className="border border-white/[0.06] rounded-xl p-5 bg-white/[0.02] mb-8">
-        <h2 className="text-sm font-medium text-white/70 mb-4 uppercase tracking-widest text-xs">Attribution Breakdown</h2>
-        <div className="space-y-4">
-          <AttrBar
-            label="Email Match"
-            count={attribution.emailMatch.count}
-            revenue={attribution.emailMatch.revenue}
-            total={totalAttr}
-          />
-          <AttrBar
-            label="Product Match"
-            count={attribution.productMatch.count}
-            revenue={attribution.productMatch.revenue}
-            total={totalAttr}
-          />
-          <AttrBar
-            label="Temporal Match"
-            count={attribution.temporalMatch.count}
-            revenue={attribution.temporalMatch.revenue}
-            total={totalAttr}
-          />
+      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 24, marginBottom: 24 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 20 }}>
+          Attribution Breakdown
         </div>
+        <AttrBar label="Email Match" count={attribution.emailMatch.count} revenue={attribution.emailMatch.revenue} total={totalAttr} />
+        <AttrBar label="Product Match" count={attribution.productMatch.count} revenue={attribution.productMatch.revenue} total={totalAttr} />
+        <AttrBar label="Temporal Match" count={attribution.temporalMatch.count} revenue={attribution.temporalMatch.revenue} total={totalAttr} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-white/[0.06]">
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 0 }}>
         {(['orders', 'checkins'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-              tab === t
-                ? 'border-emerald-500 text-emerald-400'
-                : 'border-transparent text-white/30 hover:text-white/60'
-            }`}
-          >
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            background: 'none', border: 'none', borderBottom: `2px solid ${tab === t ? 'var(--violet)' : 'transparent'}`,
+            color: tab === t ? 'var(--violet)' : 'var(--muted)', marginBottom: -1,
+          }}>
             {t === 'orders' ? `Recent Orders (${recentOrders.length})` : `Recent Check-ins (${recentCheckins.length})`}
           </button>
         ))}
       </div>
 
-      {tab === 'orders' && (
-        <table className="w-full text-sm border border-white/[0.06] rounded-xl overflow-hidden">
-          <thead>
-            <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-              <th className="text-left px-4 py-3 text-xs text-white/30 uppercase tracking-wider">Order ID</th>
-              <th className="text-left px-4 py-3 text-xs text-white/30 uppercase tracking-wider">Customer</th>
-              <th className="text-right px-4 py-3 text-xs text-white/30 uppercase tracking-wider">Revenue</th>
-              <th className="text-center px-4 py-3 text-xs text-white/30 uppercase tracking-wider">Attribution</th>
-              <th className="text-right px-4 py-3 text-xs text-white/30 uppercase tracking-wider">Date</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/[0.04]">
-            {recentOrders.map(o => (
-              <tr key={o.id} className="hover:bg-white/[0.02]">
-                <td className="px-4 py-3 font-mono text-xs text-white/40">{o.order_id?.slice(-8) || '—'}</td>
-                <td className="px-4 py-3 text-white/60 text-xs">{o.customer_email}</td>
-                <td className="px-4 py-3 text-right font-mono text-emerald-400 text-xs">{fmt(parseFloat(o.order_value) || 0)}</td>
-                <td className="px-4 py-3 text-center">
-                  <span className="text-xs text-white/30 capitalize">{(o.attribution_type || '').replace('_', ' ')}</span>
-                </td>
-                <td className="px-4 py-3 text-right text-xs text-white/30">
-                  {new Date(o.created_at).toLocaleDateString('it-IT')}
-                </td>
+      <div style={{ background: '#fff', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+        {tab === 'orders' && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#f8f9fb' }}>
+                {['Order ID', 'Customer', 'Revenue', 'Attribution', 'Date'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {recentOrders.length === 0 ? (
+                <tr><td colSpan={5} style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--muted-light)' }}>Nessun ordine</td></tr>
+              ) : recentOrders.map((o, i) => (
+                <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--muted)' }}>{o.shopify_order_number || '—'}</td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{o.customer_email}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--violet)' }}>{fmt(parseFloat(o.order_value) || 0)}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--violet)', background: 'var(--violet-dim)', padding: '3px 8px', borderRadius: 20 }}>
+                      {(o.attribution_type || '').replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', color: 'var(--muted-light)', fontSize: 12 }}>{new Date(o.created_at).toLocaleDateString('it-IT')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-      {tab === 'checkins' && (
-        <table className="w-full text-sm border border-white/[0.06] rounded-xl overflow-hidden">
-          <thead>
-            <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-              <th className="text-left px-4 py-3 text-xs text-white/30 uppercase tracking-wider">Customer</th>
-              <th className="text-center px-4 py-3 text-xs text-white/30 uppercase tracking-wider">Status</th>
-              <th className="text-right px-4 py-3 text-xs text-white/30 uppercase tracking-wider">Completed</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/[0.04]">
-            {recentCheckins.map(c => (
-              <tr key={c.id} className="hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-white/60 text-xs">{c.customer_email}</td>
-                <td className="px-4 py-3 text-center">
-                  <span className="text-xs text-emerald-400">{c.status}</span>
-                </td>
-                <td className="px-4 py-3 text-right text-xs text-white/30">
-                  {c.completed_at ? new Date(c.completed_at).toLocaleDateString('it-IT') : '—'}
-                </td>
+        {tab === 'checkins' && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#f8f9fb' }}>
+                {['Customer', 'Status', 'Completed'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {recentCheckins.length === 0 ? (
+                <tr><td colSpan={3} style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--muted-light)' }}>Nessun check-in</td></tr>
+              ) : recentCheckins.map((c, i) => (
+                <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{c.customer_email || '—'}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--success)', background: '#10b98115', padding: '3px 8px', borderRadius: 20 }}>{c.status}</span>
+                  </td>
+                  <td style={{ padding: '12px 16px', color: 'var(--muted-light)', fontSize: 12 }}>
+                    {c.completed_at ? new Date(c.completed_at).toLocaleDateString('it-IT') : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   )
 }
