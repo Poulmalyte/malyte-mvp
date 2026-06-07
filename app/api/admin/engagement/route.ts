@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 async function requireAdmin(supabase: any) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -9,7 +10,7 @@ async function requireAdmin(supabase: any) {
   return data ? user : null
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,10 +21,21 @@ export async function GET() {
   const user = await requireAdmin(supabase)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
+  const { searchParams } = new URL(request.url)
+  const merchantId = searchParams.get('merchant_id')
+
+  let profilesQuery = supabase.from('customer_profiles').select('customer_id, merchant_id')
+  let checkinsQuery = supabase.from('scheduled_checkins').select('customer_id, merchant_id, status').eq('status', 'completed')
+  let ordersQuery = supabase.from('attributed_orders').select('customer_id, merchant_id, order_value, created_at')
+
+  if (merchantId) {
+    profilesQuery = profilesQuery.eq('merchant_id', merchantId)
+    checkinsQuery = checkinsQuery.eq('merchant_id', merchantId)
+    ordersQuery = ordersQuery.eq('merchant_id', merchantId)
+  }
+
   const [profilesRes, checkinsRes, ordersRes] = await Promise.all([
-    supabase.from('customer_profiles').select('customer_id, merchant_id'),
-    supabase.from('scheduled_checkins').select('customer_id, merchant_id, status').eq('status', 'completed'),
-    supabase.from('attributed_orders').select('customer_id, merchant_id, order_value, created_at'),
+    profilesQuery, checkinsQuery, ordersQuery,
   ])
 
   const checkinsByCustomer: Record<string, number> = {}
@@ -44,7 +56,10 @@ export async function GET() {
   const customerSet = new Map<string, boolean>()
   for (const p of profilesRes.data || []) customerSet.set(`${p.merchant_id}:${p.customer_id}`, true)
 
-  const segments: Record<string, { customers: number; totalRevenue: number; totalOrders: number; repeatCustomers: number; allRevenues: number[]; daysBetweenOrders: number[] }> = {
+  const segments: Record<string, {
+    customers: number; totalRevenue: number; totalOrders: number
+    repeatCustomers: number; allRevenues: number[]; daysBetweenOrders: number[]
+  }> = {
     A: { customers: 0, totalRevenue: 0, totalOrders: 0, repeatCustomers: 0, allRevenues: [], daysBetweenOrders: [] },
     B: { customers: 0, totalRevenue: 0, totalOrders: 0, repeatCustomers: 0, allRevenues: [], daysBetweenOrders: [] },
     C: { customers: 0, totalRevenue: 0, totalOrders: 0, repeatCustomers: 0, allRevenues: [], daysBetweenOrders: [] },
