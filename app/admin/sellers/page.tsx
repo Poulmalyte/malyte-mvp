@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, ArrowUpDown, ChevronRight } from 'lucide-react'
 
 interface Seller {
   id: string
@@ -20,11 +19,11 @@ interface Seller {
   status: string
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  Paying: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  Active: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  Trial: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  Inactive: 'bg-white/5 text-white/30 border-white/10',
+const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
+  Paying:   { color: 'var(--success)', bg: '#10b98115' },
+  Active:   { color: 'var(--violet)', bg: 'var(--violet-dim)' },
+  Trial:    { color: '#f59e0b', bg: '#f59e0b15' },
+  Inactive: { color: 'var(--muted)', bg: '#f1f5f9' },
 }
 
 function fmt(n: number) {
@@ -34,12 +33,11 @@ function fmt(n: number) {
 
 function timeAgo(date: string | null) {
   if (!date) return '—'
-  const diff = Date.now() - new Date(date).getTime()
-  const days = Math.floor(diff / 86400000)
-  if (days === 0) return 'today'
-  if (days === 1) return 'yesterday'
-  if (days < 30) return `${days}d ago`
-  return `${Math.floor(days / 30)}mo ago`
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
+  if (days === 0) return 'oggi'
+  if (days === 1) return 'ieri'
+  if (days < 30) return `${days}g fa`
+  return `${Math.floor(days / 30)}mo fa`
 }
 
 export default function AdminSellersPage() {
@@ -53,15 +51,12 @@ export default function AdminSellersPage() {
 
   const fetchSellers = useCallback(async () => {
     setLoading(true)
-    try {
-      const params = new URLSearchParams({ search, sort, order, page: String(page) })
-      const res = await fetch(`/api/admin/sellers?${params}`)
-      const data = await res.json()
-      setSellers(data.sellers || [])
-      setTotal(data.total || 0)
-    } finally {
-      setLoading(false)
-    }
+    const params = new URLSearchParams({ search, sort, order, page: String(page) })
+    const res = await fetch(`/api/admin/sellers?${params}`)
+    const data = await res.json()
+    setSellers(data.sellers || [])
+    setTotal(data.total || 0)
+    setLoading(false)
   }, [search, sort, order, page])
 
   useEffect(() => { fetchSellers() }, [fetchSellers])
@@ -72,142 +67,143 @@ export default function AdminSellersPage() {
     setPage(1)
   }
 
-  const SortBtn = ({ field, label }: { field: string; label: string }) => (
-    <button
-      onClick={() => toggleSort(field)}
-      className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wider transition-colors ${
-        sort === field ? 'text-emerald-400' : 'text-white/30 hover:text-white/60'
-      }`}
-    >
-      {label}
-      <ArrowUpDown size={10} />
-    </button>
-  )
-
   return (
-    <div className="p-8 max-w-full">
-      <div className="mb-6 flex items-center justify-between gap-4">
+    <div style={{ padding: 32, maxWidth: 1200 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 className="text-xl font-semibold text-white tracking-tight">Sellers</h1>
-          <p className="text-sm text-white/30 mt-0.5">{total} merchants totali</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Sellers</h1>
+          <p style={{ fontSize: 13, color: 'var(--muted)' }}>{total} merchants totali</p>
         </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 14 }}>⌕</span>
           <input
             type="text"
             placeholder="Cerca store o dominio…"
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
-            className="pl-9 pr-4 py-2 bg-white/[0.04] border border-white/[0.06] rounded-lg text-sm text-white placeholder-white/20 focus:outline-none focus:border-emerald-500/40 w-64"
+            style={{
+              paddingLeft: 34, paddingRight: 16, paddingTop: 9, paddingBottom: 9,
+              border: '1px solid var(--border)', borderRadius: 8, fontSize: 13,
+              color: 'var(--text)', background: '#fff', outline: 'none', width: 240,
+            }}
           />
         </div>
       </div>
 
+      {/* Sort pills */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {[
+          { field: 'created_at', label: 'Install Date' },
+          { field: 'revenue', label: 'Revenue' },
+          { field: 'customers', label: 'Customers' },
+        ].map(({ field, label }) => (
+          <button
+            key={field}
+            onClick={() => toggleSort(field)}
+            style={{
+              padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+              border: `1px solid ${sort === field ? 'var(--violet)' : 'var(--border)'}`,
+              background: sort === field ? 'var(--violet-dim)' : '#fff',
+              color: sort === field ? 'var(--violet)' : 'var(--muted)',
+              cursor: 'pointer',
+            }}
+          >
+            {label} {sort === field ? (order === 'desc' ? '↓' : '↑') : ''}
+          </button>
+        ))}
+      </div>
+
       {/* Table */}
-      <div className="border border-white/[0.06] rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-              <th className="text-left px-4 py-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-white/30">Store</span>
-              </th>
-              <th className="text-left px-4 py-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-white/30">Plan</span>
-              </th>
-              <th className="text-right px-4 py-3">
-                <SortBtn field="customers" label="Customers" />
-              </th>
-              <th className="text-right px-4 py-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-white/30">Quiz</span>
-              </th>
-              <th className="text-right px-4 py-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-white/30">Check-ins</span>
-              </th>
-              <th className="text-right px-4 py-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-white/30">Orders</span>
-              </th>
-              <th className="text-right px-4 py-3">
-                <SortBtn field="revenue" label="Revenue" />
-              </th>
-              <th className="text-right px-4 py-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-white/30">Last Activity</span>
-              </th>
-              <th className="text-center px-4 py-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-white/30">Status</span>
-              </th>
-              <th className="px-4 py-3" />
+            <tr style={{ background: '#f8f9fb' }}>
+              {['Store', 'Piano', 'Customers', 'Quiz', 'Check-ins', 'Orders', 'Revenue', 'Last Activity', 'Status', ''].map(h => (
+                <th key={h} style={{
+                  textAlign: h === 'Customers' || h === 'Quiz' || h === 'Check-ins' || h === 'Orders' || h === 'Revenue' || h === 'Last Activity' ? 'right' : 'left',
+                  padding: '12px 16px',
+                  fontSize: 11, fontWeight: 600, color: 'var(--muted)',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  borderBottom: '1px solid var(--border)',
+                }}>
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.04]">
+          <tbody>
             {loading ? (
               <tr>
-                <td colSpan={10} className="text-center py-12">
-                  <div className="inline-block w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+                <td colSpan={10} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted-light)' }}>
+                  Caricamento...
                 </td>
               </tr>
             ) : sellers.length === 0 ? (
               <tr>
-                <td colSpan={10} className="text-center py-12 text-white/20 text-sm">
+                <td colSpan={10} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted-light)' }}>
                   Nessun seller trovato
                 </td>
               </tr>
-            ) : sellers.map(s => (
-              <tr key={s.id} className="hover:bg-white/[0.02] transition-colors group">
-                <td className="px-4 py-3.5">
-                  <div className="font-medium text-white/90">{s.shopName || '—'}</div>
-                  <div className="text-xs text-white/30 mt-0.5">{s.shopifyDomain}</div>
-                </td>
-                <td className="px-4 py-3.5">
-                  <span className="text-xs text-white/40 capitalize">{s.plan || '—'}</span>
-                </td>
-                <td className="px-4 py-3.5 text-right text-white/70">{s.customers}</td>
-                <td className="px-4 py-3.5 text-right text-white/70">{s.quizCompletions}</td>
-                <td className="px-4 py-3.5 text-right text-white/70">{s.checkinsCompleted}</td>
-                <td className="px-4 py-3.5 text-right text-white/70">{s.ordersInfluenced}</td>
-                <td className="px-4 py-3.5 text-right font-mono text-emerald-400 text-xs">
-                  {fmt(s.revenueInfluenced)}
-                </td>
-                <td className="px-4 py-3.5 text-right text-white/30 text-xs">
-                  {timeAgo(s.lastActivity)}
-                </td>
-                <td className="px-4 py-3.5 text-center">
-                  <span className={`inline-block px-2 py-0.5 rounded-full border text-xs font-medium ${STATUS_COLORS[s.status] || STATUS_COLORS.Inactive}`}>
-                    {s.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3.5">
-                  <Link href={`/admin/sellers/${s.id}`}>
-                    <ChevronRight size={14} className="text-white/20 group-hover:text-white/60 transition-colors" />
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            ) : sellers.map(s => {
+              const st = STATUS_COLORS[s.status] || STATUS_COLORS.Inactive
+              return (
+                <tr key={s.id} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ padding: '14px 16px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text)' }}>{s.shopName || '—'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted-light)', marginTop: 2 }}>{s.shopifyDomain}</div>
+                  </td>
+                  <td style={{ padding: '14px 16px', color: 'var(--muted)', fontSize: 12, textTransform: 'capitalize' }}>
+                    {s.plan || '—'}
+                  </td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 500 }}>{s.customers}</td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.quizCompletions}</td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.checkinsCompleted}</td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.ordersInfluenced}</td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--violet)', fontFamily: 'monospace', fontSize: 12 }}>
+                    {fmt(s.revenueInfluenced)}
+                  </td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--muted-light)', fontSize: 12 }}>
+                    {timeAgo(s.lastActivity)}
+                  </td>
+                  <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+                      color: st.color, background: st.bg,
+                    }}>
+                      {s.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '14px 16px' }}>
+                    <Link href={`/admin/sellers/${s.id}`} style={{ color: 'var(--muted-light)', fontSize: 16 }}>›</Link>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Pagination */}
       {total > 50 && (
-        <div className="flex items-center justify-between mt-4 text-sm">
-          <span className="text-white/30">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+          <span style={{ fontSize: 13, color: 'var(--muted)' }}>
             {(page - 1) * 50 + 1}–{Math.min(page * 50, total)} di {total}
           </span>
-          <div className="flex gap-2">
+          <div style={{ display: 'flex', gap: 8 }}>
             <button
               disabled={page === 1}
               onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1.5 rounded-lg border border-white/[0.06] text-white/40 hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', opacity: page === 1 ? 0.4 : 1 }}
             >
-              Prev
+              ← Prev
             </button>
             <button
               disabled={page * 50 >= total}
               onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1.5 rounded-lg border border-white/[0.06] text-white/40 hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', opacity: page * 50 >= total ? 0.4 : 1 }}
             >
-              Next
+              Next →
             </button>
           </div>
         </div>
