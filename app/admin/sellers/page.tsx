@@ -69,7 +69,6 @@ export default function AdminSellersPage() {
 
   return (
     <div style={{ padding: 32, maxWidth: 1200 }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Sellers</h1>
@@ -91,7 +90,6 @@ export default function AdminSellersPage() {
         </div>
       </div>
 
-      {/* Sort pills */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {[
           { field: 'created_at', label: 'Install Date' },
@@ -114,14 +112,13 @@ export default function AdminSellersPage() {
         ))}
       </div>
 
-      {/* Table */}
       <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#f8f9fb' }}>
               {['Store', 'Piano', 'Customers', 'Quiz', 'Check-ins', 'Orders', 'Revenue', 'Last Activity', 'Status', ''].map(h => (
                 <th key={h} style={{
-                  textAlign: h === 'Customers' || h === 'Quiz' || h === 'Check-ins' || h === 'Orders' || h === 'Revenue' || h === 'Last Activity' ? 'right' : 'left',
+                  textAlign: ['Customers', 'Quiz', 'Check-ins', 'Orders', 'Revenue', 'Last Activity'].includes(h) ? 'right' : 'left',
                   padding: '12px 16px',
                   fontSize: 11, fontWeight: 600, color: 'var(--muted)',
                   textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -175,7 +172,7 @@ export default function AdminSellersPage() {
                     </span>
                   </td>
                   <td style={{ padding: '14px 16px' }}>
-                    <Link href={`/admin/sellers/${s.id}`} style={{ color: 'var(--muted-light)', fontSize: 16 }}>›</Link>
+                    <Link href={`/admin/sellers/${s.id}`} style={{ color: 'var(--muted-light)', fontSize: 18, fontWeight: 300, textDecoration: 'none' }}>›</Link>
                   </td>
                 </tr>
               )
@@ -184,7 +181,6 @@ export default function AdminSellersPage() {
         </table>
       </div>
 
-      {/* Pagination */}
       {total > 50 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
           <span style={{ fontSize: 13, color: 'var(--muted)' }}>
