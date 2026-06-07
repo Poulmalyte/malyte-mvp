@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { GitMerge, Mail, Package, Clock, AlertCircle } from 'lucide-react'
 
 interface AttributionData {
   totals: {
@@ -17,9 +16,9 @@ interface AttributionData {
 }
 
 const ATTR_COLORS: Record<string, string> = {
-  email_match: 'text-blue-400',
-  product_match: 'text-emerald-400',
-  temporal_match: 'text-amber-400',
+  email_match: 'var(--violet)',
+  product_match: 'var(--success)',
+  temporal_match: '#f59e0b',
 }
 
 function fmt(n: number) {
@@ -27,170 +26,129 @@ function fmt(n: number) {
   return `€${n.toFixed(0)}`
 }
 
+function Card({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
+  return (
+    <div style={{
+      background: '#fff',
+      border: `1px solid ${accent ? accent + '40' : 'var(--border)'}`,
+      borderRadius: 12,
+      padding: '20px 24px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 6,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 700, color: accent || 'var(--text)', fontFamily: 'Satoshi, sans-serif' }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: 'var(--muted-light)' }}>{sub}</div>}
+    </div>
+  )
+}
+
+function MiniChart({ data, valueKey, color }: { data: any[]; valueKey: string; color: string }) {
+  const last14 = data.slice(-14)
+  const max = Math.max(...last14.map(d => d[valueKey]), 1)
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 60 }}>
+      {last14.map((d, i) => (
+        <div key={i} style={{ flex: 1, position: 'relative' }} className="group">
+          <div style={{
+            height: `${Math.max((d[valueKey] / max) * 100, 4)}%`,
+            background: color, borderRadius: 3, opacity: 0.8,
+            transition: 'opacity 0.15s',
+          }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function AdminAttributionPage() {
   const [data, setData] = useState<AttributionData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/admin/attribution')
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
+    fetch('/api/admin/attribution').then(r => r.json()).then(d => { setData(d); setLoading(false) })
   }, [])
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+      <div style={{ color: 'var(--muted)', fontSize: 14 }}>Caricamento...</div>
     </div>
   )
-
   if (!data) return null
 
   const { totals, dailyChart, recentOrders } = data
 
-  // Simple sparkline max
-  const maxOrders = Math.max(...dailyChart.map(d => d.orders), 1)
-  const maxRevenue = Math.max(...dailyChart.map(d => d.revenue), 1)
-
   return (
-    <div className="p-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold text-white">Attribution Monitor</h1>
-        <p className="text-sm text-white/30 mt-0.5">Verifica salute dell'attribution engine</p>
+    <div style={{ padding: 32, maxWidth: 1100 }}>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Attribution Monitor</h1>
+        <p style={{ fontSize: 13, color: 'var(--muted)' }}>Verifica salute dell'attribution engine</p>
       </div>
 
-      {/* Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        <Card label="Total Attributed Orders" value={totals.attributedOrders} icon={GitMerge} />
-        <Card label="Email Match" value={totals.emailMatch} icon={Mail} color="blue" />
-        <Card label="Product Match" value={totals.productMatch} icon={Package} color="emerald" />
-        <Card label="Temporal Match" value={totals.temporalMatch} icon={Clock} color="amber" />
-        <Card label="Unmatched Orders" value={totals.unmatchedOrders} icon={AlertCircle} color={totals.unmatchedOrders > 0 ? 'red' : undefined} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <Card label="Total Attributed Orders" value={totals.attributedOrders} />
+        <Card label="Email Match" value={totals.emailMatch} accent="var(--violet)" />
+        <Card label="Product Match" value={totals.productMatch} accent="var(--success)" />
+        <Card label="Temporal Match" value={totals.temporalMatch} accent="#f59e0b" />
+        <Card label="Unmatched Orders" value={totals.unmatchedOrders} accent={totals.unmatchedOrders > 0 ? 'var(--danger)' : undefined} />
         <Card
           label="Attribution Rate"
           value={`${totals.attributionRate}%`}
-          icon={GitMerge}
-          color={totals.attributionRate >= 70 ? 'emerald' : totals.attributionRate >= 40 ? 'amber' : 'red'}
           sub="attributed / total webhooks"
+          accent={totals.attributionRate >= 70 ? 'var(--success)' : totals.attributionRate >= 40 ? '#f59e0b' : 'var(--danger)'}
         />
       </div>
 
-      {/* Charts */}
       {dailyChart.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <ChartCard
-            title="Attributed Orders / Day"
-            data={dailyChart}
-            valueKey="orders"
-            max={maxOrders}
-            color="#10b981"
-            formatVal={(v) => String(v)}
-          />
-          <ChartCard
-            title="Revenue Influenced / Day"
-            data={dailyChart}
-            valueKey="revenue"
-            max={maxRevenue}
-            color="#6366f1"
-            formatVal={(v) => fmt(v)}
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+          {[
+            { title: 'Attributed Orders / Day', key: 'orders', color: 'var(--violet)' },
+            { title: 'Revenue Influenced / Day', key: 'revenue', color: 'var(--neon2)' },
+          ].map(({ title, key, color }) => (
+            <div key={key} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 16 }}>{title}</div>
+              <MiniChart data={dailyChart} valueKey={key} color={color} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted-light)', marginTop: 8 }}>
+                <span>{dailyChart[0]?.date.slice(5)}</span>
+                <span>{dailyChart[dailyChart.length - 1]?.date.slice(5)}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Recent Orders */}
-      <div className="border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/[0.06] bg-white/[0.02]">
-          <span className="text-sm font-medium text-white/70">Recent Attributed Orders</span>
+      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+          Recent Attributed Orders
         </div>
-        <table className="w-full text-sm">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr className="border-b border-white/[0.04]">
+            <tr style={{ background: '#f8f9fb' }}>
               {['Order ID', 'Customer', 'Revenue', 'Attribution', 'Store', 'Date'].map(h => (
-                <th key={h} className="text-left px-5 py-3 text-xs text-white/30 uppercase tracking-wider">{h}</th>
+                <th key={h} style={{ textAlign: 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.04]">
-            {recentOrders.map(o => (
-              <tr key={o.id} className="hover:bg-white/[0.02]">
-                <td className="px-5 py-3 font-mono text-xs text-white/40">{o.order_id?.slice(-8) || '—'}</td>
-                <td className="px-5 py-3 text-xs text-white/60">{o.customer_email}</td>
-                <td className="px-5 py-3 font-mono text-xs text-emerald-400">{fmt(parseFloat(o.order_value) || 0)}</td>
-                <td className="px-5 py-3">
-                  <span className={`text-xs capitalize ${ATTR_COLORS[o.attribution_type] || 'text-white/40'}`}>
+          <tbody>
+            {recentOrders.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding: '24px 16px', color: 'var(--muted-light)', textAlign: 'center' }}>Nessun ordine attribuito</td></tr>
+            ) : recentOrders.map((o, i) => (
+              <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
+                <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--muted)' }}>{o.shopify_order_number || '—'}</td>
+                <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{o.customer_email}</td>
+                <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--violet)' }}>{fmt(parseFloat(o.order_value) || 0)}</td>
+                <td style={{ padding: '12px 16px' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: ATTR_COLORS[o.attribution_type] || 'var(--muted)', background: (ATTR_COLORS[o.attribution_type] || '#999') + '15', padding: '3px 8px', borderRadius: 20 }}>
                     {(o.attribution_type || '').replace('_', ' ')}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-xs text-white/30">{o.shopifyDomain}</td>
-                <td className="px-5 py-3 text-xs text-white/30">
-                  {new Date(o.created_at).toLocaleDateString('it-IT')}
-                </td>
+                <td style={{ padding: '12px 16px', color: 'var(--muted)', fontSize: 12 }}>{o.shopifyDomain}</td>
+                <td style={{ padding: '12px 16px', color: 'var(--muted-light)', fontSize: 12 }}>{new Date(o.created_at).toLocaleDateString('it-IT')}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
-  )
-}
-
-function Card({
-  label, value, icon: Icon, sub, color,
-}: {
-  label: string; value: string | number; icon: any; sub?: string; color?: string
-}) {
-  const colors: Record<string, string> = {
-    blue: 'text-blue-400',
-    emerald: 'text-emerald-400',
-    amber: 'text-amber-400',
-    red: 'text-red-400',
-  }
-  return (
-    <div className="border border-white/[0.06] rounded-xl p-5 bg-white/[0.02]">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-white/30 uppercase tracking-widest font-medium">{label}</span>
-        <Icon size={14} className="text-white/20" />
-      </div>
-      <div className={`text-3xl font-bold ${color ? colors[color] : 'text-white'}`}>{value}</div>
-      {sub && <div className="text-xs text-white/20 mt-1">{sub}</div>}
-    </div>
-  )
-}
-
-function ChartCard({
-  title, data, valueKey, max, color, formatVal,
-}: {
-  title: string
-  data: { date: string; orders: number; revenue: number }[]
-  valueKey: 'orders' | 'revenue'
-  max: number
-  color: string
-  formatVal: (v: number) => string
-}) {
-  const last14 = data.slice(-14)
-  return (
-    <div className="border border-white/[0.06] rounded-xl p-5 bg-white/[0.02]">
-      <div className="text-sm font-medium text-white/50 mb-4">{title}</div>
-      <div className="flex items-end gap-1 h-24">
-        {last14.map((d, i) => {
-          const val = d[valueKey]
-          const pct = (val / max) * 100
-          return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-              <div
-                className="w-full rounded-sm transition-all"
-                style={{ height: `${Math.max(pct, 2)}%`, background: color, opacity: 0.7 }}
-              />
-              {/* Tooltip */}
-              <div className="absolute bottom-full mb-1 bg-black border border-white/10 rounded px-2 py-1 text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                {d.date.slice(5)}: {formatVal(val)}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      <div className="flex justify-between text-xs text-white/20 mt-2">
-        <span>{last14[0]?.date.slice(5)}</span>
-        <span>{last14[last14.length - 1]?.date.slice(5)}</span>
       </div>
     </div>
   )
