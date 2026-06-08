@@ -224,7 +224,7 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
         </div>
 
         {step === 'auth' && (
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28 }}>
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px 16px' }}>
             <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A', marginBottom: 6 }}>
               {authMode === 'signup' ? 'Create your account' : 'Welcome back'}
             </h2>
@@ -261,7 +261,7 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
         )}
 
         {step === 'questionnaire' && shopifyProduct && (
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28 }}>
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px 16px' }}>
             <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A', marginBottom: 6 }}>
               Tell us about yourself
             </h2>
@@ -310,7 +310,7 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
             {isPlanWeekly && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, background: '#EDE9FE', borderRadius: 12, padding: '12px 18px' }}>
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#7C5CFC' }}>Week {currentWeek} of {totalWeeks}</span>
-                <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 160, justifyContent: 'flex-end' }}>
                   {Array.from({ length: totalWeeks }, (_, i) => (
                     <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i < currentWeek ? '#7C5CFC' : '#C4B5FD' }} />
                   ))}
@@ -318,7 +318,7 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
               </div>
             )}
 
-            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28, marginBottom: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px 16px', marginBottom: 16 }}>
               <div style={{ background: '#D1FDF3', border: '1px solid #6EE7B7', borderRadius: 12, padding: '16px 20px', marginBottom: 24 }}>
                 <p style={{ fontWeight: 700, color: '#059669', fontSize: 15, margin: '0 0 4px' }}>✓ Your plan is ready!</p>
                 <p style={{ color: '#065F46', fontSize: 13, margin: 0 }}>You can come back anytime at app.malyte.com</p>
@@ -374,7 +374,7 @@ export default function PlanClient({ order, shopifyProduct, existingPlan, token 
         )}
 
         {step === 'checkin' && (
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: 28 }}>
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8EDF8', padding: '20px 16px' }}>
             <h2 style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A', marginBottom: 6 }}>
               Week {currentWeek} check-in
             </h2>
