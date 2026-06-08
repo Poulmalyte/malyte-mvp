@@ -22,7 +22,7 @@ async function registerWebhook(shop: string, token: string, topic: string) {
   })
   const data = await res.json()
   if (data.errors) {
-    console.error(`Webhook ${topic} error:`, data.errors)
+    console.error(`Webhook ${topic} error:`, JSON.stringify(data.errors))
   } else {
     console.log(`✅ Webhook ${topic} registered`)
   }
@@ -49,15 +49,9 @@ async function createSubscription(shop: string, token: string): Promise<string> 
           }
         }]
       ) {
-        appSubscription {
-          id
-          status
-        }
+        appSubscription { id status }
         confirmationUrl
-        userErrors {
-          field
-          message
-        }
+        userErrors { field message }
       }
     }
   `
@@ -74,19 +68,13 @@ async function createSubscription(shop: string, token: string): Promise<string> 
   const data = await res.json()
   console.log('[Billing] full response:', JSON.stringify(data))
 
-  if (data.errors) {
-    throw new Error(`GraphQL error: ${JSON.stringify(data.errors)}`)
-  }
+  if (data.errors) throw new Error(`GraphQL error: ${JSON.stringify(data.errors)}`)
 
   const userErrors = data?.data?.appSubscriptionCreate?.userErrors
-  if (userErrors?.length > 0) {
-    throw new Error(`Subscription userErrors: ${JSON.stringify(userErrors)}`)
-  }
+  if (userErrors?.length > 0) throw new Error(`Subscription userErrors: ${JSON.stringify(userErrors)}`)
 
   const confirmationUrl = data?.data?.appSubscriptionCreate?.confirmationUrl
-  if (!confirmationUrl) {
-    throw new Error('No confirmationUrl returned from Shopify')
-  }
+  if (!confirmationUrl) throw new Error('No confirmationUrl returned from Shopify')
 
   return confirmationUrl
 }
@@ -114,10 +102,7 @@ export async function GET(request: NextRequest) {
   const expertId = oauthState.expert_id
   console.log('[Callback] expertId from DB:', expertId)
 
-  await supabaseAdmin
-    .from('shopify_oauth_states')
-    .delete()
-    .eq('state', state)
+  await supabaseAdmin.from('shopify_oauth_states').delete().eq('state', state)
 
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: 'POST',
@@ -126,11 +111,19 @@ export async function GET(request: NextRequest) {
       client_id: process.env.SHOPIFY_CLIENT_ID,
       client_secret: process.env.SHOPIFY_CLIENT_SECRET,
       code,
+      expiring: '1',
     }),
   })
 
   const tokenData = await tokenResponse.json()
+  console.log('[Callback] tokenData:', JSON.stringify(tokenData))
+
   const access_token = tokenData.access_token
+  const refresh_token = tokenData.refresh_token || null
+  const expires_in = tokenData.expires_in || null
+  const token_expires_at = expires_in
+    ? new Date(Date.now() + expires_in * 1000).toISOString()
+    : null
 
   if (!access_token) {
     console.error('Token error:', tokenData)
@@ -142,6 +135,8 @@ export async function GET(request: NextRequest) {
     .upsert({
       shop_domain: shop,
       access_token,
+      refresh_token,
+      token_expires_at,
       expert_id: expertId,
       subscription_status: 'pending',
     }, { onConflict: 'shop_domain' })
@@ -160,9 +155,7 @@ export async function GET(request: NextRequest) {
     return response
   } catch (err) {
     console.error('[Billing] Error creating subscription:', err)
-    const response = NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/shopify`
-    )
+    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/shopify`)
     response.cookies.delete('shopify_state')
     return response
   }
