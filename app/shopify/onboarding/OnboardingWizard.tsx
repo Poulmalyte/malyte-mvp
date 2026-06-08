@@ -22,7 +22,7 @@ const STEPS = [
   { number: 2, label: 'Catalog' },
   { number: 3, label: 'Intake' },
   { number: 4, label: 'Preview' },
-  { number: 5, label: 'Go Live' },
+  { number: 5, label: 'Get Started' },
 ]
 
 export default function OnboardingWizard({

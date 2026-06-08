@@ -289,7 +289,7 @@ export default function Step4Preview({ onComplete, onBack }: Props) {
         <button onClick={onBack} style={{ flex: 1, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#F8FAFC', color: '#64748B', border: '1px solid #E8EDF8', cursor: 'pointer' }}>← Back</button>
         <button onClick={() => onComplete({ preview_approved: true })}
           style={{ flex: 2, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer' }}>
-          Looks great → Go live
+          Looks great → Get Started
         </button>
       </div>
     </div>
