@@ -20,10 +20,10 @@ interface Seller {
 }
 
 const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
-  Paying:   { color: 'var(--success)', bg: '#10b98115' },
-  Active:   { color: 'var(--violet)', bg: 'var(--violet-dim)' },
-  Trial:    { color: '#f59e0b', bg: '#f59e0b15' },
-  Inactive: { color: 'var(--muted)', bg: '#f1f5f9' },
+  Paying:   { color: '#10b981', bg: '#d1fae5' },
+  Active:   { color: '#7c3aed', bg: '#ede9fe' },
+  Trial:    { color: '#d97706', bg: '#fef3c7' },
+  Inactive: { color: '#6b7280', bg: '#f3f4f6' },
 }
 
 function fmt(n: number) {
@@ -102,7 +102,7 @@ export default function AdminSellersPage() {
             style={{
               padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
               border: `1px solid ${sort === field ? 'var(--violet)' : 'var(--border)'}`,
-              background: sort === field ? 'var(--violet-dim)' : '#fff',
+              background: sort === field ? '#ede9fe' : '#fff',
               color: sort === field ? 'var(--violet)' : 'var(--muted)',
               cursor: 'pointer',
             }}
@@ -132,13 +132,13 @@ export default function AdminSellersPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={10} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted-light)' }}>
+                <td colSpan={10} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted)' }}>
                   Caricamento...
                 </td>
               </tr>
             ) : sellers.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted-light)' }}>
+                <td colSpan={10} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted)' }}>
                   Nessun seller trovato
                 </td>
               </tr>
@@ -148,19 +148,19 @@ export default function AdminSellersPage() {
                 <tr key={s.id} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ fontWeight: 600, color: 'var(--text)' }}>{s.shopName || '—'}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted-light)', marginTop: 2 }}>{s.shopifyDomain}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{s.shopifyDomain}</div>
                   </td>
                   <td style={{ padding: '14px 16px', color: 'var(--muted)', fontSize: 12, textTransform: 'capitalize' }}>
                     {s.plan || '—'}
                   </td>
-                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 500 }}>{s.customers}</td>
-                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.quizCompletions}</td>
-                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.checkinsCompleted}</td>
-                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.ordersInfluenced}</td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text)', fontWeight: 500 }}>{s.customers}</td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text)' }}>{s.quizCompletions}</td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text)' }}>{s.checkinsCompleted}</td>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text)' }}>{s.ordersInfluenced}</td>
                   <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--violet)', fontFamily: 'monospace', fontSize: 12 }}>
                     {fmt(s.revenueInfluenced)}
                   </td>
-                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--muted-light)', fontSize: 12 }}>
+                  <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--muted)', fontSize: 12 }}>
                     {timeAgo(s.lastActivity)}
                   </td>
                   <td style={{ padding: '14px 16px', textAlign: 'center' }}>
@@ -172,7 +172,7 @@ export default function AdminSellersPage() {
                     </span>
                   </td>
                   <td style={{ padding: '14px 16px' }}>
-                    <Link href={`/admin/sellers/${s.id}`} style={{ color: 'var(--muted-light)', fontSize: 18, fontWeight: 300, textDecoration: 'none' }}>›</Link>
+                    <Link href={`/admin/sellers/${s.id}`} style={{ color: '#6b7280', fontSize: 20, fontWeight: 400, textDecoration: 'none', lineHeight: 1 }}>›</Link>
                   </td>
                 </tr>
               )
@@ -190,14 +190,14 @@ export default function AdminSellersPage() {
             <button
               disabled={page === 1}
               onClick={() => setPage(p => p - 1)}
-              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', opacity: page === 1 ? 0.4 : 1 }}
+              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13, color: 'var(--text)', opacity: page === 1 ? 0.4 : 1 }}
             >
               ← Prev
             </button>
             <button
               disabled={page * 50 >= total}
               onClick={() => setPage(p => p + 1)}
-              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', opacity: page * 50 >= total ? 0.4 : 1 }}
+              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13, color: 'var(--text)', opacity: page * 50 >= total ? 0.4 : 1 }}
             >
               Next →
             </button>
