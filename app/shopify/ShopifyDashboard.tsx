@@ -365,7 +365,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E8EDF8', padding: '0 24px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '16px 0 0', gap: 8 }}>
             <div>
               <a href="/shopify/home" style={{ textDecoration: 'none' }}>
                 <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 20, color: '#0F172A' }}>malyte<span style={{ color: '#7C5CFC' }}>.</span></span>
@@ -373,7 +373,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               <p style={{ color: '#94A3B8', fontSize: 12, margin: '2px 0 0' }}>Shopify App · {brandName || expertName}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {installation && <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #6EE7B7', padding: '4px 12px', borderRadius: 100 }}>✓ {installation.shop_domain}</span>}
+              {installation && <span style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#D1FDF3', border: '1px solid #6EE7B7', padding: '3px 8px', borderRadius: 100, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>✓ {installation.shop_domain}</span>}
               <button onClick={handleSignOut} disabled={signingOut} style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, border: '1px solid #E8EDF8', background: '#F8FAFC', color: '#64748B', cursor: 'pointer', opacity: signingOut ? 0.7 : 1 }}>
                 {signingOut ? 'Signing out…' : 'Sign out'}
               </button>
@@ -394,7 +394,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
 
         {activeTab === 'overview' && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 12, marginBottom: 16 }}>
               {[{ label: 'Total orders', value: String(orders.length || totalOrders), color: '#7C5CFC', bg: '#EDE9FE' }, { label: 'Plans generated', value: String(orders.filter((o: any) => o.status === 'plan_generated').length || plansGenerated), color: '#059669', bg: '#D1FDF3' }, { label: 'Products configured', value: String(products.filter(p => p.pdf_path).length), color: '#6385FF', bg: '#EEF2FF' }].map((kpi, i) => (
                 <div key={i} style={{ background: kpi.bg, borderRadius: 12, padding: '16px' }}>
                   <p style={{ fontSize: 10, color: '#64748B', marginBottom: 4, fontWeight: 500 }}>{kpi.label}</p>
@@ -870,7 +870,7 @@ function AnalyticsTab({ data, loading, onLoad }: { data: any, loading: boolean, 
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 12, marginBottom: 16 }}>
         {[
           { label: 'Total customers', value: String(overview.total_customers), color: '#7C5CFC', bg: '#EDE9FE' },
           { label: 'Check-ins done', value: String(overview.completed_checkins), color: '#059669', bg: '#D1FDF3' },
@@ -882,7 +882,7 @@ function AnalyticsTab({ data, loading, onLoad }: { data: any, loading: boolean, 
           </div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'Plans generated', value: String(overview.total_plans), color: '#7C5CFC', bg: '#F5F3FF' },
           { label: 'Avg week', value: overview.avg_week > 0 ? 'W' + overview.avg_week : '—', color: '#D97706', bg: '#FEF3C7' },
@@ -929,7 +929,7 @@ function AnalyticsTab({ data, loading, onLoad }: { data: any, loading: boolean, 
           </div>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 12, marginBottom: 16 }}>
               {[
                 { label: 'Revenue Influenced', value: data.revenue.currency + ' ' + data.revenue.revenue_influenced.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 0 }), color: '#059669', bg: '#D1FDF3', sub: 'within 90 days of quiz' },
                 { label: 'Orders Influenced', value: String(data.revenue.orders_influenced), color: '#7C5CFC', bg: '#EDE9FE', sub: data.revenue.orders_with_product_match + ' product match' },
@@ -948,7 +948,7 @@ function AnalyticsTab({ data, loading, onLoad }: { data: any, loading: boolean, 
                 <p style={{ fontSize: 11, color: '#065F46', margin: 0 }}>Customers purchased exactly the products Malyte recommended</p>
               </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
               {[
                 { label: '≤ 30 days', value: data.revenue.window_breakdown['30d'] },
                 { label: '31-60 days', value: data.revenue.window_breakdown['60d'] },
