@@ -51,10 +51,11 @@ export default function Step2Catalog({ merchantId, hasInstallation, initialItems
   const [tagging, setTagging] = useState(false)
   const [tagResult, setTagResult] = useState<{ tagged: number; failed: number; total: number } | null>(null)
   const [error, setError] = useState('')
+  const [shopInput, setShopInput] = useState('')
+  const [connecting, setConnecting] = useState(false)
 
   const needsReview = items.filter(i => getConfidence(i) < 0.7 && i.ai_tagged)
   const highConfidence = items.filter(i => getConfidence(i) >= 0.7 && i.ai_tagged)
-  const untagged = items.filter(i => !i.ai_tagged)
 
   useEffect(() => {
     if (initialItems.length === 0 && hasInstallation) {
@@ -70,7 +71,6 @@ export default function Step2Catalog({ merchantId, hasInstallation, initialItems
       const json = await res.json()
       if (!res.ok) { setError(json.error || 'Tagging failed'); setTagging(false); return }
       setTagResult(json)
-      // Ricarica items
       const res2 = await fetch('/api/shopify/catalog-items')
       if (res2.ok) {
         const json2 = await res2.json()
@@ -86,18 +86,119 @@ export default function Step2Catalog({ merchantId, hasInstallation, initialItems
     onComplete({ catalog_approved: true })
   }
 
+  function handleConnectShop() {
+    let shop = shopInput.trim().toLowerCase()
+    if (!shop) return
+    // Normalizza: rimuove https://, http://, trailing slash
+    shop = shop.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    // Aggiunge .myshopify.com se non presente
+    if (!shop.includes('.myshopify.com')) {
+      shop = `${shop}.myshopify.com`
+    }
+    setConnecting(true)
+    window.location.href = `/api/shopify/install?shop=${shop}&expert_id=${merchantId}&redirect=/shopify/onboarding?step=2`
+  }
+
   if (!hasInstallation) {
+    const steps = [
+      { icon: '📦', label: 'Import products' },
+      { icon: '🔬', label: 'Analyse ingredients' },
+      { icon: '🏷️', label: 'Tag benefits' },
+      { icon: '🗺️', label: 'Build recommendation map' },
+      { icon: '✨', label: 'Generate customer plans' },
+    ]
     return (
-      <div>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 6px', fontFamily: "'Satoshi', sans-serif" }}>Catalog Intelligence</h2>
-        <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 28px' }}>Connect your Shopify store first to sync and tag your products.</p>
-        <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: 12, border: '1px solid #FDE68A', marginBottom: 20 }}>
-          <p style={{ fontSize: 13, color: '#92400E', margin: 0 }}>⚠ No Shopify store connected. Go to Settings → Store to connect your store, then come back here.</p>
+      <div style={{ padding: '0 2px' }}>
+        <style>{`
+          @media (max-width: 480px) {
+            .catalog-step-title { font-size: 18px !important; }
+            .catalog-step-subtitle { font-size: 13px !important; }
+            .catalog-step-item { padding: 10px 12px !important; }
+            .catalog-step-icon { width: 24px !important; height: 24px !important; font-size: 13px !important; }
+            .catalog-step-label { font-size: 13px !important; }
+            .catalog-btn { padding: 13px !important; font-size: 14px !important; }
+            .catalog-shop-input { font-size: 13px !important; padding: 11px 14px !important; }
+          }
+        `}</style>
+
+        <h2 className="catalog-step-title" style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 6px', fontFamily: "'Satoshi', sans-serif" }}>
+          Catalog Intelligence
+        </h2>
+        <p className="catalog-step-subtitle" style={{ fontSize: 14, color: '#64748B', margin: '0 0 20px' }}>
+          What happens after you connect Shopify?
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+          {steps.map((s, i) => (
+            <div
+              key={i}
+              className="catalog-step-item"
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: '#F8FAFC', border: '1px solid #E8EDF8' }}
+            >
+              <div
+                className="catalog-step-icon"
+                style={{ width: 28, height: 28, borderRadius: 8, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}
+              >
+                {s.icon}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#7C5CFC', minWidth: 16 }}>{i + 1}.</span>
+                <span className="catalog-step-label" style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{s.label}</span>
+              </div>
+            </div>
+          ))}
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onBack} style={{ flex: 1, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#F8FAFC', color: '#64748B', border: '1px solid #E8EDF8', cursor: 'pointer' }}>← Back</button>
-          <button onClick={handleContinue} style={{ flex: 1, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer' }}>Skip for now →</button>
+
+        {/* Input shop + bottone connect */}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+            <input
+              className="catalog-shop-input"
+              type="text"
+              placeholder="your-store.myshopify.com"
+              value={shopInput}
+              onChange={e => setShopInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleConnectShop()}
+              style={{
+                flex: 1,
+                padding: '12px 14px',
+                borderRadius: 12,
+                border: '1px solid #E8EDF8',
+                fontSize: 14,
+                color: '#0F172A',
+                background: '#F8FAFC',
+                outline: 'none',
+              }}
+            />
+          </div>
+          <button
+            className="catalog-btn"
+            onClick={handleConnectShop}
+            disabled={connecting || !shopInput.trim()}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: 12,
+              fontWeight: 700,
+              fontSize: 15,
+              background: '#7C5CFC',
+              color: '#fff',
+              border: 'none',
+              cursor: connecting || !shopInput.trim() ? 'not-allowed' : 'pointer',
+              opacity: connecting || !shopInput.trim() ? 0.6 : 1,
+            }}
+          >
+            {connecting ? 'Connecting…' : 'Connect Shopify →'}
+          </button>
         </div>
+
+        <button
+          className="catalog-btn"
+          onClick={handleContinue}
+          style={{ width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 15, background: '#F8FAFC', color: '#64748B', border: '1px solid #E8EDF8', cursor: 'pointer' }}
+        >
+          Skip for now
+        </button>
       </div>
     )
   }
@@ -118,11 +219,20 @@ export default function Step2Catalog({ merchantId, hasInstallation, initialItems
 
   return (
     <div>
+      <style>{`
+        @media (max-width: 480px) {
+          .catalog-kpi-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+          .catalog-kpi-value { font-size: 20px !important; }
+          .catalog-item-title { font-size: 12px !important; }
+          .catalog-approve-btn { padding: 13px !important; font-size: 14px !important; }
+        }
+      `}</style>
+
       <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 6px', fontFamily: "'Satoshi', sans-serif" }}>Catalog Intelligence</h2>
       <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 20px' }}>Claude has analysed your products. Review and approve the tags.</p>
 
       {tagResult && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 20 }}>
+        <div className="catalog-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 20 }}>
           {[
             { label: 'Products found', value: tagResult.total, color: '#7C5CFC', bg: '#EDE9FE' },
             { label: 'Tagged', value: tagResult.tagged, color: '#059669', bg: '#D1FDF3' },
@@ -130,7 +240,7 @@ export default function Step2Catalog({ merchantId, hasInstallation, initialItems
           ].map((kpi, i) => (
             <div key={i} style={{ background: kpi.bg, borderRadius: 10, padding: '12px 14px' }}>
               <p style={{ fontSize: 10, color: '#64748B', margin: '0 0 4px', fontWeight: 600 }}>{kpi.label}</p>
-              <p style={{ fontSize: 24, fontWeight: 800, color: kpi.color, margin: 0, fontFamily: "'Satoshi', sans-serif" }}>{kpi.value}</p>
+              <p className="catalog-kpi-value" style={{ fontSize: 24, fontWeight: 800, color: kpi.color, margin: 0, fontFamily: "'Satoshi', sans-serif" }}>{kpi.value}</p>
             </div>
           ))}
         </div>
@@ -162,7 +272,7 @@ export default function Step2Catalog({ merchantId, hasInstallation, initialItems
             return (
               <div key={item.id} style={{ padding: '14px 16px', borderRadius: 12, border: `1px solid ${needsReviewFlag ? '#FDE68A' : '#E8EDF8'}`, background: needsReviewFlag ? '#FFFBEB' : '#F8FAFC' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: 0, flex: 1, paddingRight: 12 }}>{item.title}</p>
+                  <p className="catalog-item-title" style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: 0, flex: 1, paddingRight: 12 }}>{item.title}</p>
                   {needsReviewFlag && <span style={{ fontSize: 10, fontWeight: 700, color: '#D97706', background: '#FEF3C7', padding: '2px 8px', borderRadius: 100, whiteSpace: 'nowrap' }}>Review needed</span>}
                   {!needsReviewFlag && item.ai_tagged && <span style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#D1FDF3', padding: '2px 8px', borderRadius: 100, whiteSpace: 'nowrap' }}>✓ Tagged</span>}
                 </div>
@@ -187,8 +297,12 @@ export default function Step2Catalog({ merchantId, hasInstallation, initialItems
 
       <div style={{ display: 'flex', gap: 10 }}>
         <button onClick={onBack} style={{ flex: 1, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#F8FAFC', color: '#64748B', border: '1px solid #E8EDF8', cursor: 'pointer' }}>← Back</button>
-        <button onClick={handleContinue} disabled={loading}
-          style={{ flex: 2, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
+        <button
+          className="catalog-approve-btn"
+          onClick={handleContinue}
+          disabled={loading}
+          style={{ flex: 2, padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: loading ? 0.7 : 1 }}
+        >
           Approve & continue →
         </button>
       </div>
