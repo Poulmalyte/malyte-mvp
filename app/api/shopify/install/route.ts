@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     .from('shopify_oauth_states')
     .insert({ state, expert_id: expertId, shop_domain: shop })
 
-  const installUrl = `https://${shop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`
+  const installUrl = `https://${shop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}&force_access_token_regeneration=1`
 
   const response = NextResponse.redirect(installUrl)
   response.cookies.set('shopify_state', state, { httpOnly: true, maxAge: 60 * 10 })
