@@ -134,6 +134,18 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [analyticsData, setAnalyticsData] = useState<any>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
   const [brandQuestions, setBrandQuestions] = useState<Question[]>([])
+  const [postPurchaseQuestions, setPostPurchaseQuestions] = useState<Question[]>([
+    { id: '1', question_text: 'What was your main reason for purchasing this product?', question_type: 'select', options: ['Skin concern', 'Recommendation', 'Curiosity', 'Repurchase'] },
+    { id: '2', question_text: 'How would you describe your skin type?', question_type: 'select', options: ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive'] },
+    { id: '3', question_text: 'What result are you hoping to achieve?', question_type: 'select', options: ['Brighter skin', 'Less breakouts', 'Smoother texture', 'More hydration', 'Reduced redness'] },
+    { id: '4', question_text: 'Any skin sensitivities we should know about?', question_type: 'select', options: ['None', 'Fragrance', 'Retinol', 'Acids', 'Multiple'] },
+  ])
+  const [checkinQuestions, setCheckinQuestions] = useState<Question[]>([
+    { id: '1', question_text: 'How well did you follow your routine this week?', question_type: 'select', options: ['Every day', 'Most days', 'A few days', 'Not at all'] },
+    { id: '2', question_text: 'Have you noticed any improvements?', question_type: 'select', options: ['Yes, a lot', 'A little', 'No change', 'It got worse'] },
+    { id: '3', question_text: 'Any reactions or irritations?', question_type: 'select', options: ['None', 'Slight redness', 'Some irritation', 'Stopped a product'] },
+    { id: '4', question_text: 'Anything else you want to share?', question_type: 'text', options: [] },
+  ])
   const [savingBrandQuestions, setSavingBrandQuestions] = useState(false)
   const [brandQuestionsMsg, setBrandQuestionsMsg] = useState<{ type: "success" | "error", text: string } | null>(null)
   const [journeySettings, setJourneySettings] = useState({ checkin_frequency_days: 7, max_journey_weeks: 8, abandonment_days: 21, reengage_email: true, program_duration_weeks: 8, after_completion: 'stop' })
@@ -508,25 +520,54 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
           </>
         )}
         {activeTab === 'quiz' && (
-          <div style={card}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Quiz Questions</p>
-            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>These questions are shown to customers before they receive their personalised routine. Minimum 4 questions required.</p>
-            {brandQuestions.length === 0 ? (
-              <button onClick={loadBrandQuestions} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#F8FAFC', border: '1px solid #E8EDF8', color: '#64748B', cursor: 'pointer' }}>Load current questions</button>
-            ) : (
-              <>
-                <QuestionBuilder questions={brandQuestions} setQuestions={setBrandQuestions} />
-                {brandQuestionsMsg && (
-                  <div style={{ padding: '10px 14px', borderRadius: 8, margin: '12px 0', background: brandQuestionsMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (brandQuestionsMsg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: brandQuestionsMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
-                    {brandQuestionsMsg.text}
-                  </div>
-                )}
-                <button onClick={saveBrandQuestions} disabled={savingBrandQuestions} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingBrandQuestions ? 0.7 : 1 }}>
-                  {savingBrandQuestions ? 'Saving…' : 'Save questions'}
-                </button>
-              </>
-            )}
-          </div>
+          <>
+            <div style={{ ...card, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+                <span style={{ fontSize: 24 }}>🔍</span>
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: '#0F172A', margin: '0 0 4px' }}>Pre-purchase Quiz</p>
+                  <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>Customers answer these questions <strong>before buying</strong>. Malyte uses their answers to recommend the right products from your catalogue. Keep it short — 3 to 6 questions work best.</p>
+                </div>
+              </div>
+              {brandQuestions.length === 0 ? (
+                <button onClick={loadBrandQuestions} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#F8FAFC', border: '1px solid #E8EDF8', color: '#64748B', cursor: 'pointer' }}>Load questions</button>
+              ) : (
+                <>
+                  <QuestionBuilder questions={brandQuestions} setQuestions={setBrandQuestions} />
+                  {brandQuestionsMsg && (
+                    <div style={{ padding: '10px 14px', borderRadius: 8, margin: '12px 0', background: brandQuestionsMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (brandQuestionsMsg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: brandQuestionsMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
+                      {brandQuestionsMsg.text}
+                    </div>
+                  )}
+                  <button onClick={saveBrandQuestions} disabled={savingBrandQuestions} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingBrandQuestions ? 0.7 : 1 }}>
+                    {savingBrandQuestions ? 'Saving…' : 'Save questions'}
+                  </button>
+                </>
+              )}
+            </div>
+            <div style={{ ...card, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+                <span style={{ fontSize: 24 }}>🛍️</span>
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: '#0F172A', margin: '0 0 4px' }}>Post-purchase Quiz</p>
+                  <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>Sent via email <strong>right after the order</strong>. Malyte uses these answers together with the purchased products to generate a fully personalised routine. Aim for 4 questions.</p>
+                </div>
+              </div>
+              <QuestionBuilder questions={postPurchaseQuestions} setQuestions={setPostPurchaseQuestions} />
+              <button style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer' }}>Save questions</button>
+            </div>
+            <div style={card}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+                <span style={{ fontSize: 24 }}>📅</span>
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: '#0F172A', margin: '0 0 4px' }}>Check-in Questions</p>
+                  <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.6 }}>Sent periodically to track progress and adapt the routine. The frequency (7, 14 or 30 days) is set in <strong>Settings</strong>. These answers help the AI evolve the plan over time.</p>
+                </div>
+              </div>
+              <QuestionBuilder questions={checkinQuestions} setQuestions={setCheckinQuestions} />
+              <button style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer' }}>Save questions</button>
+            </div>
+          </>
         )}
 
         {activeTab === 'recommendations' && (
