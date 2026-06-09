@@ -380,7 +380,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
             </div>
           </div>
           <div style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
-            {[{ label: 'Overview', value: 'overview' }, { label: 'Knowledge Base', value: 'knowledge' }, { label: 'Products', value: 'products' }, { label: 'Quiz', value: 'quiz' }, { label: 'Recommendations', value: 'recommendations' }, { label: 'Customers', value: 'customers' }, { label: 'Orders', value: 'orders' }, { label: 'Analytics', value: 'analytics' }, { label: 'Settings', value: 'settings' }].map(t => (
+            {[{ label: 'Overview', value: 'overview' }, { label: 'Knowledge Base', value: 'knowledge' }, { label: 'Products', value: 'products' }, { label: 'Quiz', value: 'quiz' }, { label: 'Customers', value: 'customers' }, { label: 'Orders', value: 'orders' }, { label: 'Analytics', value: 'analytics' }, { label: 'Settings', value: 'settings' }].map(t => (
               <button key={t.value} onClick={() => setActiveTab(t.value as any)}
                 style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: activeTab === t.value ? '#7C5CFC' : '#94A3B8', borderBottom: activeTab === t.value ? '2px solid #7C5CFC' : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {t.label}
