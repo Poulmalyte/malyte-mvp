@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Shop not installed' }, { status: 404 })
   }
 
-  const res = await fetch(`https://${shop}/admin/api/2024-01/products.json?limit=250`, {
+  const res = await fetch(`https://${shop}/admin/api/2026-04/products.json?limit=250`, {
     headers: { 'X-Shopify-Access-Token': installation.access_token },
   })
   const data = await res.json()
