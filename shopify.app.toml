@@ -4,7 +4,7 @@ application_url = "https://app.malyte.com/shopify"
 embedded = false
 
 [access_scopes]
-scopes = "read_customers,read_orders"
+scopes = "read_customers,read_orders,read_products,write_products"
 use_legacy_install_flow = false
 
 [auth]
