@@ -43,7 +43,7 @@ async function createSubscription(shop: string, token: string): Promise<string> 
         lineItems: [{
           plan: {
             appRecurringPricingDetails: {
-              price: { amount: ${price}, currencyCode: USD }
+              price: { amount: "${price}", currencyCode: USD }
               interval: EVERY_30_DAYS
             }
           }
