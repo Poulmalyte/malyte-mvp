@@ -62,7 +62,10 @@ function QuestionBuilder({ questions, setQuestions }: { questions: Question[], s
             <span style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 600 }}>Question {i + 1}</span>
             {questions.length > 4 && <button onClick={() => removeQuestion(q.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer' }}>Remove</button>}
           </div>
-          <input type="text" value={q.question_text} onChange={e => updateQuestion(q.id, 'question_text', e.target.value)} placeholder="e.g. What is your main goal?" style={{ ...inputStyle, marginBottom: 10 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <input type="text" value={q.question_text} onChange={e => updateQuestion(q.id, 'question_text', e.target.value)} placeholder="e.g. What is your main goal?" style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+            <span style={{ fontSize: 14, color: '#94A3B8', cursor: 'text' }} title="Edit question">✏️</span>
+          </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {(['text', 'select'] as QuestionType[]).map(type => (
               <button key={type} onClick={() => updateQuestion(q.id, 'question_type', type)}
@@ -347,6 +350,27 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     setTimeout(() => setBrandQuestionsMsg(null), 3000)
   }
 
+
+  async function savePostPurchaseQuestions() {
+    setSavingBrandQuestions(true)
+    const expertId = expert?.id
+    if (!expertId) return
+    const { error } = await supabase.from('merchant_profiles').update({ post_purchase_questions: postPurchaseQuestions }).eq('merchant_id', expertId)
+    setBrandQuestionsMsg(error ? { type: 'error', text: 'Error saving.' } : { type: 'success', text: 'Post-purchase questions saved!' })
+    setSavingBrandQuestions(false)
+    setTimeout(() => setBrandQuestionsMsg(null), 3000)
+  }
+
+  async function saveCheckinQuestions() {
+    setSavingBrandQuestions(true)
+    const expertId = expert?.id
+    if (!expertId) return
+    const { error } = await supabase.from('merchant_profiles').update({ checkin_questions_config: checkinQuestions }).eq('merchant_id', expertId)
+    setBrandQuestionsMsg(error ? { type: 'error', text: 'Error saving.' } : { type: 'success', text: 'Check-in questions saved!' })
+    setSavingBrandQuestions(false)
+    setTimeout(() => setBrandQuestionsMsg(null), 3000)
+  }
+
   async function loadAnalytics() {
     if (analyticsData) return
     setLoadingAnalytics(true)
@@ -571,7 +595,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #E8EDF8' }}>
                   <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>Sent via email <strong>right after the order</strong>. Malyte uses these answers together with the purchased products to generate a fully personalised routine. Aim for 4 questions.</p>
                   <QuestionBuilder questions={postPurchaseQuestions} setQuestions={setPostPurchaseQuestions} />
-                  <button style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer' }}>Save questions</button>
+                  <button onClick={savePostPurchaseQuestions} disabled={savingBrandQuestions} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingBrandQuestions ? 0.7 : 1 }}>{savingBrandQuestions ? 'Saving…' : 'Save questions'}</button>
                 </div>
               )}
             </div>
@@ -591,7 +615,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #E8EDF8' }}>
                   <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>Sent periodically to track progress and adapt the routine. The frequency (7, 14 or 30 days) is set in <strong>Settings</strong>. These answers help the AI evolve the plan over time.</p>
                   <QuestionBuilder questions={checkinQuestions} setQuestions={setCheckinQuestions} />
-                  <button style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer' }}>Save questions</button>
+                  <button onClick={saveCheckinQuestions} disabled={savingBrandQuestions} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingBrandQuestions ? 0.7 : 1 }}>{savingBrandQuestions ? 'Saving…' : 'Save questions'}</button>
                 </div>
               )}
             </div>
