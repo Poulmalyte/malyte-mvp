@@ -472,7 +472,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
           <div style={card}>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Knowledge Base</p>
             <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>Upload your brand methodology PDF. The AI uses this document to generate personalised routines for your customers.</p>
-            <MethodSection expert={{ ...expert, category: methodCategory }} />
+            <MethodSection expert={{ ...expert, category: methodCategory }} shopifyMode={true} />
           </div>
         )}
 

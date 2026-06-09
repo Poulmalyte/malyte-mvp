@@ -175,7 +175,7 @@ function QuestionBuilder({
   )
 }
 
-export default function MethodSection({ expert }: { expert: any }) {
+export default function MethodSection({ expert, shopifyMode }: { expert: any, shopifyMode?: boolean }) {
   const existingPdfs: string[] = expert?.method_pdfs_urls || []
   const alreadyCompleted = !!expert?.method_onboarding_completed
   const existingSellerType = (expert?.seller_type as 'practitioner' | 'pdf_seller' | null) || null
@@ -684,7 +684,7 @@ export default function MethodSection({ expert }: { expert: any }) {
         )}
 
         {/* STEP 3 — Product */}
-        {step === 3 && (
+        {step === 3 && !shopifyMode && (
           <div>
             <div style={card}>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
