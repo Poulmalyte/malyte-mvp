@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
     return response
   } catch (err) {
     console.error('[Billing] Error creating subscription:', err)
-    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/shopify?billing_error=${encodeURIComponent(String(err))}`)
+    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/shopify`)
     response.cookies.delete('shopify_state')
     return response
   }
