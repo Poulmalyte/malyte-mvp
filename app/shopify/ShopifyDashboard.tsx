@@ -47,6 +47,7 @@ interface ShopifyProduct {
 }
 
 function QuestionBuilder({ questions, setQuestions }: { questions: Question[], setQuestions: (qs: Question[]) => void }) {
+  const [editingId, setEditingId] = useState<string | null>(null)
   function addQuestion() { setQuestions([...questions, { id: crypto.randomUUID(), question_text: '', question_type: 'text', options: [] }]) }
   function updateQuestion(id: string, field: keyof Question, value: any) { setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q)) }
   function removeQuestion(id: string) { if (questions.length <= 4) return; setQuestions(questions.filter(q => q.id !== id)) }
@@ -63,8 +64,17 @@ function QuestionBuilder({ questions, setQuestions }: { questions: Question[], s
             {questions.length > 4 && <button onClick={() => removeQuestion(q.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer' }}>Remove</button>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <input type="text" value={q.question_text} onChange={e => updateQuestion(q.id, 'question_text', e.target.value)} placeholder="e.g. What is your main goal?" style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-            <span style={{ fontSize: 14, color: '#94A3B8', cursor: 'text' }} title="Edit question">✏️</span>
+            {editingId === q.id ? (
+              <>
+                <input autoFocus type="text" value={q.question_text} onChange={e => updateQuestion(q.id, 'question_text', e.target.value)} placeholder="e.g. What is your main goal?" style={{ ...inputStyle, marginBottom: 0, flex: 1, border: '1px solid #7C5CFC' }} />
+                <button onClick={() => setEditingId(null)} style={{ background: '#7C5CFC', border: 'none', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#fff', fontSize: 14, fontWeight: 700 }} title="Done">✓</button>
+              </>
+            ) : (
+              <>
+                <p style={{ flex: 1, fontSize: 13, color: q.question_text ? '#0F172A' : '#94A3B8', margin: 0, padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E8EDF8', minHeight: 40 }}>{q.question_text || 'Click ✏️ to write your question...'}</p>
+                <button onClick={() => setEditingId(q.id)} style={{ background: 'none', border: '1px solid #E8EDF8', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 14 }} title="Edit question">✏️</button>
+              </>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {(['text', 'select'] as QuestionType[]).map(type => (
