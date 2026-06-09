@@ -115,7 +115,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [productPlanType, setProductPlanType] = useState<Record<string, 'weekly' | 'guide'>>({})
   const [productDuration, setProductDuration] = useState<Record<string, number>>({})
   const [syncingProducts, setSyncingProducts] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'method' | 'products' | 'customers' | 'orders' | 'analytics' | 'settings'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'knowledge' | 'products' | 'quiz' | 'recommendations' | 'customers' | 'orders' | 'analytics' | 'settings'>('overview')
   const [disconnecting, setDisconnecting] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
@@ -141,7 +141,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [journeyMsg, setJourneyMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => { loadData() }, [])
-  useEffect(() => { if (activeTab === 'method' && brandQuestions.length === 0) { loadBrandQuestions() } }, [activeTab])
+  useEffect(() => { if (activeTab === 'quiz' && brandQuestions.length === 0) { loadBrandQuestions() } }, [activeTab])
   useEffect(() => { if (activeTab === 'settings') { loadJourneySettings() } }, [activeTab])
 
   async function loadData() {
@@ -380,7 +380,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
             </div>
           </div>
           <div style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
-            {[{ label: 'Overview', value: 'overview' }, { label: 'My Method', value: 'method' }, { label: 'Products', value: 'products' }, { label: 'Customers', value: 'customers' }, { label: 'Orders', value: 'orders' }, { label: 'Analytics', value: 'analytics' }, { label: 'Settings', value: 'settings' }].map(t => (
+            {[{ label: 'Overview', value: 'overview' }, { label: 'Knowledge Base', value: 'knowledge' }, { label: 'Products', value: 'products' }, { label: 'Quiz', value: 'quiz' }, { label: 'Recommendations', value: 'recommendations' }, { label: 'Customers', value: 'customers' }, { label: 'Orders', value: 'orders' }, { label: 'Analytics', value: 'analytics' }, { label: 'Settings', value: 'settings' }].map(t => (
               <button key={t.value} onClick={() => setActiveTab(t.value as any)}
                 style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: activeTab === t.value ? '#7C5CFC' : '#94A3B8', borderBottom: activeTab === t.value ? '2px solid #7C5CFC' : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {t.label}
@@ -468,49 +468,12 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
           </>
         )}
 
-        {activeTab === 'method' && (
-          <>
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Your category</p>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>Select the category that best describes your expertise.</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                {CATEGORIES.map(cat => (
-                  <button key={cat} onClick={() => setMethodCategory(cat)}
-                    style={{ padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${methodCategory === cat ? '#7C5CFC' : '#E8EDF8'}`, background: methodCategory === cat ? '#EDE9FE' : '#F8FAFC', color: methodCategory === cat ? '#7C5CFC' : '#64748B' }}>
-                    {cat}
-                  </button>
-                ))}
-              </div>
-              {methodCategoryMsg && (
-                <div style={{ padding: '10px 14px', borderRadius: 8, marginBottom: 12, background: methodCategoryMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${methodCategoryMsg.type === 'success' ? '#6EE7B7' : '#FECACA'}`, color: methodCategoryMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
-                  {methodCategoryMsg.text}
-                </div>
-              )}
-              <button onClick={handleSaveMethodCategory} disabled={savingMethodCategory} style={{ padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingMethodCategory ? 0.7 : 1 }}>
-                {savingMethodCategory ? 'Saving…' : 'Save category'}
-              </button>
-            </div>
-            <div style={card}><MethodSection expert={{ ...expert, category: methodCategory }} /></div>
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Customer quiz questions</p>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>These are the questions your customers answer before getting their plan. Changes take effect immediately on your quiz page.</p>
-              {brandQuestions.length === 0 ? (
-                <button onClick={loadBrandQuestions} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#F8FAFC', border: '1px solid #E8EDF8', color: '#64748B', cursor: 'pointer' }}>Load current questions</button>
-              ) : (
-                <>
-                  <QuestionBuilder questions={brandQuestions} setQuestions={setBrandQuestions} />
-                  {brandQuestionsMsg && (
-                    <div style={{ padding: '10px 14px', borderRadius: 8, margin: '12px 0', background: brandQuestionsMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (brandQuestionsMsg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: brandQuestionsMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
-                      {brandQuestionsMsg.text}
-                    </div>
-                  )}
-                  <button onClick={saveBrandQuestions} disabled={savingBrandQuestions} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingBrandQuestions ? 0.7 : 1 }}>
-                    {savingBrandQuestions ? 'Saving…' : 'Save questions'}
-                  </button>
-                </>
-              )}
-            </div>
-          </>
+         {activeTab === 'knowledge' && (
+          <div style={card}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Knowledge Base</p>
+            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>Upload your brand methodology PDF. The AI uses this document to generate personalised routines for your customers.</p>
+            <MethodSection expert={{ ...expert, category: methodCategory }} />
+          </div>
         )}
 
         {activeTab === 'products' && (
@@ -527,87 +490,56 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               {!installation ? (
                 <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Connect your Shopify store first to sync products.</p>
               ) : products.length === 0 ? (
-                <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No products yet. Click "Sync products" to import from Shopify.</p>
+                <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No products yet. Click Sync products to import from Shopify.</p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {products.map(product => {
-                    const isExpanded = expandedProduct === product.shopify_product_id
-                    const hasPdf = !!product.pdf_path
-                    const hasQuestions = (productQuestions[product.shopify_product_id] || []).filter((q: Question) => q.question_text.trim()).length >= 4
-                    const isReady = hasPdf && hasQuestions
-                    return (
-                      <div key={product.shopify_product_id} style={{ border: `1px solid ${isReady ? '#6EE7B7' : '#E8EDF8'}`, borderRadius: 12, overflow: 'hidden' }}>
-                        <div onClick={() => setExpandedProduct(isExpanded ? null : product.shopify_product_id)} style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: isReady ? '#F0FDF4' : '#F8FAFC' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div>
-                              <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px' }}>{product.shopify_product_title}</p>
-                              <div style={{ display: 'flex', gap: 8 }}>
-                                <span style={{ fontSize: 11, color: hasPdf ? '#059669' : '#EF4444' }}>{hasPdf ? 'PDF ok' : 'No PDF'}</span>
-                                <span style={{ fontSize: 11, color: hasQuestions ? '#059669' : '#EF4444' }}>{hasQuestions ? 'Questions ok' : 'Questions needed'}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <span style={{ color: '#94A3B8', fontSize: 12 }}>{isExpanded ? 'v' : '>'}</span>
-                        </div>
-                        {isExpanded && (
-                          <div style={{ padding: '20px 16px', borderTop: '1px solid #E8EDF8' }}>
-                            <div style={{ marginBottom: 20 }}>
-                              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PLAN TYPE</label>
-                              <div style={{ display: 'flex', gap: 10 }}>
-                                {[{ value: 'weekly', label: 'Weekly plan', desc: 'New plan every week with check-ins' }, { value: 'guide', label: 'One-time guide', desc: 'Personalized guide, no expiry' }].map(opt => (
-                                  <button key={opt.value} type="button" onClick={() => setProductPlanType(prev => ({ ...prev, [product.shopify_product_id]: opt.value as 'weekly' | 'guide' }))}
-                                    style={{ flex: 1, padding: '12px', borderRadius: 10, textAlign: 'left', cursor: 'pointer', border: `1px solid ${productPlanType[product.shopify_product_id] === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: productPlanType[product.shopify_product_id] === opt.value ? '#EDE9FE' : '#F8FAFC' }}>
-                                    <div style={{ fontWeight: 600, fontSize: 12, color: productPlanType[product.shopify_product_id] === opt.value ? '#7C5CFC' : '#0F172A', marginBottom: 2 }}>{opt.label}</div>
-                                    <div style={{ fontSize: 11, color: '#94A3B8' }}>{opt.desc}</div>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            {productPlanType[product.shopify_product_id] === 'weekly' && (
-                              <div style={{ marginBottom: 20 }}>
-                                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>DURATION (weeks)</label>
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                  {[4, 8, 12, 16, 24].map(w => (
-                                    <button key={w} type="button" onClick={() => setProductDuration(prev => ({ ...prev, [product.shopify_product_id]: w }))}
-                                      style={{ padding: '7px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${productDuration[product.shopify_product_id] === w ? '#7C5CFC' : '#E8EDF8'}`, background: productDuration[product.shopify_product_id] === w ? '#EDE9FE' : '#F5F7FA', color: productDuration[product.shopify_product_id] === w ? '#7C5CFC' : '#94A3B8' }}>
-                                      {w}w
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            <div style={{ marginBottom: 20 }}>
-                              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PDF PLAN</label>
-                              {hasPdf && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#F0FDF4', borderRadius: 8, border: '1px solid #6EE7B7', marginBottom: 10 }}>
-                                  <span style={{ fontSize: 12, color: '#059669', fontWeight: 500 }}>PDF uploaded</span>
-                                </div>
-                              )}
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', border: '2px dashed #E8EDF8', borderRadius: 10, cursor: 'pointer', background: '#F8FAFC' }}>
-                                <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPdf(product.shopify_product_id, f) }} />
-                                <span style={{ fontSize: 13, color: uploadingPdf === product.shopify_product_id ? '#94A3B8' : '#7C5CFC', fontWeight: 600 }}>{uploadingPdf === product.shopify_product_id ? 'Uploading…' : hasPdf ? 'Replace PDF' : '+ Upload PDF'}</span>
-                              </label>
-                            </div>
-                            <div style={{ marginBottom: 20 }}>
-                              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>BUYER QUESTIONS (min 4)</label>
-                              <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 12 }}>These questions are shown to buyers before their plan is generated.</p>
-                              <QuestionBuilder questions={productQuestions[product.shopify_product_id] || []} setQuestions={(qs: Question[]) => setProductQuestions(prev => ({ ...prev, [product.shopify_product_id]: qs }))} />
-                            </div>
-                            <button onClick={() => handleSaveProduct(product.shopify_product_id)} disabled={savingProduct === product.shopify_product_id}
-                              style={{ width: '100%', padding: '12px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingProduct === product.shopify_product_id ? 0.7 : 1 }}>
-                              {savingProduct === product.shopify_product_id ? 'Saving…' : 'Save product settings'}
-                            </button>
-                          </div>
-                        )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {products.map(product => (
+                    <div key={product.shopify_product_id} style={{ padding: '14px 16px', border: '1px solid #E8EDF8', borderRadius: 12, background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px' }}>{product.shopify_product_title}</p>
+                        <span style={{ fontSize: 11, color: '#94A3B8' }}>ID: {product.shopify_product_id}</span>
                       </div>
-                    )
-                  })}
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#059669', background: '#F0FDF4', padding: '3px 10px', borderRadius: 100, border: '1px solid #6EE7B7' }}>Synced</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           </>
         )}
+        {activeTab === 'quiz' && (
+          <div style={card}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Quiz Questions</p>
+            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>These questions are shown to customers before they receive their personalised routine. Minimum 4 questions required.</p>
+            {brandQuestions.length === 0 ? (
+              <button onClick={loadBrandQuestions} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#F8FAFC', border: '1px solid #E8EDF8', color: '#64748B', cursor: 'pointer' }}>Load current questions</button>
+            ) : (
+              <>
+                <QuestionBuilder questions={brandQuestions} setQuestions={setBrandQuestions} />
+                {brandQuestionsMsg && (
+                  <div style={{ padding: '10px 14px', borderRadius: 8, margin: '12px 0', background: brandQuestionsMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (brandQuestionsMsg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: brandQuestionsMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
+                    {brandQuestionsMsg.text}
+                  </div>
+                )}
+                <button onClick={saveBrandQuestions} disabled={savingBrandQuestions} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingBrandQuestions ? 0.7 : 1 }}>
+                  {savingBrandQuestions ? 'Saving…' : 'Save questions'}
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
+        {activeTab === 'recommendations' && (
+          <div style={card}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Recommendations</p>
+            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24, lineHeight: 1.6 }}>AI-generated product bundles based on quiz answers. Customers see these recommendations before purchasing.</p>
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#94A3B8' }}>
+              <p style={{ fontSize: 32, marginBottom: 12 }}>🧪</p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>Coming soon</p>
+              <p style={{ fontSize: 13 }}>Recommendation analytics and bundle management will appear here.</p>
+            </div>
+          </div>
+        )}
         {activeTab === 'customers' && (
           <div style={card}>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>Customers ({orders.length})</p>
