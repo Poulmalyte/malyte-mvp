@@ -67,13 +67,14 @@ export async function POST(request: Request) {
     const { data: merchantProfile } = await supabaseAdmin
       .from('merchant_profiles').select('*').eq('merchant_id', merchant_id).maybeSingle()
 
-    // Carica prodotti dell'ordine con catalog items
-    const { data: orderedProduct } = await supabaseAdmin
-      .from('shopify_products')
-      .select('*')
-      .eq('shop', shop)
-      .eq('shopify_product_id', order.shopify_product_id)
-      .maybeSingle()
+    // Carica prodotti dell'ordine — supporta sia array JSON che singolo ID (legacy)
+    let purchasedProductIds: string[] = []
+    try {
+      const parsed = JSON.parse(order.shopify_product_id)
+      purchasedProductIds = Array.isArray(parsed) ? parsed : [String(parsed)]
+    } catch {
+      purchasedProductIds = order.shopify_product_id ? [String(order.shopify_product_id)] : []
+    }
 
     // Carica tutto il catalogo per prodotti complementari
     const { data: catalogItems } = await supabaseAdmin
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
         price: sp.price || null,
         variant_id: sp.shopify_variant_id || null,
         product_url: sp.product_url || null,
-        already_purchased: item.shopify_product_id === order.shopify_product_id,
+        already_purchased: purchasedProductIds.includes(item.shopify_product_id || ''),
       }
     })
 
@@ -178,7 +179,7 @@ Return exactly this JSON:
       return {
         ...item,
         price: catalogItem?.price || null,
-        product_url: catalogItem?.product_url || orderedProduct?.product_url || null,
+        product_url: catalogItem?.product_url || null,
         already_purchased: true,
       }
     })

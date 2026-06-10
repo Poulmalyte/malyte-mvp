@@ -50,12 +50,20 @@ export default async function OrderFollowupPage({ params }: { params: Promise<{ 
     .eq('id', order.merchant_id)
     .maybeSingle() : { data: null }
 
-  // Carica prodotti dell'ordine
+  // Carica tutti i prodotti dell'ordine — supporta array JSON e singolo ID legacy
+  let purchasedProductIds: string[] = []
+  try {
+    const parsed = JSON.parse(order.shopify_product_id)
+    purchasedProductIds = Array.isArray(parsed) ? parsed : [String(parsed)]
+  } catch {
+    purchasedProductIds = order.shopify_product_id ? [String(order.shopify_product_id)] : []
+  }
+
   const { data: shopifyProducts } = await supabaseAdmin
     .from('shopify_products')
     .select('*, catalog_items(*, catalog_item_tags(*))')
     .eq('shop', order.shop_domain)
-    .eq('shopify_product_id', order.shopify_product_id)
+    .in('shopify_product_id', purchasedProductIds)
 
   return (
     <FollowupClient

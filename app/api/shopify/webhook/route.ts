@@ -94,65 +94,59 @@ export async function POST(request: NextRequest) {
 
   const accessToken = installation?.access_token as string | undefined
   const merchantId = installation?.expert_id as string | undefined
-  let lastToken = ''
 
-  // ── Flusso piano esistente (invariato) ────────────────────────────────────
+  // ── Flusso piano esistente ────────────────────────────────────────────────
+  // Raccoglie tutti i product ID dell'ordine che esistono nel catalogo Malyte
 
+  const allProductIds: string[] = []
   for (const item of order.line_items || []) {
     const shopifyProductId = String(item.product_id)
-    console.log('[Webhook] checking product:', shopifyProductId)
-
-    const { data: shopifyProduct, error: productError } = await supabaseAdmin
+    const { data: shopifyProduct } = await supabaseAdmin
       .from('shopify_products')
-      .select('*')
+      .select('shopify_product_id')
       .eq('shop', shop)
       .eq('shopify_product_id', shopifyProductId)
       .maybeSingle()
+    if (shopifyProduct) allProductIds.push(shopifyProductId)
+  }
 
-    console.log('[Webhook] shopifyProduct found:', !!shopifyProduct, 'error:', JSON.stringify(productError))
+  console.log('[Webhook] matched product ids:', allProductIds)
 
-    if (!shopifyProduct) continue
+  if (allProductIds.length === 0) {
+    console.log('[Webhook] No matching products in catalog, skipping')
+    return NextResponse.json({ ok: true })
+  }
 
-    const token = crypto.randomBytes(32).toString('hex')
-    lastToken = token
+  const token = crypto.randomBytes(32).toString('hex')
 
-    const { error } = await supabaseAdmin
-      .from('shopify_orders')
-      .upsert({
-        shop_domain: shop,
-        shopify_order_id: String(order.id),
-        shopify_product_id: shopifyProductId,
-        buyer_email: buyerEmail,
-        customer_email: buyerEmail,
-        token,
-        status: 'pending',
-        merchant_id: merchantId || null,
-      }, { onConflict: 'shop_domain,shopify_order_id' })
+  const { error: upsertError } = await supabaseAdmin
+    .from('shopify_orders')
+    .upsert({
+      shop_domain: shop,
+      shopify_order_id: String(order.id),
+      shopify_product_id: JSON.stringify(allProductIds),
+      buyer_email: buyerEmail,
+      customer_email: buyerEmail,
+      token,
+      status: 'pending',
+      merchant_id: merchantId || null,
+    }, { onConflict: 'shop_domain,shopify_order_id' })
 
-    console.log('[Webhook] upsert error:', JSON.stringify(error))
+  console.log('[Webhook] upsert error:', JSON.stringify(upsertError))
 
-    if (error) {
-      console.error('Error saving order:', error)
-      continue
-    }
+  if (upsertError) {
+    console.error('Error saving order:', upsertError)
+    return NextResponse.json({ ok: true })
+  }
 
-    if (accessToken) {
-      await fetch(`https://${shop}/admin/api/2024-01/orders/${order.id}/metafields.json`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': accessToken,
-        },
-        body: JSON.stringify({
-          metafield: {
-            namespace: 'malyte',
-            key: 'plan_token',
-            value: token,
-            type: 'single_line_text_field',
-          },
-        }),
-      })
-    }
+  if (accessToken) {
+    await fetch(`https://${shop}/admin/api/2024-01/orders/${order.id}/metafields.json`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': accessToken },
+      body: JSON.stringify({
+        metafield: { namespace: 'malyte', key: 'plan_token', value: token, type: 'single_line_text_field' },
+      }),
+    })
   }
 
   // ── Revenue Attribution ────────────────────────────────────────────────────
@@ -236,14 +230,14 @@ export async function POST(request: NextRequest) {
 
   // ── Email followup (invariata) ─────────────────────────────────────────────
 
-  if (buyerEmail && lastToken) {
+  if (buyerEmail && token) {
     try {
       const { sendFollowupEmail } = await import('@/lib/email/resend')
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
       await sendFollowupEmail({
         to: buyerEmail,
         brandName: shop.replace('.myshopify.com', ''),
-        followupUrl: `${appUrl}/order-followup/${lastToken}`,
+        followupUrl: `${appUrl}/order-followup/${token}`,
       })
     } catch (emailErr) {
       console.error('Followup email error:', emailErr)
