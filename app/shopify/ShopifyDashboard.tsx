@@ -846,7 +846,36 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               </button>
             </div>
             <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Store settings</p>
+            <div style={card}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Pre-purchase quiz link</p>
+              <p style={{ fontSize: 12, color: '#64748B', marginBottom: 12, lineHeight: 1.6 }}>
+                Share this link with your customers — add it to your store menu, a homepage button, or your bio. Customers answer a few questions and get a personalised routine with your products.
+              </p>
+              {expert?.slug ? (
+                <div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <div style={{ flex: 1, padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E8EDF8', fontSize: 12, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+                      {typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}/start/${expert.slug}` : `https://app.malyte.com/start/${expert.slug}`}
+                    </div>
+                    <button onClick={() => {
+                      const url = `https://app.malyte.com/start/${expert.slug}`
+                      navigator.clipboard.writeText(url)
+                      alert('Link copied!')
+                    }} style={{ padding: '10px 18px', borderRadius: 10, fontWeight: 700, fontSize: 12, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      Copy link
+                    </button>
+                  </div>
+                  <a href={`/start/${expert.slug}`} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: 12, color: '#7C5CFC', textDecoration: 'none', fontWeight: 600 }}>
+                    Preview quiz →
+                  </a>
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: '#94A3B8' }}>Quiz link will appear here once your profile is set up.</p>
+              )}
+            </div>
+            <div style={card}>
+                            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Store settings</p>
               {installation ? (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #6EE7B7', marginBottom: 16 }}>
