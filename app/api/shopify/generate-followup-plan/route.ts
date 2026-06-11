@@ -30,6 +30,12 @@ const CHECKIN_TEMPLATES: Record<string, any[]> = {
   ],
 }
 
+// Normalizza la categoria per il lookup dei template ('nutrition' -> 'Nutrition')
+function normalizeCategory(raw: string | null | undefined): string {
+  const c = (raw || 'Skincare').trim()
+  return c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -67,16 +73,20 @@ export async function POST(request: Request) {
     const { data: merchantProfile } = await supabaseAdmin
       .from('merchant_profiles').select('*').eq('merchant_id', merchant_id).maybeSingle()
 
+    const sellerType: string = merchant?.seller_type || 'brand'
+    const isBrand = sellerType === 'brand'
+
     // Carica prodotti dell'ordine — supporta sia array JSON che singolo ID (legacy)
     let purchasedProductIds: string[] = []
     try {
       const parsed = JSON.parse(order.shopify_product_id)
-      purchasedProductIds = Array.isArray(parsed) ? parsed : [String(parsed)]
+      purchasedProductIds = Array.isArray(parsed) ? parsed.map(String) : [String(parsed)]
     } catch {
       purchasedProductIds = order.shopify_product_id ? [String(order.shopify_product_id)] : []
     }
 
-    // Carica tutto il catalogo per prodotti complementari
+    // Carica catalogo (per i brand è la fonte del piano; per gli altri serve solo
+    // a identificare cosa è stato acquistato, se mappato)
     const { data: catalogItems } = await supabaseAdmin
       .from('catalog_items')
       .select('*, catalog_item_tags(*)')
@@ -112,10 +122,22 @@ export async function POST(request: Request) {
     })
 
     const category = merchant?.category || 'Skincare'
+    const categoryKey = normalizeCategory(category)
     const purchasedProducts = productsContext.filter(p => p.already_purchased)
     const complementaryProducts = productsContext.filter(p => !p.already_purchased)
 
-    const systemPrompt = `You are a ${category} expert creating a personalised routine for a customer who just purchased products from ${merchant?.name || 'this brand'}.
+    // ─────────────────────────────────────────────────────────────
+    // BRANCHING PER SELLER TYPE
+    // brand        → piano costruito sui prodotti del catalogo acquistati
+    // practitioner → piano costruito sulla metodologia caricata (KB + PDF)
+    // pdf_seller   → piano costruito sul contenuto del PDF acquistato
+    // ─────────────────────────────────────────────────────────────
+
+    let systemPrompt: string
+    let userContent: any[] // blocchi content per il messaggio user (testo + eventuale PDF)
+
+    if (isBrand) {
+      systemPrompt = `You are a ${categoryKey} expert creating a personalised routine for a customer who just purchased products from ${merchant?.name || 'this brand'}.
 
 Brand: ${merchant?.name || 'this brand'}
 Philosophy: ${merchantProfile?.philosophy || 'Not specified'}
@@ -133,7 +155,9 @@ CRITICAL RULES:
 3. What changes next week should naturally introduce ONE complementary product
 4. Return ONLY valid JSON, no markdown, no backticks`
 
-    const userPrompt = `Customer quiz answers:
+      userContent = [{
+        type: 'text',
+        text: `Customer quiz answers:
 ${JSON.stringify(quiz_answers, null, 2)}
 
 Create a personalised Week 1 plan using ONLY the products they already purchased.
@@ -157,23 +181,122 @@ Return exactly this JSON:
     "weekly_notes": "personalised advice for week 1",
     "what_changes_next_week": "introduce one specific complementary product and why"
   }
-}`
+}`,
+      }]
+    } else {
+      // ── PRACTITIONER / PDF SELLER ──
+      const sellerLabel = sellerType === 'practitioner'
+        ? 'a professional practitioner'
+        : 'an expert content creator selling a digital guide'
+
+      const purchasedLabel = purchasedProducts.length > 0
+        ? purchasedProducts.map(p => p.title).join(', ')
+        : (sellerType === 'practitioner' ? 'a session/program' : 'a digital guide')
+
+      // Costruisci il contesto metodologia dai campi della Knowledge Base
+      const methodologyParts: string[] = []
+      if (merchantProfile?.philosophy) {
+        methodologyParts.push(`PHILOSOPHY:\n${merchantProfile.philosophy}`)
+      }
+      if (merchantProfile?.method_structured) {
+        methodologyParts.push(`STRUCTURED METHOD:\n${JSON.stringify(merchantProfile.method_structured, null, 2)}`)
+      }
+      if (merchantProfile?.method_interview_conversation) {
+        methodologyParts.push(`METHOD INTERVIEW NOTES:\n${merchantProfile.method_interview_conversation}`)
+      }
+      if (merchantProfile?.routine_rules) {
+        methodologyParts.push(`ROUTINE RULES:\n${JSON.stringify(merchantProfile.routine_rules, null, 2)}`)
+      }
+
+      const methodologyText = methodologyParts.length > 0
+        ? methodologyParts.join('\n\n')
+        : 'No structured methodology provided — rely on the attached PDF document.'
+
+      systemPrompt = `You are a ${categoryKey} expert creating a personalised Week 1 plan on behalf of ${merchant?.name || 'this seller'}, ${sellerLabel}.
+
+The customer just purchased: ${purchasedLabel}
+
+Seller tone of voice: ${merchantProfile?.tone_of_voice || 'professional but approachable'}
+
+THE SELLER'S METHODOLOGY (the plan MUST be derived exclusively from this — it is the seller's own method, the reason the customer bought from them):
+${methodologyText}
+
+CRITICAL RULES:
+1. Build the plan EXCLUSIVELY from the seller's methodology above (and the attached PDF if present)
+2. Do NOT invent or recommend purchasing any products
+3. Each step is an action, practice, meal, or exercise from the methodology — set "product_id" to null and use "product_title" as the name of the step
+4. "what_changes_next_week" must describe the natural progression of the program in week 2, based on the methodology
+5. Return ONLY valid JSON, no markdown, no backticks`
+
+      userContent = [{
+        type: 'text',
+        text: `Customer quiz answers:
+${JSON.stringify(quiz_answers, null, 2)}
+
+Create a personalised Week 1 plan based exclusively on the seller's methodology.
+
+Return exactly this JSON:
+{
+  "customer_summary": "2 sentence profile summary",
+  "plan": {
+    "headline": "Personalised headline for their plan",
+    "week": 1,
+    "morning_routine": [
+      {
+        "product_id": null,
+        "product_title": "name of the action/practice/meal/exercise",
+        "step_number": 1,
+        "instructions": "specific how-to instructions for this customer",
+        "why": "why this matters for their specific goal"
+      }
+    ],
+    "evening_routine": [],
+    "weekly_notes": "personalised advice for week 1",
+    "what_changes_next_week": "how the program progresses in week 2"
+  }
+}`,
+      }]
+
+      // Se c'è un PDF di metodologia, scaricalo e passalo a Claude come documento
+      if (merchantProfile?.methodology_pdf_url) {
+        try {
+          const pdfRes = await fetch(merchantProfile.methodology_pdf_url)
+          if (pdfRes.ok) {
+            const pdfBuf = Buffer.from(await pdfRes.arrayBuffer())
+            // Limite prudenziale ~8MB per non sforare i limiti API
+            if (pdfBuf.length > 0 && pdfBuf.length < 8_000_000) {
+              userContent.unshift({
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: pdfBuf.toString('base64'),
+                },
+              })
+            }
+          }
+        } catch (e) {
+          console.error('methodology PDF fetch failed, continuing without it:', e)
+        }
+      }
+    }
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
       system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [{ role: 'user', content: userContent }],
     })
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const textBlock = response.content.find((b: any) => b.type === 'text') as any
+    const text = textBlock?.text || ''
     const clean = text.replace(/```json|```/g, '').trim()
 
     let result: any
     try { result = JSON.parse(clean) }
     catch { return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 }) }
 
-    // Arricchisci routine con URL e prezzi
+    // Arricchisci routine con URL e prezzi (solo per i brand ha senso il match col catalogo)
     const enrichRoutine = (routine: any[]) => routine.map(item => {
       const catalogItem = productsContext.find(p => p.id === item.product_id)
       return {
@@ -236,7 +359,7 @@ Return exactly this JSON:
     if (savedPlan?.id) {
       const checkinScheduledFor = new Date()
       checkinScheduledFor.setDate(checkinScheduledFor.getDate() + 7)
-      const template = CHECKIN_TEMPLATES[category] || CHECKIN_TEMPLATES['Skincare']
+      const template = CHECKIN_TEMPLATES[categoryKey] || CHECKIN_TEMPLATES['Skincare']
 
       await supabaseAdmin.from('scheduled_checkins').insert({
         customer_id: customerId,
@@ -260,8 +383,8 @@ Return exactly this JSON:
 
     // Log eventi
     await supabaseAdmin.from('event_stream').insert([
-      { merchant_id, customer_id: customerId, event_type: 'followup_quiz_completed', event_data: { quiz_answers, category, order_token } },
-      { merchant_id, customer_id: customerId, event_type: 'followup_plan_generated', event_data: { week: 1, plan_token: planToken } },
+      { merchant_id, customer_id: customerId, event_type: 'followup_quiz_completed', event_data: { quiz_answers, category, seller_type: sellerType, order_token } },
+      { merchant_id, customer_id: customerId, event_type: 'followup_plan_generated', event_data: { week: 1, plan_token: planToken, seller_type: sellerType } },
     ])
 
     return NextResponse.json({
