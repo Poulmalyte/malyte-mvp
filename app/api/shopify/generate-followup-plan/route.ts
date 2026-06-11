@@ -36,6 +36,27 @@ function normalizeCategory(raw: string | null | undefined): string {
   return c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()
 }
 
+// Scarica un PDF e lo restituisce come blocco document per l'API Anthropic.
+// Ritorna null se il fetch fallisce o il file è troppo grande.
+async function fetchPdfBlock(url: string, maxBytes: number): Promise<any | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length === 0 || buf.length > maxBytes) return null
+    return {
+      type: 'document',
+      source: {
+        type: 'base64',
+        media_type: 'application/pdf',
+        data: buf.toString('base64'),
+      },
+    }
+  } catch {
+    return null
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -73,8 +94,29 @@ export async function POST(request: Request) {
     const { data: merchantProfile } = await supabaseAdmin
       .from('merchant_profiles').select('*').eq('merchant_id', merchant_id).maybeSingle()
 
-    const sellerType: string = merchant?.seller_type || 'brand'
+    // FALLBACK LEGACY: i practitioner/pdf_seller registrati dal flow expert
+    // esistono solo in `experts` (niente riga in `merchants`/`merchant_profiles`).
+    // Se il merchant non esiste, carichiamo l'expert e usiamo i suoi campi.
+    let expertLegacy: any = null
+    if (!merchant || !merchantProfile) {
+      const { data: expert } = await supabaseAdmin
+        .from('experts').select('*').eq('id', merchant_id).maybeSingle()
+      expertLegacy = expert
+    }
+
+    if (!merchant && !expertLegacy) {
+      return NextResponse.json({ error: 'Merchant not found' }, { status: 404 })
+    }
+
+    // Identità unificata del seller (merchants prima, experts come fallback)
+    const sellerType: string = merchant?.seller_type || expertLegacy?.seller_type || 'brand'
     const isBrand = sellerType === 'brand'
+    const sellerName: string = merchant?.name
+      || [expertLegacy?.name, expertLegacy?.surname].filter(Boolean).join(' ')
+      || 'this seller'
+    const sellerSlug: string = merchant?.slug || expertLegacy?.slug || ''
+    const category = merchant?.category || expertLegacy?.category || 'Skincare'
+    const categoryKey = normalizeCategory(category)
 
     // Carica prodotti dell'ordine — supporta sia array JSON che singolo ID (legacy)
     let purchasedProductIds: string[] = []
@@ -121,8 +163,6 @@ export async function POST(request: Request) {
       }
     })
 
-    const category = merchant?.category || 'Skincare'
-    const categoryKey = normalizeCategory(category)
     const purchasedProducts = productsContext.filter(p => p.already_purchased)
     const complementaryProducts = productsContext.filter(p => !p.already_purchased)
 
@@ -134,12 +174,12 @@ export async function POST(request: Request) {
     // ─────────────────────────────────────────────────────────────
 
     let systemPrompt: string
-    let userContent: any[] // blocchi content per il messaggio user (testo + eventuale PDF)
+    let userContent: any[] // blocchi content per il messaggio user (testo + eventuali PDF)
 
     if (isBrand) {
-      systemPrompt = `You are a ${categoryKey} expert creating a personalised routine for a customer who just purchased products from ${merchant?.name || 'this brand'}.
+      systemPrompt = `You are a ${categoryKey} expert creating a personalised routine for a customer who just purchased products from ${sellerName}.
 
-Brand: ${merchant?.name || 'this brand'}
+Brand: ${sellerName}
 Philosophy: ${merchantProfile?.philosophy || 'Not specified'}
 Tone: ${merchantProfile?.tone_of_voice || 'professional but approachable'}
 
@@ -193,26 +233,31 @@ Return exactly this JSON:
         ? purchasedProducts.map(p => p.title).join(', ')
         : (sellerType === 'practitioner' ? 'a session/program' : 'a digital guide')
 
-      // Costruisci il contesto metodologia dai campi della Knowledge Base
+      // Contesto metodologia: merchant_profiles prima, experts legacy come fallback
       const methodologyParts: string[] = []
-      if (merchantProfile?.philosophy) {
-        methodologyParts.push(`PHILOSOPHY:\n${merchantProfile.philosophy}`)
+      const philosophy = merchantProfile?.philosophy || expertLegacy?.methodology_description
+      if (philosophy) methodologyParts.push(`PHILOSOPHY:\n${philosophy}`)
+
+      const methodName = expertLegacy?.methodology_name
+      if (methodName) methodologyParts.push(`METHOD NAME: ${methodName}`)
+
+      const methodStructured = merchantProfile?.method_structured || expertLegacy?.method_structured
+      if (methodStructured) {
+        methodologyParts.push(`STRUCTURED METHOD:\n${JSON.stringify(methodStructured, null, 2)}`)
       }
-      if (merchantProfile?.method_structured) {
-        methodologyParts.push(`STRUCTURED METHOD:\n${JSON.stringify(merchantProfile.method_structured, null, 2)}`)
-      }
-      if (merchantProfile?.method_interview_conversation) {
-        methodologyParts.push(`METHOD INTERVIEW NOTES:\n${merchantProfile.method_interview_conversation}`)
-      }
+
+      const interview = merchantProfile?.method_interview_conversation || expertLegacy?.method_interview_conversation
+      if (interview) methodologyParts.push(`METHOD INTERVIEW NOTES:\n${interview}`)
+
       if (merchantProfile?.routine_rules) {
         methodologyParts.push(`ROUTINE RULES:\n${JSON.stringify(merchantProfile.routine_rules, null, 2)}`)
       }
 
       const methodologyText = methodologyParts.length > 0
         ? methodologyParts.join('\n\n')
-        : 'No structured methodology provided — rely on the attached PDF document.'
+        : 'No structured methodology provided — rely on the attached PDF documents.'
 
-      systemPrompt = `You are a ${categoryKey} expert creating a personalised Week 1 plan on behalf of ${merchant?.name || 'this seller'}, ${sellerLabel}.
+      systemPrompt = `You are a ${categoryKey} expert creating a personalised Week 1 plan on behalf of ${sellerName}, ${sellerLabel}.
 
 The customer just purchased: ${purchasedLabel}
 
@@ -222,7 +267,7 @@ THE SELLER'S METHODOLOGY (the plan MUST be derived exclusively from this — it 
 ${methodologyText}
 
 CRITICAL RULES:
-1. Build the plan EXCLUSIVELY from the seller's methodology above (and the attached PDF if present)
+1. Build the plan EXCLUSIVELY from the seller's methodology above (and the attached PDF documents if present)
 2. Do NOT invent or recommend purchasing any products
 3. Each step is an action, practice, meal, or exercise from the methodology — set "product_id" to null and use "product_title" as the name of the step
 4. "what_changes_next_week" must describe the natural progression of the program in week 2, based on the methodology
@@ -257,26 +302,19 @@ Return exactly this JSON:
 }`,
       }]
 
-      // Se c'è un PDF di metodologia, scaricalo e passalo a Claude come documento
-      if (merchantProfile?.methodology_pdf_url) {
-        try {
-          const pdfRes = await fetch(merchantProfile.methodology_pdf_url)
-          if (pdfRes.ok) {
-            const pdfBuf = Buffer.from(await pdfRes.arrayBuffer())
-            // Limite prudenziale ~8MB per non sforare i limiti API
-            if (pdfBuf.length > 0 && pdfBuf.length < 8_000_000) {
-              userContent.unshift({
-                type: 'document',
-                source: {
-                  type: 'base64',
-                  media_type: 'application/pdf',
-                  data: pdfBuf.toString('base64'),
-                },
-              })
-            }
-          }
-        } catch (e) {
-          console.error('methodology PDF fetch failed, continuing without it:', e)
+      // PDF di metodologia: merchant_profiles.methodology_pdf_url (singolo)
+      // oppure experts.method_pdfs_urls (array, max 3 per stare nei limiti API)
+      const pdfUrls: string[] = merchantProfile?.methodology_pdf_url
+        ? [merchantProfile.methodology_pdf_url]
+        : (expertLegacy?.method_pdfs_urls || []).slice(0, 3)
+
+      let totalPdfBytes = 0
+      const maxTotalBytes = 10_000_000 // ~10MB complessivi
+      for (const url of pdfUrls) {
+        const block = await fetchPdfBlock(url, maxTotalBytes - totalPdfBytes)
+        if (block) {
+          totalPdfBytes += Math.ceil(block.source.data.length * 0.75)
+          userContent.unshift(block)
         }
       }
     }
@@ -339,8 +377,8 @@ Return exactly this JSON:
         merchant_id,
         customer_id: customerId,
         customer_email: customerEmail || null,
-        merchant_name: merchant?.name || '',
-        merchant_slug: merchant?.slug || '',
+        merchant_name: sellerName,
+        merchant_slug: sellerSlug,
         category,
         week_number: 1,
         plan_data: result.plan,
