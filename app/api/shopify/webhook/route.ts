@@ -234,9 +234,14 @@ export async function POST(request: NextRequest) {
     try {
       const { sendFollowupEmail } = await import('@/lib/email/resend')
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
+      let emailBrandName = shop.replace('.myshopify.com', '')
+      if (merchantId) {
+        const { data: m } = await supabaseAdmin.from('merchants').select('name').eq('id', merchantId).maybeSingle()
+        if (m?.name) emailBrandName = m.name
+      }
       await sendFollowupEmail({
         to: buyerEmail,
-        brandName: shop.replace('.myshopify.com', ''),
+        brandName: emailBrandName,
         followupUrl: `${appUrl}/order-followup/${token}`,
       })
     } catch (emailErr) {
