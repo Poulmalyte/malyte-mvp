@@ -7,6 +7,7 @@ interface Props {
   order: any
   merchant: any
   shopifyProducts: any[]
+  merchantProfile?: any
 }
 
 const DEFAULT_QUESTIONS = [
@@ -16,7 +17,7 @@ const DEFAULT_QUESTIONS = [
   { id: 'concern', text: 'Any specific concerns we should know about?', type: 'text' },
 ]
 
-export default function FollowupClient({ order, merchant, shopifyProducts }: Props) {
+export default function FollowupClient({ order, merchant, shopifyProducts, merchantProfile }: Props) {
   const router = useRouter()
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
@@ -25,8 +26,12 @@ export default function FollowupClient({ order, merchant, shopifyProducts }: Pro
   const brandName = merchant?.name || order.shop_domain?.replace('.myshopify.com', '') || 'your brand'
   const productNames = shopifyProducts.map(p => p.shopify_product_title).filter(Boolean)
 
+  const QUESTIONS: any[] = merchantProfile?.customer_questions?.length > 0
+    ? merchantProfile.customer_questions.filter((q: any) => q.enabled !== false)
+    : DEFAULT_QUESTIONS
+
   async function handleSubmit() {
-    const unanswered = DEFAULT_QUESTIONS.filter(q => q.type === 'select' && !answers[q.id])
+    const unanswered = QUESTIONS.filter((q: any) => q.type === 'select' && !answers[q.id])
     if (unanswered.length > 0) { setError('Please answer all questions.'); return }
     setError('')
     setLoading(true)
@@ -113,7 +118,7 @@ export default function FollowupClient({ order, merchant, shopifyProducts }: Pro
         {/* Quiz */}
         <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E8EDF8', padding: '28px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', marginBottom: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {DEFAULT_QUESTIONS.map((q, i) => (
+            {QUESTIONS.map((q: any, i: number) => (
               <div key={q.id}>
                 <label style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', display: 'block', marginBottom: 10 }}>
                   {i + 1}. {q.text}

@@ -65,8 +65,16 @@ export default async function OrderFollowupPage({ params }: { params: Promise<{ 
     .eq('shop', order.shop_domain)
     .in('shopify_product_id', purchasedProductIds)
 
+  // Carica le customer_questions del merchant
+  const { data: merchantProfile } = order.merchant_id ? await supabaseAdmin
+    .from('merchant_profiles')
+    .select('customer_questions')
+    .eq('merchant_id', order.merchant_id)
+    .maybeSingle() : { data: null }
+
+
   return (
-    <FollowupClient
+    <FollowupClient merchantProfile={merchantProfile}
       order={order}
       merchant={merchant}
       shopifyProducts={shopifyProducts || []}
