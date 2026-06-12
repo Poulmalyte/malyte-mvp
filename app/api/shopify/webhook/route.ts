@@ -239,6 +239,7 @@ export async function POST(request: NextRequest) {
         const { data: m } = await supabaseAdmin.from('merchants').select('name').eq('id', merchantId).maybeSingle()
         if (m?.name) emailBrandName = m.name
       }
+      console.log('[Email] brandName resolution:', { merchantId, emailBrandName })
       await sendFollowupEmail({
         to: buyerEmail,
         brandName: emailBrandName,
