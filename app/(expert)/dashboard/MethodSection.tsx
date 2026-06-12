@@ -273,6 +273,13 @@ export default function MethodSection({ expert, shopifyMode }: { expert: any, sh
     setCustomIndicators(prev => prev.filter(i => i.id !== id))
   }
 
+  async function callSellerBridge() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      await fetch('/api/seller-bridge', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
+    } catch { /* non bloccante */ }
+  }
   async function handleSelectSellerType(type: 'practitioner' | 'pdf_seller') {
     setSellerType(type)
     await supabase.from('experts').update({ seller_type: type }).eq('id', expert.id)
@@ -291,6 +298,7 @@ export default function MethodSection({ expert, shopifyMode }: { expert: any, sh
     }
     setMethodSaved(true)
     setStep(3)
+    callSellerBridge()
   }
 
   async function startInterview() {
@@ -394,7 +402,7 @@ export default function MethodSection({ expert, shopifyMode }: { expert: any, sh
       method_onboarding_completed: true,
     }).eq('id', expert.id)
     setSavingMethod(false)
-    if (!error) { setMethodSaved(true); setStep(3) }
+    if (!error) { setMethodSaved(true); setStep(3); callSellerBridge() }
   }
 
   async function handleSaveProduct() {
@@ -464,6 +472,7 @@ export default function MethodSection({ expert, shopifyMode }: { expert: any, sh
 
     setSavingProduct(false)
     setSavedProduct(true)
+    callSellerBridge()
   }
 
   const step1Done = enoughPdfs && sellerType !== null

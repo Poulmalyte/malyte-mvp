@@ -162,6 +162,10 @@ export default function EditQuestionsModal({ productId }: { productId: string })
     setSaving(false)
     if (insertError) { setError('Error saving. Try again.'); return }
     setSaved(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) fetch('/api/seller-bridge', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
+    } catch { /* non bloccante */ }
     setTimeout(() => setOpen(false), 1200)
   }
 

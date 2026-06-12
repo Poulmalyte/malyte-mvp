@@ -126,7 +126,7 @@ export default function FollowupClient({ order, merchant, shopifyProducts, merch
                 </label>
                 {q.type === 'select' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {q.options!.map(opt => {
+                    {q.options!.map((opt: string) => {
                       const isSelected = answers[q.id] === opt
                       return (
                         <button key={opt} onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
