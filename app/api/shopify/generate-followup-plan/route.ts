@@ -192,7 +192,7 @@ ${JSON.stringify(complementaryProducts, null, 2)}
 CRITICAL RULES:
 1. Week 1 plan MUST use ONLY the products already purchased
 2. Do NOT suggest purchasing anything in Week 1
-3. What changes next week should naturally introduce ONE complementary product
+3. "what_changes_next_week" must describe ONLY the natural progression of the routine in week 2 (how the practice deepens). Do NOT name, suggest, or hint at any product the customer has not purchased — complementary products are introduced later, at the next check-in, never anticipated here
 4. Return ONLY valid JSON, no markdown, no backticks`
 
       userContent = [{
@@ -219,7 +219,7 @@ Return exactly this JSON:
     ],
     "evening_routine": [],
     "weekly_notes": "personalised advice for week 1",
-    "what_changes_next_week": "introduce one specific complementary product and why"
+    "what_changes_next_week": "how the routine progresses in week 2 — progression only, NO product names or purchase hints"
   }
 }`,
       }]

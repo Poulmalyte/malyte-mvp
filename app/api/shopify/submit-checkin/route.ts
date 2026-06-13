@@ -152,9 +152,9 @@ ${JSON.stringify(brandPlan.plan_data, null, 2)}
 
 RULES:
 1. ONLY recommend products from the catalog above
-2. For Week ${nextWeek}: you can now introduce products with intro_week <= ${Math.min(nextWeek, 4)}
-3. If customer had reactions: remove the problematic product and replace with gentler alternative
-4. If customer is doing great: consider introducing one new product
+2. The Week ${nextWeek} routine is built from products the customer is ALREADY using. Keep those as the core.
+3. If customer had reactions: remove the problematic product and replace with a gentler one ALREADY in their routine — do not add a new purchase to fix a reaction
+4. CROSS-SELL (introduce a NEW product to buy): introduce AT MOST ONE new product this week, and ONLY if a catalog product has intro_week exactly equal to ${nextWeek}. If no product has intro_week === ${nextWeek}, introduce NOTHING new — just refine the existing routine. Never introduce more than one new product, and never in consecutive weeks unless a product's intro_week explicitly lands on this week.
 5. Return ONLY valid JSON, no markdown, no backticks`
 
     const userPrompt = `Customer Week ${week_number} check-in answers:
@@ -181,7 +181,7 @@ Return exactly this JSON:
   ],
   "evening_routine": [],
   "weekly_notes": "personalized advice for week ${nextWeek}",
-  "what_changes_next_week": "preview of week ${nextWeek + 1}"
+  "what_changes_next_week": "describe ONLY how the routine itself will progress next week (deeper practice, adjusted frequency). Do NOT name or hint at any product the customer is not already using — upcoming products are revealed only at their own check-in, never anticipated"
 }`
 
     const response = await anthropic.messages.create({
