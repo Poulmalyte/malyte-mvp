@@ -42,6 +42,25 @@ export default function OnboardingWizard({
     ...merchantProfile,
   })
   const [catalogItemsState, setCatalogItemsState] = useState(catalogItems)
+  const [catalogCounts, setCatalogCounts] = useState({
+    total: catalogItems?.length || 0,
+    tagged: 0,
+  })
+
+  // Legge i conteggi reali da catalog_items (sorgente di verità),
+  // invece di affidarsi allo stato del wizard che non riflette il sync.
+  async function refreshCatalogCounts() {
+    if (!merchant?.id) return
+    try {
+      const res = await fetch(`/api/shopify/catalog-count?merchantId=${merchant.id}`)
+      const json = await res.json()
+      if (res.ok) {
+        setCatalogCounts({ total: json.total ?? 0, tagged: json.tagged ?? 0 })
+      }
+    } catch (err) {
+      console.error('refreshCatalogCounts error:', err)
+    }
+  }
 
   async function saveStep(step: number, data: any) {
     setSaving(true)
@@ -94,6 +113,7 @@ export default function OnboardingWizard({
   async function handleStep4Complete(data: any) {
     const ok = await saveStep(4, data)
     if (ok) {
+      await refreshCatalogCounts()
       setCurrentStep(5)
       window.history.pushState({}, '', '/shopify/onboarding?step=5')
     }
@@ -216,7 +236,8 @@ export default function OnboardingWizard({
             <Step5GoLive
               merchant={merchant}
               merchantProfile={merchantData}
-              catalogItemsCount={catalogItemsState.length}
+              catalogItemsCount={catalogCounts.total}
+              taggedCount={catalogCounts.tagged}
               onComplete={handleStep5Complete}
             />
           )}

@@ -6,11 +6,14 @@ interface Props {
   merchant: any
   merchantProfile: any
   catalogItemsCount: number
+  taggedCount?: number
   onComplete: () => void
 }
 
-export default function Step5GoLive({ merchant, merchantProfile, catalogItemsCount, onComplete }: Props) {
+export default function Step5GoLive({ merchant, merchantProfile, catalogItemsCount, taggedCount, onComplete }: Props) {
   const [copied, setCopied] = useState(false)
+
+  const tagged = taggedCount ?? catalogItemsCount
 
   const questionnaireUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/start/${merchant?.slug || merchant?.id}`
@@ -24,7 +27,7 @@ export default function Step5GoLive({ merchant, merchantProfile, catalogItemsCou
 
   const checklist = [
     { label: 'Brand identity configured', done: true },
-    { label: `${catalogItemsCount} products tagged`, done: catalogItemsCount > 0 },
+    { label: `${tagged} products tagged`, done: tagged > 0 },
     { label: 'Customer intake ready', done: !!(merchantProfile?.customer_questions?.length > 0) },
     { label: 'Plan preview approved', done: true },
   ]

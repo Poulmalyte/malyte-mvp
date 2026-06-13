@@ -1,0 +1,101 @@
+table_name,column_name,data_type,is_nullable
+admin_audit_log,id,uuid,NO
+admin_audit_log,admin_user_id,uuid,NO
+admin_audit_log,admin_email,text,YES
+admin_audit_log,action,text,NO
+admin_audit_log,target_type,text,YES
+admin_audit_log,target_id,text,YES
+admin_audit_log,metadata,jsonb,YES
+admin_audit_log,ip_address,text,YES
+admin_audit_log,created_at,timestamp with time zone,YES
+admin_daily_snapshots,id,uuid,NO
+admin_daily_snapshots,snapshot_date,date,NO
+admin_daily_snapshots,total_merchants,integer,YES
+admin_daily_snapshots,active_merchants,integer,YES
+admin_daily_snapshots,total_customers,integer,YES
+admin_daily_snapshots,total_quiz_completions,integer,YES
+admin_daily_snapshots,total_checkins,integer,YES
+admin_daily_snapshots,total_attributed_orders,integer,YES
+admin_daily_snapshots,total_revenue_influenced,numeric,YES
+admin_daily_snapshots,new_customers,integer,YES
+admin_daily_snapshots,email_match_orders,integer,YES
+admin_daily_snapshots,product_match_orders,integer,YES
+admin_daily_snapshots,temporal_match_orders,integer,YES
+admin_daily_snapshots,unmatched_orders,integer,YES
+admin_daily_snapshots,webhook_success,integer,YES
+admin_daily_snapshots,webhook_failures,integer,YES
+admin_daily_snapshots,created_at,timestamp with time zone,YES
+admin_users,id,uuid,NO
+admin_users,user_id,uuid,NO
+admin_users,email,text,NO
+admin_users,created_at,timestamp with time zone,YES
+attributed_orders,id,uuid,NO
+attributed_orders,merchant_id,uuid,NO
+attributed_orders,shopify_order_id,text,NO
+attributed_orders,shopify_order_number,text,YES
+attributed_orders,order_value,numeric,NO
+attributed_orders,order_currency,text,NO
+attributed_orders,order_paid_at,timestamp with time zone,NO
+attributed_orders,customer_email,text,NO
+attributed_orders,plan_token,text,YES
+attributed_orders,quiz_completed_at,timestamp with time zone,YES
+attributed_orders,plan_delivered_at,timestamp with time zone,YES
+attributed_orders,attribution_type,text,NO
+attributed_orders,recommendation_match,boolean,YES
+attributed_orders,matched_product_ids,jsonb,YES
+attributed_orders,matched_products_value,numeric,YES
+attributed_orders,days_since_quiz,integer,YES
+attributed_orders,attribution_window,text,YES
+attributed_orders,within_window,boolean,YES
+attributed_orders,created_at,timestamp with time zone,YES
+attributed_orders,updated_at,timestamp with time zone,YES
+attribution_errors,id,uuid,NO
+attribution_errors,merchant_id,uuid,YES
+attribution_errors,shopify_domain,text,YES
+attribution_errors,order_id,text,YES
+attribution_errors,customer_email,text,YES
+attribution_errors,error_type,text,YES
+attribution_errors,error_message,text,YES
+attribution_errors,raw_payload,jsonb,YES
+attribution_errors,resolved,boolean,YES
+attribution_errors,created_at,timestamp with time zone,YES
+brand_plans,id,uuid,NO
+brand_plans,token,text,NO
+brand_plans,merchant_id,uuid,YES
+brand_plans,customer_id,uuid,YES
+brand_plans,customer_email,text,YES
+brand_plans,merchant_name,text,YES
+brand_plans,merchant_slug,text,YES
+brand_plans,category,text,YES
+brand_plans,week_number,integer,YES
+brand_plans,plan_data,jsonb,NO
+brand_plans,package_data,jsonb,YES
+brand_plans,customer_summary,text,YES
+brand_plans,status,text,YES
+brand_plans,created_at,timestamp with time zone,YES
+brand_plans,updated_at,timestamp with time zone,YES
+catalog_item_tags,id,uuid,NO
+catalog_item_tags,catalog_item_id,uuid,NO
+catalog_item_tags,merchant_id,uuid,NO
+catalog_item_tags,tag_type,text,NO
+catalog_item_tags,tag_value,text,NO
+catalog_item_tags,source,text,NO
+catalog_item_tags,confidence_score,numeric,YES
+catalog_item_tags,schema_version,text,YES
+catalog_item_tags,created_at,timestamp with time zone,YES
+catalog_item_tags,updated_at,timestamp with time zone,YES
+catalog_items,id,uuid,NO
+catalog_items,merchant_id,uuid,NO
+catalog_items,shopify_product_id,text,YES
+catalog_items,shopify_product_ref,uuid,YES
+catalog_items,title,text,NO
+catalog_items,description,text,YES
+catalog_items,price,numeric,YES
+catalog_items,image_url,text,YES
+catalog_items,shopify_url,text,YES
+catalog_items,is_active,boolean,YES
+catalog_items,ai_tagged,boolean,YES
+catalog_items,manually_reviewed,boolean,YES
+catalog_items,tag_schema_version,text,YES
+catalog_items,created_at,timestamp with time zone,YES
+catalog_items,updated_at,timestamp with time zone,YES
