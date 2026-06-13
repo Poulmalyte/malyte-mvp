@@ -25,7 +25,9 @@ export async function POST(request: NextRequest) {
     headers: { 'X-Shopify-Access-Token': installation.access_token },
   })
   const data = await res.json()
+  console.log('[SyncProducts] shop:', shop, 'status:', res.status, 'keys:', Object.keys(data), 'errors:', JSON.stringify(data.errors || data).slice(0, 300))
   const products = data.products || []
+  console.log('[SyncProducts] product count:', products.length)
 
   for (const product of products) {
     const firstVariant = product.variants?.[0]
