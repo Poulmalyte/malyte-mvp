@@ -215,19 +215,32 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Carica merchant per la categoria
-    const { data: merchant } = await supabaseAdmin
+    // Garantisci la riga merchants (brand appena onboardato potrebbe non averla ancora)
+    let { data: merchant } = await supabaseAdmin
       .from('merchants')
-      .select('category')
+      .select('category, name, slug')
       .eq('id', user.id)
-      .single()
-
+      .maybeSingle()
+    if (!merchant) {
+      const { data: expert } = await supabaseAdmin
+        .from('experts').select('name, slug, category, seller_type').eq('id', user.id).maybeSingle()
+      await supabaseAdmin.from('merchants').upsert({
+        id: user.id,
+        expert_id: user.id,
+        seller_type: expert?.seller_type || 'brand',
+        name: expert?.name || 'My Brand',
+        slug: expert?.slug || ('brand-' + user.id.slice(0, 8)),
+        category: expert?.category || null,
+        is_published: true,
+      }, { onConflict: 'id' })
+      merchant = { category: expert?.category || null, name: expert?.name || null, slug: expert?.slug || null }
+    }
     const category = merchant?.category || 'Skincare'
 
     // Carica installation per il shop domain
     const { data: installation } = await supabaseAdmin
       .from('shopify_installations')
-      .select('shop_domain')
+      .select('shop_domain, access_token')
       .eq('expert_id', user.id)
       .maybeSingle()
 
@@ -235,7 +248,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No Shopify store connected' }, { status: 400 })
     }
 
-    // Carica prodotti Shopify
+    // Importa i prodotti dallo store Shopify (popola shopify_products)
+    if (installation.access_token) {
+      try {
+        const shopRes = await fetch(`https://${installation.shop_domain}/admin/api/2026-04/products.json?limit=250`, {
+          headers: { 'X-Shopify-Access-Token': installation.access_token },
+        })
+        const shopData = await shopRes.json()
+        const shopProducts = shopData.products || []
+        console.log('[TagProducts] imported from Shopify:', shopProducts.length, 'status:', shopRes.status)
+        for (const sp of shopProducts) {
+          const v = sp.variants?.[0]; const img = sp.images?.[0]
+          await supabaseAdmin.from('shopify_products').upsert({
+            shop: installation.shop_domain,
+            shopify_product_id: String(sp.id),
+            shopify_product_title: sp.title,
+            shopify_variant_id: v ? String(v.id) : null,
+            price: v?.price ? parseFloat(v.price) : null,
+            image_url: img?.src || null,
+            product_url: `https://${installation.shop_domain}/products/${sp.handle}`,
+          }, { onConflict: 'shop,shopify_product_id' })
+        }
+      } catch (e) {
+        console.error('[TagProducts] Shopify import error:', e)
+      }
+    }
+    // Carica prodotti Shopify (ora popolati)
     const { data: products } = await supabaseAdmin
       .from('shopify_products')
       .select('*')
