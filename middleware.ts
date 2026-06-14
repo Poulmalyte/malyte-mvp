@@ -2,7 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+const LEGACY_B2C_PREFIXES = ['/marketplace', '/product', '/expert']
+
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+  // Vecchio mondo marketplace B2C (pre-pivot, checkout Lemon Squeezy) → app Shopify
+  if (LEGACY_B2C_PREFIXES.some(prefix => path === prefix || path.startsWith(prefix + '/'))) {
+    return NextResponse.redirect(new URL('/shopify', request.url))
+  }
   let response = NextResponse.next({
     request: { headers: request.headers },
   })
@@ -44,5 +51,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/marketplace/:path*', '/marketplace', '/product/:path*', '/expert/:path*', '/expert'],
 }

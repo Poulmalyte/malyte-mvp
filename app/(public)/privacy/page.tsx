@@ -102,7 +102,7 @@ export default function PrivacyPage() {
         <h2>4. Data Sharing and Third Parties</h2>
         <p>We do not sell your personal data. We may share your data with the following categories of third parties, strictly as necessary to operate the Platform:</p>
         <ul>
-          <li><strong>Lemon Squeezy</strong> — payment processing. Subject to their own privacy policy and PCI-DSS compliance.</li>
+          <li><strong>Shopify</strong> — billing and payment processing via the Shopify Billing API, and access to store data (products, orders, customers) required to provide the service. Subject to Shopify&apos;s own privacy policy and PCI-DSS compliance.</li>
           <li><strong>Supabase</strong> — database and infrastructure hosting. Data stored within secure, GDPR-compliant cloud infrastructure.</li>
           <li><strong>Anthropic (Claude API)</strong> — AI plan generation. Questionnaire data is processed to generate wellness plans. Data is not used to train Anthropic&apos;s models without consent.</li>
           <li><strong>Vercel</strong> — platform hosting and deployment.</li>
