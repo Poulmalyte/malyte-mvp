@@ -49,7 +49,7 @@ export default function PrivacyPage() {
           <li>Profile photo</li>
           <li>Specialisation and category</li>
           <li>Uploaded methodology and content</li>
-          <li>Payment and payout information (processed via Lemon Squeezy)</li>
+          <li>Payment and billing information (processed via Shopify Billing)</li>
         </ul>
         <h3>2.3 Personal and Health-Related Data (Buyers)</h3>
         <p>In order to generate personalised wellness plans, we collect the following information from Buyers. This data may constitute sensitive personal data under the GDPR and is processed only with your explicit consent:</p>
@@ -67,7 +67,7 @@ export default function PrivacyPage() {
         <h3>2.4 Transaction Data</h3>
         <ul>
           <li>Purchase history and amounts</li>
-          <li>Payment method details (processed and stored by Lemon Squeezy — Malyte does not store full card details)</li>
+          <li>Payment method details (processed and stored by Shopify — Malyte does not store full card details)</li>
           <li>Invoices and receipts</li>
         </ul>
         <h3>2.5 Usage Data</h3>

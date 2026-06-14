@@ -65,7 +65,7 @@ export default function TermsPage() {
           <li>Violates any applicable law or regulation.</li>
         </ul>
         <h3>5.4 Commissions and Payments</h3>
-        <p>Malyte charges a commission on Seller earnings as stated in the applicable fee schedule at the time of registration or as subsequently communicated. Payments are processed through Lemon Squeezy. Malyte reserves the right to modify its commission structure with reasonable notice to Sellers. Sellers enrolled in any promotional or beta programme may be subject to specific commission terms communicated separately.</p>
+        <p>Malyte charges a commission on Seller earnings as stated in the applicable fee schedule at the time of registration or as subsequently communicated. Payments and subscription billing are processed through the Shopify Billing API. Malyte reserves the right to modify its commission structure with reasonable notice to Sellers. Sellers enrolled in any promotional or beta programme may be subject to specific commission terms communicated separately.</p>
         <h3>5.5 Seller Responsibility</h3>
         <p>Sellers are solely responsible for their tax obligations arising from sales made through the Platform, including VAT, income tax, and any other applicable taxes in their jurisdiction.</p>
         <h2>6. Buyer Terms</h2>
