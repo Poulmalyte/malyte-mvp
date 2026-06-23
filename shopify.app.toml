@@ -18,7 +18,7 @@ api_version = "2026-04"
 
 [[webhooks.subscriptions]]
 compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
-uri = "/api/shopify/webhook"
+uri = "https://app.malyte.com/api/shopify/webhook"
 
 [pos]
 embedded = false
