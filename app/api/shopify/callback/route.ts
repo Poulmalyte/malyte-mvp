@@ -6,10 +6,36 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const WEBHOOK_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/webhook`
+const WEBHOOK_URL = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'}/api/shopify/webhook`
 const API_VERSION = '2026-04'
 
 async function registerWebhook(shop: string, token: string, topic: string) {
+  // 1. Controlla se il webhook per questo topic esiste già (evita 422 da duplicato)
+  try {
+    const existingRes = await fetch(
+      `https://${shop}/admin/api/${API_VERSION}/webhooks.json?topic=${topic}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': token,
+        },
+      }
+    )
+    const existingData = await existingRes.json()
+    const alreadyRegistered = existingData?.webhooks?.some(
+      (w: any) => w.topic === topic && w.address === WEBHOOK_URL
+    )
+    if (alreadyRegistered) {
+      console.log(`ℹ️ Webhook ${topic} già registrato, skip`)
+      return
+    }
+  } catch (err) {
+    console.warn(`[Webhook] check esistenza fallito per ${topic}:`, err)
+    // proseguo comunque a tentare la creazione
+  }
+
+  // 2. Crea il webhook
   const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/webhooks.json`, {
     method: 'POST',
     headers: {
@@ -20,6 +46,14 @@ async function registerWebhook(shop: string, token: string, topic: string) {
       webhook: { topic, address: WEBHOOK_URL, format: 'json' },
     }),
   })
+
+  if (res.status === 422) {
+    // 422 = quasi sempre "già esistente" → non è un errore bloccante
+    const body = await res.text()
+    console.warn(`ℹ️ Webhook ${topic} 422 (probabile duplicato):`, body)
+    return
+  }
+
   const data = await res.json()
   if (data.errors) {
     console.error(`Webhook ${topic} error:`, JSON.stringify(data.errors))
@@ -29,7 +63,7 @@ async function registerWebhook(shop: string, token: string, topic: string) {
 }
 
 async function createSubscription(shop: string, token: string): Promise<string> {
-  const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/billing/confirm?shop=${shop}`
+  const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'}/api/shopify/billing/confirm?shop=${shop}`
   const price = process.env.SHOPIFY_PLAN_PRICE || '9.99'
   const planName = process.env.SHOPIFY_PLAN_NAME || 'Malyte Pro'
   const trialDays = parseInt(process.env.SHOPIFY_TRIAL_DAYS || '30')
@@ -155,7 +189,7 @@ export async function GET(request: NextRequest) {
     return response
   } catch (err) {
     console.error('[Billing] Error creating subscription:', err)
-    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/shopify`)
+    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'}/shopify`)
     response.cookies.delete('shopify_state')
     return response
   }
