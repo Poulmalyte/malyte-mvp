@@ -182,6 +182,7 @@ export async function GET(request: NextRequest) {
 
   await supabaseAdmin.from('shopify_oauth_states').delete().eq('state', state)
 
+  // Token EXPIRING offline: Shopify non accetta più token non-expiring per l'Admin API.
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -189,6 +190,7 @@ export async function GET(request: NextRequest) {
       client_id: process.env.SHOPIFY_CLIENT_ID,
       client_secret: process.env.SHOPIFY_CLIENT_SECRET,
       code,
+      expiring: '1',
     }),
   })
 
