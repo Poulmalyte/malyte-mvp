@@ -10,14 +10,15 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
 const WEBHOOK_URL = `${APP_URL}/api/shopify/webhook`
 const API_VERSION = '2026-04'
 
-// Email stabile derivata dallo shop (per merchant che installano da App Store)
+// Billing in modalità test: true sui dev store / per la review, false in produzione.
+const BILLING_TEST = process.env.SHOPIFY_BILLING_TEST === 'true'
+
 function shopToEmail(shop: string): string {
   const handle = shop.replace('.myshopify.com', '').replace(/[^a-z0-9-]/gi, '')
   return `${handle}@shopify.malyte.app`
 }
 
 async function registerWebhook(shop: string, token: string, topic: string) {
-  // 1. Controlla se il webhook per questo topic esiste già (evita 422 da duplicato)
   try {
     const existingRes = await fetch(
       `https://${shop}/admin/api/${API_VERSION}/webhooks.json?topic=${topic}`,
@@ -41,7 +42,6 @@ async function registerWebhook(shop: string, token: string, topic: string) {
     console.warn(`[Webhook] check esistenza fallito per ${topic}:`, err)
   }
 
-  // 2. Crea il webhook
   const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/webhooks.json`, {
     method: 'POST',
     headers: {
@@ -67,13 +67,10 @@ async function registerWebhook(shop: string, token: string, topic: string) {
   }
 }
 
-// Crea (o recupera) un utente auth Supabase legato allo shop e restituisce il suo id.
-// Usato quando l'install arriva da App Store senza expert_id collegato.
 async function ensureUserForShop(shop: string): Promise<string | null> {
   const email = shopToEmail(shop)
 
   try {
-    // Prova a creare direttamente l'utente
     const randomPassword = `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -86,10 +83,8 @@ async function ensureUserForShop(shop: string): Promise<string | null> {
       return created.user.id
     }
 
-    // Se la creazione fallisce perché l'utente esiste già, recuperalo
     if (error) {
       console.warn('[Callback] createUser error (probabile già esistente):', error.message)
-      // Cerca tra gli utenti esistenti
       let page = 1
       while (page <= 10) {
         const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 })
@@ -122,6 +117,7 @@ async function createSubscription(shop: string, token: string): Promise<string> 
         name: "${planName}"
         returnUrl: "${returnUrl}"
         trialDays: ${trialDays}
+        test: ${BILLING_TEST}
         lineItems: [{
           plan: {
             appRecurringPricingDetails: {
@@ -186,8 +182,6 @@ export async function GET(request: NextRequest) {
 
   await supabaseAdmin.from('shopify_oauth_states').delete().eq('state', state)
 
-  // Token PERMANENTE (offline): niente "expiring", così resta valido quando
-  // billing/confirm lo riusa per interrogare Shopify.
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -213,8 +207,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to get access token' }, { status: 400 })
   }
 
-  // Se non c'è un expert collegato (install da App Store / reviewer),
-  // crea automaticamente un utente auth derivato dallo shop e usalo come expert_id.
   if (!expertId) {
     const newUserId = await ensureUserForShop(shop)
     if (newUserId) {
