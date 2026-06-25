@@ -38,16 +38,18 @@ export default async function OnboardingPage({
     .eq('expert_id', user.id)
     .maybeSingle()
 
-  // Store connesso + subscription attiva = OAuth/billing gia' fatti.
-  // Non riportare mai l'utente allo Step 2 (Catalog/Connect): eviterebbe
-  // il loop OAuth->billing che ripete create/cancel subscription (causa sospensione).
-  const billingActive =
-    !!installation && installation.subscription_status === 'active'
+  // Store connesso + subscription confermata = OAuth/billing gia' fatti.
+  // 'pending' è valido: in billing di test senza carta Shopify lascia lo stato
+  // PENDING dopo l'Approva. Non riportare mai l'utente allo Step 2 (Connect),
+  // altrimenti si ripete il loop OAuth->billing (create/cancel subscription).
+  const billingDone =
+    !!installation &&
+    ['active', 'pending'].includes(installation.subscription_status)
 
   let currentStep = parseInt(
     searchParams.step || String(merchantProfile?.onboarding_step || 1)
   )
-  if (billingActive && currentStep < 3) {
+  if (billingDone && currentStep < 3) {
     currentStep = 3
   }
 
