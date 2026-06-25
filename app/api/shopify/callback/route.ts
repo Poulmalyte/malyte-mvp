@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { createServerClient } from '@supabase/ssr'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,21 +7,137 @@ const supabaseAdmin = createClient(
 )
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
+const WEBHOOK_URL = `${APP_URL}/api/shopify/webhook`
 const API_VERSION = '2026-04'
 
-async function getSubscriptionStatus(shop: string, token: string): Promise<{ id: string, status: string } | null> {
-  const query = `
-    {
-      currentAppInstallation {
-        activeSubscriptions {
-          id
-          status
-          trialDays
-          currentPeriodEnd
+// Email stabile derivata dallo shop (per merchant che installano da App Store)
+function shopToEmail(shop: string): string {
+  const handle = shop.replace('.myshopify.com', '').replace(/[^a-z0-9-]/gi, '')
+  return `${handle}@shopify.malyte.app`
+}
+
+async function registerWebhook(shop: string, token: string, topic: string) {
+  // 1. Controlla se il webhook per questo topic esiste già (evita 422 da duplicato)
+  try {
+    const existingRes = await fetch(
+      `https://${shop}/admin/api/${API_VERSION}/webhooks.json?topic=${topic}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': token,
+        },
+      }
+    )
+    const existingData = await existingRes.json()
+    const alreadyRegistered = existingData?.webhooks?.some(
+      (w: any) => w.topic === topic && w.address === WEBHOOK_URL
+    )
+    if (alreadyRegistered) {
+      console.log(`ℹ️ Webhook ${topic} già registrato, skip`)
+      return
+    }
+  } catch (err) {
+    console.warn(`[Webhook] check esistenza fallito per ${topic}:`, err)
+  }
+
+  // 2. Crea il webhook
+  const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/webhooks.json`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': token,
+    },
+    body: JSON.stringify({
+      webhook: { topic, address: WEBHOOK_URL, format: 'json' },
+    }),
+  })
+
+  if (res.status === 422) {
+    const body = await res.text()
+    console.warn(`ℹ️ Webhook ${topic} 422 (probabile duplicato):`, body)
+    return
+  }
+
+  const data = await res.json()
+  if (data.errors) {
+    console.error(`Webhook ${topic} error:`, JSON.stringify(data.errors))
+  } else {
+    console.log(`✅ Webhook ${topic} registered`)
+  }
+}
+
+// Crea (o recupera) un utente auth Supabase legato allo shop e restituisce il suo id.
+// Usato quando l'install arriva da App Store senza expert_id collegato.
+async function ensureUserForShop(shop: string): Promise<string | null> {
+  const email = shopToEmail(shop)
+
+  try {
+    // Prova a creare direttamente l'utente
+    const randomPassword = `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: randomPassword,
+      email_confirm: true,
+    })
+
+    if (created?.user) {
+      console.log('[Callback] nuovo utente shop creato:', created.user.id)
+      return created.user.id
+    }
+
+    // Se la creazione fallisce perché l'utente esiste già, recuperalo
+    if (error) {
+      console.warn('[Callback] createUser error (probabile già esistente):', error.message)
+      // Cerca tra gli utenti esistenti
+      let page = 1
+      while (page <= 10) {
+        const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 })
+        const found = list?.users?.find((u: any) => u.email === email)
+        if (found) {
+          console.log('[Callback] utente shop esistente trovato:', found.id)
+          return found.id
         }
+        if (!list?.users || list.users.length < 200) break
+        page++
+      }
+    }
+  } catch (err) {
+    console.error('[Callback] ensureUserForShop exception:', err)
+  }
+
+  console.error('[Callback] impossibile creare/recuperare utente per shop:', shop)
+  return null
+}
+
+async function createSubscription(shop: string, token: string): Promise<string> {
+  const returnUrl = `${APP_URL}/api/shopify/billing/confirm?shop=${shop}`
+  const price = process.env.SHOPIFY_PLAN_PRICE || '9.99'
+  const planName = process.env.SHOPIFY_PLAN_NAME || 'Malyte Pro'
+  const trialDays = parseInt(process.env.SHOPIFY_TRIAL_DAYS || '30')
+
+  const query = `
+    mutation {
+      appSubscriptionCreate(
+        name: "${planName}"
+        returnUrl: "${returnUrl}"
+        trialDays: ${trialDays}
+        lineItems: [{
+          plan: {
+            appRecurringPricingDetails: {
+              price: { amount: "${price}", currencyCode: USD }
+              interval: EVERY_30_DAYS
+            }
+          }
+        }]
+      ) {
+        appSubscription { id status }
+        confirmationUrl
+        userErrors { field message }
       }
     }
   `
+
   const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/graphql.json`, {
     method: 'POST',
     headers: {
@@ -31,129 +146,110 @@ async function getSubscriptionStatus(shop: string, token: string): Promise<{ id:
     },
     body: JSON.stringify({ query }),
   })
+
   const data = await res.json()
-  console.log('[BillingConfirm] subscription status:', JSON.stringify(data))
-  const subscriptions = data?.data?.currentAppInstallation?.activeSubscriptions
-  if (!subscriptions || subscriptions.length === 0) return null
-  return {
-    id: subscriptions[0].id,
-    status: subscriptions[0].status,
-  }
-}
+  console.log('[Billing] full response:', JSON.stringify(data))
 
-// Stabilisce la sessione Supabase per l'utente legato allo shop, settando i cookie
-// sulla response. Così quando il merchant atterra su /shopify la sessione esiste
-// e non viene rimandato al login. Restituisce true se la sessione è stata creata.
-async function establishSession(
-  userId: string,
-  response: NextResponse,
-  request: NextRequest
-): Promise<boolean> {
-  try {
-    // Recupera l'email dell'utente
-    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId)
-    const email = userData?.user?.email
-    if (!email) {
-      console.error('[BillingConfirm] nessuna email per userId:', userId)
-      return false
-    }
+  if (data.errors) throw new Error(`GraphQL error: ${JSON.stringify(data.errors)}`)
 
-    // Genera un magic link → contiene il token OTP per verifyOtp
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email,
-    })
-    if (linkError || !linkData?.properties?.hashed_token) {
-      console.error('[BillingConfirm] errore generateLink:', linkError)
-      return false
-    }
-    const hashedToken = linkData.properties.hashed_token
+  const userErrors = data?.data?.appSubscriptionCreate?.userErrors
+  if (userErrors?.length > 0) throw new Error(`Subscription userErrors: ${JSON.stringify(userErrors)}`)
 
-    // Client SSR che scrive i cookie di sessione sulla response
-    const supabaseSSR = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
+  const confirmationUrl = data?.data?.appSubscriptionCreate?.confirmationUrl
+  if (!confirmationUrl) throw new Error('No confirmationUrl returned from Shopify')
 
-    // verifyOtp stabilisce la sessione e setta i cookie nativamente
-    const { error: verifyError } = await supabaseSSR.auth.verifyOtp({
-      type: 'magiclink',
-      token_hash: hashedToken,
-    })
-    if (verifyError) {
-      console.error('[BillingConfirm] errore verifyOtp:', verifyError)
-      return false
-    }
-
-    console.log('[BillingConfirm] ✅ sessione stabilita per:', email)
-    return true
-  } catch (err) {
-    console.error('[BillingConfirm] establishSession exception:', err)
-    return false
-  }
+  return confirmationUrl
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
+  const code = searchParams.get('code')
   const shop = searchParams.get('shop')
-  const chargeId = searchParams.get('charge_id')
-  console.log('[BillingConfirm] shop:', shop, 'charge_id:', chargeId)
+  const state = searchParams.get('state')
 
-  if (!shop) {
-    return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 })
+  if (!state || !code || !shop) {
+    return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
   }
 
-  // Recupera installazione (access token + expert_id = utente auth)
-  const { data: installation } = await supabaseAdmin
-    .from('shopify_installations')
-    .select('access_token, expert_id')
-    .eq('shop_domain', shop)
+  const { data: oauthState } = await supabaseAdmin
+    .from('shopify_oauth_states')
+    .select('expert_id')
+    .eq('state', state)
     .maybeSingle()
 
-  if (!installation?.access_token) {
-    console.error('[BillingConfirm] No installation found for shop:', shop)
-    return NextResponse.redirect(`${APP_URL}/shopify?error=not_installed`)
+  if (!oauthState) {
+    return NextResponse.json({ error: 'Invalid state' }, { status: 403 })
   }
 
-  // Verifica che la subscription sia attiva
-  const subscription = await getSubscriptionStatus(shop, installation.access_token)
+  let expertId = oauthState.expert_id
+  console.log('[Callback] expertId from DB:', expertId)
 
-  if (subscription) {
-    await supabaseAdmin
-      .from('shopify_installations')
-      .update({
-        subscription_status: subscription.status.toLowerCase(),
-        subscription_id: subscription.id,
-      })
-      .eq('shop_domain', shop)
-    console.log('[BillingConfirm] ✅ Subscription active:', subscription)
+  await supabaseAdmin.from('shopify_oauth_states').delete().eq('state', state)
 
-    // Costruisci la response di redirect a /shopify e stabilisci la sessione su di essa
-    const response = NextResponse.redirect(
-      `${APP_URL}/shopify?shop=${shop}&installed=true&billing=confirmed`
-    )
-    if (installation.expert_id) {
-      await establishSession(installation.expert_id, response, request)
+  // Token PERMANENTE (offline): niente "expiring", così resta valido quando
+  // billing/confirm lo riusa per interrogare Shopify.
+  const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: process.env.SHOPIFY_CLIENT_ID,
+      client_secret: process.env.SHOPIFY_CLIENT_SECRET,
+      code,
+    }),
+  })
+
+  const tokenData = await tokenResponse.json()
+  console.log('[Callback] tokenData:', JSON.stringify(tokenData))
+
+  const access_token = tokenData.access_token
+  const refresh_token = tokenData.refresh_token || null
+  const expires_in = tokenData.expires_in || null
+  const token_expires_at = expires_in
+    ? new Date(Date.now() + expires_in * 1000).toISOString()
+    : null
+
+  if (!access_token) {
+    console.error('Token error:', tokenData)
+    return NextResponse.json({ error: 'Failed to get access token' }, { status: 400 })
+  }
+
+  // Se non c'è un expert collegato (install da App Store / reviewer),
+  // crea automaticamente un utente auth derivato dallo shop e usalo come expert_id.
+  if (!expertId) {
+    const newUserId = await ensureUserForShop(shop)
+    if (newUserId) {
+      expertId = newUserId
+      console.log('[Callback] expertId auto-creato da shop:', expertId)
     }
+  }
+
+  const { error: installError } = await supabaseAdmin
+    .from('shopify_installations')
+    .upsert({
+      shop_domain: shop,
+      access_token,
+      refresh_token,
+      token_expires_at,
+      expert_id: expertId,
+      subscription_status: 'pending',
+    }, { onConflict: 'shop_domain' })
+
+  if (installError) {
+    console.error('Supabase error:', installError)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+
+  await registerWebhook(shop, access_token, 'orders/paid')
+
+  try {
+    const confirmationUrl = await createSubscription(shop, access_token)
+    const response = NextResponse.redirect(confirmationUrl)
+    response.cookies.delete('shopify_state')
     return response
-  } else {
-    console.warn('[BillingConfirm] ⚠️ No active subscription after confirm for shop:', shop)
-    await supabaseAdmin
-      .from('shopify_installations')
-      .update({ subscription_status: 'declined' })
-      .eq('shop_domain', shop)
-    return NextResponse.redirect(`${APP_URL}/shopify?shop=${shop}&billing=declined`)
+  } catch (err) {
+    console.error('[Billing] Error creating subscription:', err)
+    const response = NextResponse.redirect(`${APP_URL}/shopify`)
+    response.cookies.delete('shopify_state')
+    return response
   }
 }
