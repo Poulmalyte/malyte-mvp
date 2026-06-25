@@ -140,6 +140,23 @@ export async function GET(request: NextRequest) {
       .eq('shop_domain', shop)
     console.log('[BillingConfirm] ✅ Subscription active:', subscription)
 
+    // Billing confermato → avanza l'onboarding oltre lo Step 2 (Catalog),
+    // così il rientro da /shopify non riporta mai al bottone Connect (loop OAuth).
+    if (installation.expert_id) {
+      const { data: mp } = await supabaseAdmin
+        .from('merchant_profiles')
+        .select('onboarding_step, onboarding_completed')
+        .eq('merchant_id', installation.expert_id)
+        .maybeSingle()
+      if (mp && !mp.onboarding_completed && (mp.onboarding_step ?? 1) < 3) {
+        await supabaseAdmin
+          .from('merchant_profiles')
+          .update({ onboarding_step: 3 })
+          .eq('merchant_id', installation.expert_id)
+        console.log('[BillingConfirm] onboarding_step -> 3 per merchant:', installation.expert_id)
+      }
+    }
+
     // Costruisci la response di redirect a /shopify e stabilisci la sessione su di essa
     const response = NextResponse.redirect(
       `${APP_URL}/shopify?shop=${shop}&installed=true&billing=confirmed`

@@ -16,7 +16,6 @@ export default async function OnboardingPage({
     .select('*')
     .eq('id', user.id)
     .maybeSingle()
-
   if (!merchant) redirect('/shopify')
 
   const { data: merchantProfile } = await supabase
@@ -24,7 +23,6 @@ export default async function OnboardingPage({
     .select('*')
     .eq('merchant_id', user.id)
     .maybeSingle()
-
   if (merchantProfile?.onboarding_completed) redirect('/shopify')
 
   // Carica catalog_items se esistono (per step 2)
@@ -40,7 +38,18 @@ export default async function OnboardingPage({
     .eq('expert_id', user.id)
     .maybeSingle()
 
-  const currentStep = parseInt(searchParams.step || String(merchantProfile?.onboarding_step || 1))
+  // Store connesso + subscription attiva = OAuth/billing gia' fatti.
+  // Non riportare mai l'utente allo Step 2 (Catalog/Connect): eviterebbe
+  // il loop OAuth->billing che ripete create/cancel subscription (causa sospensione).
+  const billingActive =
+    !!installation && installation.subscription_status === 'active'
+
+  let currentStep = parseInt(
+    searchParams.step || String(merchantProfile?.onboarding_step || 1)
+  )
+  if (billingActive && currentStep < 3) {
+    currentStep = 3
+  }
 
   return (
     <OnboardingWizard
