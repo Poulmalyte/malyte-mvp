@@ -53,6 +53,17 @@ export default async function OnboardingPage({
     currentStep = 3
   }
 
+  console.log('[OnboardingPage] DEBUG', JSON.stringify({
+    user_id: user.id,
+    installation_found: !!installation,
+    installation_expert_id: installation?.expert_id,
+    subscription_status: installation?.subscription_status,
+    billingDone,
+    raw_step_param: searchParams.step,
+    mp_onboarding_step: merchantProfile?.onboarding_step,
+    currentStep,
+  }))
+
   return (
     <OnboardingWizard
       merchant={merchant}
