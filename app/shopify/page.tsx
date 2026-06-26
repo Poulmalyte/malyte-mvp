@@ -7,12 +7,6 @@ export default async function ShopifyPage() {
   // Auth con client utente (legge la sessione dai cookie)
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
-  console.log('[ShopifyPage] DEBUG', JSON.stringify({
-    hasUser: !!user,
-    userId: user?.id ?? null,
-    pathname: '/shopify',
-    timestamp: new Date().toISOString(),
-  }))
   if (!user) redirect('/shopify/login')
 
   // Letture/scritture dati con client admin (bypassa RLS; filtriamo per user.id)
