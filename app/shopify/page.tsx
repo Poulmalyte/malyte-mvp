@@ -1,8 +1,10 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import ShopifyDashboard from './ShopifyDashboard'
 
 export default async function ShopifyPage() {
+  // Auth con client utente (legge la sessione dai cookie)
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   console.log('[ShopifyPage] DEBUG', JSON.stringify({
@@ -13,8 +15,11 @@ export default async function ShopifyPage() {
   }))
   if (!user) redirect('/shopify/login')
 
+  // Letture/scritture dati con client admin (bypassa RLS; filtriamo per user.id)
+  const admin = createAdminClient()
+
   // Cerca profilo expert
-  let { data: expert } = await supabase
+  let { data: expert } = await admin
     .from('experts')
     .select('*')
     .eq('id', user.id)
@@ -24,11 +29,11 @@ export default async function ShopifyPage() {
   if (!expert) {
     const slug = `expert-${user.id.slice(0, 8)}`
     const name = user.email?.split('@')[0] || 'Expert'
-    await supabase.from('profiles').upsert({
+    await admin.from('profiles').upsert({
       id: user.id, name, role: 'expert',
       consent_terms: true, consent_timestamp: new Date().toISOString(),
     }, { onConflict: 'id' })
-    const { data: newExpert } = await supabase.from('experts').upsert({
+    const { data: newExpert } = await admin.from('experts').upsert({
       id: user.id, name, slug, category: 'Wellness',
     }, { onConflict: 'id' }).select().single()
     expert = newExpert
@@ -37,14 +42,14 @@ export default async function ShopifyPage() {
   if (!expert) redirect('/shopify/login')
 
   // Cerca o crea merchant
-  let { data: merchant } = await supabase
+  let { data: merchant } = await admin
     .from('merchants')
     .select('*')
     .eq('id', user.id)
     .maybeSingle()
 
   if (!merchant) {
-    const { data: newMerchant } = await supabase
+    const { data: newMerchant } = await admin
       .from('merchants')
       .upsert({
         id: user.id,
@@ -61,14 +66,14 @@ export default async function ShopifyPage() {
   }
 
   // Cerca o crea merchant_profile
-  let { data: merchantProfile } = await supabase
+  let { data: merchantProfile } = await admin
     .from('merchant_profiles')
     .select('*')
     .eq('merchant_id', user.id)
     .maybeSingle()
 
   if (!merchantProfile) {
-    const { data: newProfile } = await supabase
+    const { data: newProfile } = await admin
       .from('merchant_profiles')
       .insert({
         merchant_id: user.id,
@@ -87,13 +92,13 @@ export default async function ShopifyPage() {
   }
 
   // Dashboard normale
-  const { data: installation } = await supabase
+  const { data: installation } = await admin
     .from('shopify_installations')
     .select('*')
     .eq('expert_id', user.id)
     .maybeSingle()
 
-  const { data: orders } = installation ? await supabase
+  const { data: orders } = installation ? await admin
     .from('shopify_orders')
     .select('id, status')
     .eq('shop_domain', installation.shop_domain) : { data: [] }

@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import OnboardingWizard from './OnboardingWizard'
 
@@ -7,41 +8,40 @@ export default async function OnboardingPage({
 }: {
   searchParams: { step?: string }
 }) {
+  // Auth con client utente (legge la sessione dai cookie)
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/shopify/login')
 
-  const { data: merchant } = await supabase
+  // Letture dati con client admin (bypassa RLS; filtriamo sempre per user.id)
+  const admin = createAdminClient()
+
+  const { data: merchant } = await admin
     .from('merchants')
     .select('*')
     .eq('id', user.id)
     .maybeSingle()
   if (!merchant) redirect('/shopify')
 
-  const { data: merchantProfile } = await supabase
+  const { data: merchantProfile } = await admin
     .from('merchant_profiles')
     .select('*')
     .eq('merchant_id', user.id)
     .maybeSingle()
   if (merchantProfile?.onboarding_completed) redirect('/shopify')
 
-  // Carica catalog_items se esistono (per step 2)
-  const { data: catalogItems } = await supabase
+  const { data: catalogItems } = await admin
     .from('catalog_items')
     .select('*, catalog_item_tags(*)')
     .eq('merchant_id', user.id)
     .order('created_at', { ascending: false })
 
-  const { data: installation } = await supabase
+  const { data: installation } = await admin
     .from('shopify_installations')
     .select('*')
     .eq('expert_id', user.id)
     .maybeSingle()
 
-  // Store connesso + subscription confermata = OAuth/billing gia' fatti.
-  // 'pending' è valido: in billing di test senza carta Shopify lascia lo stato
-  // PENDING dopo l'Approva. Non riportare mai l'utente allo Step 2 (Connect),
-  // altrimenti si ripete il loop OAuth->billing (create/cancel subscription).
   const billingDone =
     !!installation &&
     ['active', 'pending'].includes(installation.subscription_status)
