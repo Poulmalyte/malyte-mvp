@@ -5,6 +5,12 @@ import ShopifyDashboard from './ShopifyDashboard'
 export default async function ShopifyPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
+  console.log('[ShopifyPage] DEBUG', JSON.stringify({
+    hasUser: !!user,
+    userId: user?.id ?? null,
+    pathname: '/shopify',
+    timestamp: new Date().toISOString(),
+  }))
   if (!user) redirect('/shopify/login')
 
   // Cerca profilo expert
