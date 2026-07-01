@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
+import { getValidAccessToken } from '@/lib/shopify-token'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -115,20 +116,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 })
   }
 
-  // Recupera installazione (access token + expert_id = utente auth)
+  // Recupera installazione (expert_id = utente auth)
   const { data: installation } = await supabaseAdmin
     .from('shopify_installations')
-    .select('access_token, expert_id')
+    .select('expert_id')
     .eq('shop_domain', shop)
     .maybeSingle()
 
-  if (!installation?.access_token) {
+  if (!installation) {
     console.error('[BillingConfirm] No installation found for shop:', shop)
     return NextResponse.redirect(`${APP_URL}/shopify?error=not_installed`)
   }
 
+  // Token sempre valido tramite helper (refresh automatico se scaduto)
+  let accessToken: string
+  try {
+    accessToken = await getValidAccessToken(shop)
+  } catch (e) {
+    console.error('[BillingConfirm] token error for shop:', shop, e)
+    return NextResponse.redirect(`${APP_URL}/shopify?error=not_installed`)
+  }
+
   // Verifica che la subscription sia attiva
-  const subscription = await getSubscriptionStatus(shop, installation.access_token)
+  const subscription = await getSubscriptionStatus(shop, accessToken)
 
   if (subscription) {
     await supabaseAdmin

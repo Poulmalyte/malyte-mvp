@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createClient } from '@supabase/supabase-js'
+import { getValidAccessToken } from '@/lib/shopify-token'
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
 
@@ -240,7 +241,7 @@ export async function POST(request: Request) {
     // Carica installation per il shop domain
     const { data: installation } = await supabaseAdmin
       .from('shopify_installations')
-      .select('shop_domain, access_token')
+      .select('shop_domain')
       .eq('expert_id', user.id)
       .maybeSingle()
 
@@ -249,29 +250,29 @@ export async function POST(request: Request) {
     }
 
     // Importa i prodotti dallo store Shopify (popola shopify_products)
-    if (installation.access_token) {
-      try {
-        const shopRes = await fetch(`https://${installation.shop_domain}/admin/api/2026-04/products.json?limit=250`, {
-          headers: { 'X-Shopify-Access-Token': installation.access_token },
-        })
-        const shopData = await shopRes.json()
-        const shopProducts = shopData.products || []
-        console.log('[TagProducts] imported from Shopify:', shopProducts.length, 'status:', shopRes.status)
-        for (const sp of shopProducts) {
-          const v = sp.variants?.[0]; const img = sp.images?.[0]
-          await supabaseAdmin.from('shopify_products').upsert({
-            shop: installation.shop_domain,
-            shopify_product_id: String(sp.id),
-            shopify_product_title: sp.title,
-            shopify_variant_id: v ? String(v.id) : null,
-            price: v?.price ? parseFloat(v.price) : null,
-            image_url: img?.src || null,
-            product_url: `https://${installation.shop_domain}/products/${sp.handle}`,
-          }, { onConflict: 'shop,shopify_product_id' })
-        }
-      } catch (e) {
-        console.error('[TagProducts] Shopify import error:', e)
+    // Token sempre valido tramite helper (refresh automatico se scaduto).
+    try {
+      const accessToken = await getValidAccessToken(installation.shop_domain)
+      const shopRes = await fetch(`https://${installation.shop_domain}/admin/api/2026-04/products.json?limit=250`, {
+        headers: { 'X-Shopify-Access-Token': accessToken },
+      })
+      const shopData = await shopRes.json()
+      const shopProducts = shopData.products || []
+      console.log('[TagProducts] imported from Shopify:', shopProducts.length, 'status:', shopRes.status)
+      for (const sp of shopProducts) {
+        const v = sp.variants?.[0]; const img = sp.images?.[0]
+        await supabaseAdmin.from('shopify_products').upsert({
+          shop: installation.shop_domain,
+          shopify_product_id: String(sp.id),
+          shopify_product_title: sp.title,
+          shopify_variant_id: v ? String(v.id) : null,
+          price: v?.price ? parseFloat(v.price) : null,
+          image_url: img?.src || null,
+          product_url: `https://${installation.shop_domain}/products/${sp.handle}`,
+        }, { onConflict: 'shop,shopify_product_id' })
       }
+    } catch (e) {
+      console.error('[TagProducts] Shopify import error:', e)
     }
     // Carica prodotti Shopify (ora popolati)
     const { data: products } = await supabaseAdmin
