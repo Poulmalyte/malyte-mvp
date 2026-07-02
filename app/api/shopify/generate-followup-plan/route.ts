@@ -193,7 +193,11 @@ CRITICAL RULES:
 1. Week 1 plan MUST use ONLY the products already purchased
 2. Do NOT suggest purchasing anything in Week 1
 3. "what_changes_next_week" must describe ONLY the natural progression of the routine in week 2 (how the practice deepens). Do NOT name, suggest, or hint at any product the customer has not purchased — complementary products are introduced later, at the next check-in, never anticipated here
-4. Return ONLY valid JSON, no markdown, no backticks`
+4. NO medical or clinical claims. Never state the routine cures, treats, heals, repairs, or reduces any condition (e.g. "repairs the skin barrier", "reduces inflammation", "clears acne"). Frame everything as cosmetic care and how things feel, not as a medical outcome.
+5. RESPECT the customer's stated sensitivities and allergies from their quiz answers. If they mention avoiding an ingredient, fragrance, or allergen, never recommend a step or product that conflicts with it, and reflect that care in the instructions.
+6. NEVER invent numbers, percentages, scores, or metrics. Only reference facts present in the products or the customer's own answers. This is Week 1 — do NOT claim any progress or improvement, there is no data yet.
+7. Warm, personal tone — write like a knowledgeable friend who read their answers. Encouragement must be tied to a real detail they gave, not empty ("great job!"). Recognition comes from specificity.
+8. Return ONLY valid JSON, no markdown, no backticks`
 
       userContent = [{
         type: 'text',
