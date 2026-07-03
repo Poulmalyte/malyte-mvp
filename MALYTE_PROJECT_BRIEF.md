@@ -993,3 +993,102 @@ Sostituire il fake Buy Now con checkout reale via Lemon Squeezy
 - ⏳ Dominio personalizzato app.malyte.com — configurare su Vercel → Domains
 - ⏳ Client list nella dashboard seller
 - ⏳ Sistema recensioni reale — post validazione
+
+## 📝 SESSION NOTES — 2 Luglio 2026: Prompt Brand + Test E2E + Bug RLS/Domande
+
+### Obiettivo sessione
+Migliorare il prompt di generazione routine (no claim medici, tono "amico", cadenza prodotto) e validarlo con un test end-to-end reale sul flusso Brand.
+
+### Contesto architetturale confermato (da chat precedenti)
+- **Solo Brand è attivo.** PDF Seller / Practitioner sono stati NASCOSTI dall'onboarding (chat "Errore Shopify", 25 giu) forzando `seller_type='brand'`. Il codice dei rami è dormiente, non rimosso.
+- **Brand genera la routine dai PRODOTTI ACQUISTATI dal catalogo** — NON da PDF/metodologia. Il percorso "My Method" (intervista + PDF) è roba Practitioner/PDF Seller, quindi NON è il flusso da testare per il Brand.
+- Formato corretto di `merchant_profiles.customer_questions`: array di `{id, text, type, options?, enabled}` — campo **`text`** (NON `question_text`), **`type`** (NON `question_type`). Se si usa il formato sbagliato, il quiz su `order-followup` appare VUOTO.
+
+### Framework prompt creato (nel repo, NON ancora collegato)
+- `lib/routines/routine-prompts.ts` — motore a 4 layer: DISCOVER/VALIDATE/ADAPT (keyed su checkin count), 14 regole hard (no claim medici, no metriche inventate, no falsa precisione, cita dato reale, spiega perché, 1 azione, tono amico), SellerCapabilities, cadenza prodotto `productCadenceAllows` (max 1 ogni 2 check-in, mai al primo piano).
+- `lib/routines/routine-validator.ts` — validator deterministico post-generazione: 6 famiglie di check booleani (hasClinicalClaim, hasUnauthorizedNumber con number-matching, disallowedProductMention capability+cadence aware, missingHistoricalReference, progressClaimWithoutBaseline, structure completeness + per-section sentence cap). 17 test passano, tsc --strict pulito.
+- **NOTA:** questi due file sono nel repo ma NON importati da nessuna route. Vanno collegati al flusso Brand reale (probabilmente in `generate-followup-plan`, ramo Brand) — DA FARE.
+
+### Modifica applicata oggi (DA VERIFICARE se è il file giusto)
+- `app/api/shopify/generate-plan/route.ts` — riscritto systemPrompt/userPrompt: no claim medici, no cross-sell alla week 1, tono amico, spiega-perché, week 1 = crea aspettativa. Deployato su Vercel (commit pushato).
+- ⚠️ DUBBIO: `generate-plan` è la route del PRIMO piano, ma il flusso Brand potrebbe generare da un'altra route. Il piano bellissimo generato nel test di oggi (vedi sotto) — VERIFICARE quale route l'ha prodotto (URL era `/routine/[token]`).
+
+### Test end-to-end completato ✅ (store: malyte-loop-test)
+Flusso completo funzionante: ordine Shopify → webhook orders/paid → email Resend → link `order-followup/[token]` → quiz skincare → piano generato su `/routine/[token]`.
+- Prodotto test: "The Complete Snowboard" (shopify_product_id 7764001882321), configurato weekly/12w + PDF GlowLab + 4 buyer questions skincare.
+- Ordine: poul.todu+test1@gmail.com, merchant_id `5e602d80-0f27-4d8b-b8ee-e745aa4f47a6`.
+
+### Piano generato — VALUTAZIONE (tutte le regole rispettate)
+Input quiz: Calm sensitivity / Sensitive / Under 2 minutes / "fragrance and essential oils irritate, allergic to nuts".
+Output: "Your Gentle 2-Minute Sensitive Skin Reset: Week 1".
+- ✅ Personalizzazione totale (riprende sensitive, fragrance-free, essential oils, nut allergy, under 2 min, simplicity)
+- ✅ Rispetta allergie: ogni prodotto "fragrance-free" e "nut-free", cita sweet almond/argan/shea da evitare
+- ✅ ZERO claim medici ("helps lock in hydration", "keeps calm skin balanced" — mai "cura/ripara")
+- ✅ Spiega il perché ogni step (sezioni "Why:")
+- ✅ Tono amico ("resist the temptation", "consistency over perfection... completely fine")
+- ✅ Week 1 crea aspettativa, nessuna falsa promessa di risultati
+- ✅ Cadenza prodotto: NEXT WEEK anticipa un nuovo elemento solo da Week 2, motivato ("once skin has settled"), e fragrance-free anche nella proiezione. Closing: "never too much, never too soon".
+
+### BUG SCOPERTI (da fixare)
+1. **RLS mancante su UPDATE `shopify_products`** — Il Save prodotto dal browser torna 204 ma NON scrive (RLS attivo, policy UPDATE assente → 0 righe modificate, fallimento silenzioso). Diagnosi provata: UPDATE con service-role funziona (1 riga), con anon key no. AGGIRATO oggi via script service-role. ⚠️ BLOCCANTE per merchant reali: non possono salvare i prodotti dal browser. Fix: aggiungere RLS policy UPDATE su shopify_products (merchant può aggiornare solo i prodotti del proprio shop). PRIMA guardare le policy esistenti, non aggiungere alla cieca.
+2. **Mismatch formato domande** — `merchant_profiles.customer_questions` va scritto con `{id, text, type, options, enabled}`. Con `question_text/question_type` il quiz è vuoto. (Risolto oggi per il merchant di test.)
+3. **Tech debt 3 tabelle domande** — Le buyer questions vivono in 3 posti non sincronizzati: `product_questions` (legacy), `shopify_products.questions` (letto da generate-plan), `merchant_profiles.customer_questions` (letto da order-followup). "My Method" scrive su merchant_profiles, la config prodotto su shopify_products, il seller-bridge sincronizza solo product_questions→merchant_profiles. Nessun percorso collega tutto → onboarding percepito come duplicato + rischio incoerenza. Post-deadline: single source of truth con sync unidirezionale.
+
+### TODO prossima sessione (priorità)
+1. Verificare QUALE route ha generato il piano di oggi (`/routine/[token]`) e confermare che le modifiche prompt siano sul file giusto del flusso Brand. Se non lo sono, portare le modifiche lì.
+2. Fix RLS UPDATE su shopify_products (bloccante per merchant reali).
+3. Collegare (o decidere se scartare) `lib/routines/*.ts` al flusso reale.
+4. Post-deadline: consolidamento tech debt 3 tabelle domande.
+
+### Dati utili
+- merchant_id test: 5e602d80-0f27-4d8b-b8ee-e745aa4f47a6
+- shopify_product_id test: 7764001882321
+- store: malyte-loop-test.myshopify.com
+- Supabase project: lmdcgzaotpxdnbldgwrp
+- ⚠️ Gli script node temporanei (check/write/seed/syncq/fixq/verify.mjs) contenevano la service-role key in chiaro — sono stati cancellati con rm. Non committarli mai.
+
+## 📝 SESSION NOTES — 3 Luglio 2026 (mattina): Fix RLS confermato + Pulizia PDF Brand
+
+### 1. FIX RLS su shopify_products — RISOLTO E CONFERMATO ✅
+**Problema** (diagnosticato il 2 lug): il Save dei prodotti dal browser tornava 204 ma non scriveva (RLS attivo, mancava la policy UPDATE → 0 righe modificate, fallimento silenzioso). Bloccante: nessun merchant reale poteva configurare i prodotti da solo.
+
+**Causa provata**: su `shopify_products` esisteva SOLO la policy SELECT ("user reads own shop products"), nessuna policy UPDATE.
+
+**Fix applicato** (via SQL Editor Supabase):
+```sql
+create policy "user updates own shop products"
+on shopify_products for update to authenticated
+using (shop in (select shop_domain from shopify_installations where expert_id = auth.uid()))
+with check (shop in (select shop_domain from shopify_installations where expert_id = auth.uid()));
+```
+Ricalcata esattamente sulla condizione della SELECT esistente (merchant tocca solo i prodotti del proprio shop). Nessun permesso in più.
+
+**Confermato dal browser**: cambiato DURATION 12w→8w, Save, F5 → 8w È RIMASTO. Il Save ora scrive davvero, senza script. Bug chiuso.
+
+### 2. PDF nascosto per il Brand — FATTO ✅
+**Contesto**: il PDF serviva SOLO a Practitioner/PDF Seller (ora dormienti/nascosti). Il Brand genera la routine dai PRODOTTI ACQUISTATI, il PDF non viene mai usato — confermato dal codice: in `generate-followup-plan` il PDF è toccato solo nel ramo `else` (Practitioner/PDF Seller, righe 231+), MAI nel ramo `isBrand`.
+**NOTA**: il PDF caricato durante il setup del 2 lug era un errore di percorso (Claude aveva fatto seguire il flusso Practitioner per sbaglio). Inerte, non dannoso — il piano è sempre stato generato dai prodotti.
+
+**Modifiche a `app/shopify/ShopifyDashboard.tsx`** (solo UI, logica intatta):
+- Sezione "PDF PLAN / Replace PDF" avvolta in `{false && (...)}` → non renderizza più. Codice mantenuto per i rami dormienti.
+- Checklist onboarding: rimosso step "Upload PDF methodology" (ora 4 step: App installed, Connect store, Configure questions, Ready to sell).
+- KPI "Products configured": ora conta i prodotti con ≥4 domande (`questions`), non più quelli con `pdf_path`.
+
+Deployato su Vercel (verde). tsc --noEmit pulito.
+
+### Stato complessivo flusso Brand — VALIDATO E FUNZIONANTE
+- Configurazione prodotto (Save dal browser) ✅ ora scrive
+- Quiz cliente (order-followup) ✅ formato domande `{id,text,type,options,enabled}`
+- Generazione piano (generate-followup-plan, ramo Brand) ✅ con regole hard: no claim medici, rispetto allergie, no numeri inventati, tono amico, cadenza prodotto
+- Piano generato validato su 2 test end-to-end (input "difficile": sensitive + allergie) — ottimo su tutti i punti
+
+### TODO residui (prossime sessioni)
+1. **`generate-plan/route.ts`** — modificato per errore il 2 lug (non è nel percorso Brand). Da decidere: ripristinare o lasciare (innocuo). Non urgente.
+2. **Tech debt 3 tabelle domande** (`product_questions` / `shopify_products.questions` / `merchant_profiles.customer_questions` non sincronizzate) — post-deadline, single source of truth.
+3. **`lib/routines/routine-prompts.ts` + `routine-validator.ts`** nel repo ma non collegati — decidere se agganciarli o scartarli (il prompt inline di generate-followup-plan ora ha già le regole).
+4. Eventuale rimozione definitiva (non solo nascondere) del codice PDF e dei rami Practitioner/PDF Seller quando si consolida l'architettura post-deadline.
+
+### Dati utili
+- RLS policy aggiunta: "user updates own shop products" su shopify_products
+- Regole hard nel prompt Brand: righe ~191-198 di generate-followup-plan/route.ts (8 CRITICAL RULES)
+- store test: malyte-loop-test / prodotto 7764001882321 / merchant 5e602d80-0f27-4d8b-b8ee-e745aa4f47a6
