@@ -348,7 +348,6 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const onboardingSteps = [
     { label: 'App installed', done: true },
     { label: 'Connect your Shopify store', done: !!installation },
-    { label: 'Upload PDF methodology', done: hasPdfOnAnyProduct },
     { label: 'Configure buyer questions', done: hasQuestionsOnAnyProduct },
     { label: 'Ready to sell', done: hasPdfOnAnyProduct && hasQuestionsOnAnyProduct && !!installation },
   ]
@@ -395,7 +394,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
         {activeTab === 'overview' && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 12, marginBottom: 16 }}>
-              {[{ label: 'Total orders', value: String(orders.length || totalOrders), color: '#7C5CFC', bg: '#EDE9FE' }, { label: 'Plans generated', value: String(orders.filter((o: any) => o.status === 'plan_generated').length || plansGenerated), color: '#059669', bg: '#D1FDF3' }, { label: 'Products configured', value: String(products.filter(p => p.pdf_path).length), color: '#6385FF', bg: '#EEF2FF' }].map((kpi, i) => (
+              {[{ label: 'Total orders', value: String(orders.length || totalOrders), color: '#7C5CFC', bg: '#EDE9FE' }, { label: 'Plans generated', value: String(orders.filter((o: any) => o.status === 'plan_generated').length || plansGenerated), color: '#059669', bg: '#D1FDF3' }, { label: 'Products configured', value: String(products.filter(p => (p.questions || []).filter((q: Question) => q.question_text?.trim()).length >= 4).length), color: '#6385FF', bg: '#EEF2FF' }].map((kpi, i) => (
                 <div key={i} style={{ background: kpi.bg, borderRadius: 12, padding: '16px' }}>
                   <p style={{ fontSize: 10, color: '#64748B', marginBottom: 4, fontWeight: 500 }}>{kpi.label}</p>
                   <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 28, fontWeight: 800, color: kpi.color, margin: 0 }}>{kpi.value}</p>
@@ -576,6 +575,8 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                                 </div>
                               </div>
                             )}
+                            {/* PDF PLAN nascosto per i Brand: la routine si genera dai prodotti acquistati, il PDF non serve. Codice mantenuto per Practitioner/PDF Seller (dormienti). */}
+                            {false && (
                             <div style={{ marginBottom: 20 }}>
                               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PDF PLAN</label>
                               {hasPdf && (
@@ -588,6 +589,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                                 <span style={{ fontSize: 13, color: uploadingPdf === product.shopify_product_id ? '#94A3B8' : '#7C5CFC', fontWeight: 600 }}>{uploadingPdf === product.shopify_product_id ? 'Uploading…' : hasPdf ? 'Replace PDF' : '+ Upload PDF'}</span>
                               </label>
                             </div>
+                            )}
                             <div style={{ marginBottom: 20 }}>
                               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>BUYER QUESTIONS (min 4)</label>
                               <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 12 }}>These questions are shown to buyers before their plan is generated.</p>
