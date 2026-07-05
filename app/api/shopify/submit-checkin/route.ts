@@ -155,7 +155,9 @@ RULES:
 2. The Week ${nextWeek} routine is built from products the customer is ALREADY using. Keep those as the core.
 3. If customer had reactions: remove the problematic product and replace with a gentler one ALREADY in their routine — do not add a new purchase to fix a reaction
 4. CROSS-SELL (introduce a NEW product to buy): introduce AT MOST ONE new product this week, and ONLY if a catalog product has intro_week exactly equal to ${nextWeek}. If no product has intro_week === ${nextWeek}, introduce NOTHING new — just refine the existing routine. Never introduce more than one new product, and never in consecutive weeks unless a product's intro_week explicitly lands on this week.
-5. Return ONLY valid JSON, no markdown, no backticks`
+5. NO medical or clinical claims. Never state the routine cures, treats, heals, repairs, or reduces any condition (e.g. "repairs the skin barrier", "reduces inflammation", "clears acne"). You MAY reference improvements the customer reported or that appear in the check-in/adherence data, but frame them as their reported experience, never as a clinical or medical outcome.
+6. The customer already knows their profile and is mid-routine. Continue from the previous plan — do NOT reintroduce their profile or re-explain why the routine was originally chosen, unless the latest check-in indicates a major change. No "you have X skin, making you an ideal candidate" openings.
+7. Return ONLY valid JSON, no markdown, no backticks`
 
     const userPrompt = `Customer Week ${week_number} check-in answers:
 ${JSON.stringify(answers, null, 2)}
