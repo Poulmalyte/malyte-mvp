@@ -1092,3 +1092,52 @@ Deployato su Vercel (verde). tsc --noEmit pulito.
 - RLS policy aggiunta: "user updates own shop products" su shopify_products
 - Regole hard nel prompt Brand: righe ~191-198 di generate-followup-plan/route.ts (8 CRITICAL RULES)
 - store test: malyte-loop-test / prodotto 7764001882321 / merchant 5e602d80-0f27-4d8b-b8ee-e745aa4f47a6
+
+## 📝 SESSION NOTES — 5 Luglio 2026: Check-in flow (settimane >1) — bug e fix
+
+### Scoperta architetturale IMPORTANTE
+Chi genera cosa (i nomi dei file sono fuorvianti):
+- **`generate-followup-plan`** → genera SOLO il PRIMO piano (Week 1), malgrado il nome. Chiamato da `order-followup/[token]/FollowupClient.tsx`. Ha le 8 regole hard (aggiunte 2-3 lug).
+- **`submit-checkin`** → genera TUTTE le settimane successive (2, 3, 5, 6...). Chiamato da `checkin/[token]/CheckinClient.tsx`. È il 90% dell'esperienza cliente.
+- Il cliente compila il check-in via `/checkin/[checkin_token]`, dove `checkin_token` viene da `scheduled_checkins` (NON da brand_plans). Ogni piano genera un check-in programmato con `scheduled_for` (~giorno 6).
+- Piani salvati in `brand_plans` (col token proprio), mostrati su `/routine/[token]`.
+
+### BUG TROVATO E RISOLTO — "trascinamento Week 1" ✅
+**Sintomo**: alle settimane 5, 6, 7... comparivano sempre (a) lo stesso "Starter Bundle" e (b) la ri-presentazione del profilo ("you have dry skin... ideal candidate for"), incoerenti per una settimana avanzata.
+**Causa (risalita UI→codice, non indovinata)**:
+- Lo Starter Bundle NON è generato dal prompt. È renderizzato da `/routine/[token]/page.tsx` (riga 108) leggendo `brandPlan.package_data`.
+- `submit-checkin` (riga ~219) copiava `package_data: brandPlan.package_data` dal piano precedente → lo starter bundle (creato alla Week 1 da `generate-plan-and-bundle`) si trascinava all'infinito.
+- Idem `customer_summary`: copiato e renderizzato in cima (riga 67 di /routine) su ogni settimana.
+**Fix applicati (2 righe, testati end-to-end)**:
+- `submit-checkin` riga 219: `package_data: null` (era `brandPlan.package_data`). Lo starter bundle resta solo alla Week 1.
+- `/routine/[token]/page.tsx` riga 67: `{brandPlan.week_number === 1 && brandPlan.customer_summary && (` — il profilo si mostra solo alla Week 1.
+**Verificato**: generata Week 7 via check-in reale → niente starter bundle, niente ri-presentazione profilo, resto invariato (anzi migliore: il piano ha reagito all'aderenza scesa al 75%).
+
+### Regole hard aggiunte al prompt di submit-checkin ✅
+Il prompt del check-in era già buono (cadenza cross-sell via tag `intro_week`, gestione reazioni, `avoid_ingredients`), ma mancavano i divieti espliciti. Aggiunte (ora 7 RULES):
+- Regola 5: NO claim medici — MA può citare miglioramenti riportati dal cliente/dati adherence (diverso dal primo piano: qui il progresso ESISTE, c'è adherenceScore reale calcolato dal backend).
+- Regola 6: continuità — non reintrodurre il profilo (rinforza dal lato prompt il fix di rendering).
+Deployato, tsc pulito.
+
+### Note tecniche
+- **`intro_week` è un TAG** (`catalog_item_tags`), non una colonna. Letto con `parseInt(getTag('intro_week')[0] || '1')` — default 1 se il tag manca. Il CROSS-SELL vero via intro_week NON è stato testato a fondo: il prodotto di test "prova222 / Hydration Foundation Starter Kit" non aveva tag intro_week corretti. DA TESTARE con catalogo reale + tag intro_week popolati bene.
+- La logica cross-sell della Regola 4 (max 1 prodotto, solo se intro_week === nextWeek, mai consecutive) è ben scritta — se i tag sono giusti, funziona.
+
+### Correzione errore mio precedente (dal brief 2-3 lug)
+- **Percorso B (connessione manuale) era GIÀ validato** (chat 2 lug: registrazione → Connect → OAuth → sync 17 prodotti). Avevo erroneamente elencato tra gli "aperti".
+- **Token refresh GIÀ chiuso** (helper getValidAccessToken verificato).
+- **Webhook orders/paid**: funziona nella pratica (test E2E di oggi: ordine → email → quiz → piano). Il "nodo" era solo documentale.
+
+### TODO residui (aggiornati)
+1. **Testare cross-sell con catalogo reale** + tag `intro_week` popolati — l'unica parte del check-in non verificata a fondo.
+2. **Pre-submission Shopify App Store**: cleanup console.log, counter "0 products tagged" Step 5, Reviewer Notes EN, e SHOPIFY_BILLING_TEST=false prima dei paganti (CRITICO — se true i pagamenti reali non partono).
+3. `generate-plan/route.ts` toccato per errore il 2 lug (non nel percorso Brand) — ripristinare o lasciare.
+4. Tech debt 3 tabelle domande — post-deadline.
+5. `lib/routines/*.ts` nel repo ma non collegati — decidere.
+
+### Dati utili
+- Tabelle: brand_plans (piani, col `token`), scheduled_checkins (check-in, col `checkin_token`), catalog_items + catalog_item_tags (prodotti+tag inc. intro_week).
+- Route generazione: submit-checkin (settimane >1), generate-followup-plan (week 1), generate-plan-and-bundle (week 1 + bundle).
+- Pagine: /checkin/[checkin_token] (compila check-in), /routine/[token] (mostra piano), /order-followup/[token] (primo quiz).
+- store test: malyte-loop-test | merchant 5e602d80-... | prodotto 7764001882321
+- ⚠️ Gli script node temporanei con la service-role key sono stati TUTTI cancellati (rm). Mai committarli.
