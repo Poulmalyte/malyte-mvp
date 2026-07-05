@@ -64,7 +64,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           <h1 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 10px', fontFamily: "'Satoshi', sans-serif", lineHeight: 1.3 }}>
             {plan?.headline || `Your ${category} Routine`}
           </h1>
-          {brandPlan.customer_summary && (
+          {brandPlan.week_number === 1 && brandPlan.customer_summary && (
             <p style={{ fontSize: 13, opacity: 0.9, margin: 0, lineHeight: 1.5 }}>{brandPlan.customer_summary}</p>
           )}
         </div>

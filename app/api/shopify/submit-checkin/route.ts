@@ -218,7 +218,7 @@ Return exactly this JSON:
         category,
         week_number: nextWeek,
         plan_data: newPlan,
-        package_data: brandPlan.package_data,
+        package_data: null,
         customer_summary: brandPlan.customer_summary,
         status: 'active',
       })
