@@ -61,6 +61,15 @@ export async function POST(request: Request) {
     const category = brandPlan.category || 'Skincare'
     const nextWeek = (week_number || 1) + 1
 
+    const { count: previousCheckins } = await supabaseAdmin
+      .from('brand_checkin_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('customer_id', customer_id)
+      .eq('merchant_id', merchant_id)
+    const weekState: 'discover' | 'validate' | 'adapt' =
+      (previousCheckins || 0) === 0 ? 'discover' :
+      (previousCheckins || 0) === 1 ? 'validate' : 'adapt'
+
     const { data: merchant } = await supabaseAdmin
       .from('merchants').select('*').eq('id', merchant_id).single()
 
@@ -166,6 +175,7 @@ ${JSON.stringify(answers, null, 2)}
 Adherence: ${adherenceScore * 100}%
 Had reactions: ${hasReaction ? 'YES — be careful' : 'No'}
 
+Data state: ${weekState}
 Generate the updated Week ${nextWeek} plan.
 
 Return exactly this JSON:
@@ -187,6 +197,7 @@ Return exactly this JSON:
   "what_changes_next_week": "describe ONLY how the routine itself will progress next week (deeper practice, adjusted frequency). Do NOT name or hint at any product the customer is not already using — upcoming products are revealed only at their own check-in, never anticipated"
 }`
 
+console.log("[STEP3 VERIFY] weekState=", weekState, "| userPrompt contains Data state line:", userPrompt.includes("Data state:"))
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
