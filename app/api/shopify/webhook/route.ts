@@ -149,6 +149,73 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // ── Purchase Confirmation -> Week 1 Generation ──────────────────────────────
+  // Se esiste una raccomandazione pendente per questo customer/merchant, confronta i
+  // prodotti dell'ordine con quelli raccomandati (via catalog_items, stesso pattern gia'
+  // usato dalla Revenue Attribution sotto) e genera la Week 1 SOLO con i prodotti
+  // effettivamente acquistati. Non blocca il resto del webhook in caso di errore.
+
+  if (merchantId) {
+    try {
+      const { data: existingCustomer } = await supabaseAdmin
+        .from('customers')
+        .select('id')
+        .eq('email', buyerEmail)
+        .maybeSingle()
+
+      if (existingCustomer) {
+        const { data: profileWithSnapshot } = await supabaseAdmin
+          .from('customer_profiles')
+          .select('recommendation_snapshot')
+          .eq('customer_id', existingCustomer.id)
+          .eq('merchant_id', merchantId)
+          .maybeSingle()
+
+        const snapshot = profileWithSnapshot?.recommendation_snapshot
+
+        if (snapshot && Array.isArray(snapshot.recommended_products) && snapshot.recommended_products.length > 0) {
+          const orderProductIds = (order.line_items || []).map((i: { product_id: number }) => String(i.product_id))
+
+          const { data: matchedCatalogItems } = await supabaseAdmin
+            .from('catalog_items')
+            .select('id, shopify_product_id')
+            .eq('merchant_id', merchantId)
+            .in('shopify_product_id', orderProductIds)
+
+          const purchasedCatalogIds = (matchedCatalogItems || []).map(c => c.id)
+          const recommendedIds = snapshot.recommended_products.map((p: any) => p.product_id)
+          const purchasedFromRecommendation = purchasedCatalogIds.filter(id => recommendedIds.includes(id))
+
+          console.log('[PurchaseConfirmation] recommended:', recommendedIds)
+          console.log('[PurchaseConfirmation] purchased (catalog_items ids):', purchasedCatalogIds)
+          console.log('[PurchaseConfirmation] intersection:', purchasedFromRecommendation)
+
+          if (purchasedFromRecommendation.length > 0) {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
+            const week1Res = await fetch(`${appUrl}/api/shopify/generate-week1-routine`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                merchant_id: merchantId,
+                customer_id: existingCustomer.id,
+                purchased_product_ids: purchasedFromRecommendation,
+              }),
+            })
+            const week1Json = await week1Res.json()
+            console.log('[PurchaseConfirmation] Week 1 generation result:', week1Json)
+          } else {
+            console.log('[PurchaseConfirmation] no overlap between purchase and recommendation, skipping Week 1 generation')
+          }
+        } else {
+          console.log('[PurchaseConfirmation] no pending recommendation snapshot for this customer/merchant')
+        }
+      }
+    } catch (pcErr) {
+      // Non deve mai bloccare il resto del webhook (email, attribution, ecc.)
+      console.error('[PurchaseConfirmation] error (non-blocking):', pcErr)
+    }
+  }
+
   // ── Revenue Attribution ────────────────────────────────────────────────────
 
   if (merchantId) {
