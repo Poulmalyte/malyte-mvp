@@ -231,12 +231,21 @@ toccare comportamento esistente finché il nuovo percorso non è pronto e verifi
    estratte al posto del codice inline. **Comportamento verificato identico** (tsc pulito,
    `git diff` isolato riga per riga, nessuna logica cambiata — solo spostamento di codice).
    Due commit separati, entrambi deployati verdi.
-4. **In corso:** `app/api/shopify/generate-recommendation/route.ts` — nuovo endpoint isolato,
-   NON collegato a nessun frontend, che riusa le due funzioni estratte con un prompt ristretto
-   alla sola raccomandazione (`customer_analysis`, `reasoning`, `recommended_products` con
-   `why` per ciascuno, `warnings`). Non genera `plan`, non scrive `brand_plans`, non invia
-   email, non crea `scheduled_checkins`. Ultima azione: scritto il file, verifica `tsc` in
-   sospeso al momento della sospensione di questa nota.
+4. ✅ **`app/api/shopify/generate-recommendation/route.ts` — creato, verificato, testato con successo.**
+   Nuovo endpoint isolato, NON collegato a nessun frontend, che riusa le due funzioni estratte
+   con un prompt ristretto alla sola raccomandazione (`customer_analysis`, `reasoning`,
+   `recommended_products` con `why` per ciascuno, `warnings`). Non genera `plan`, non scrive
+   `brand_plans`, non invia email, non crea `scheduled_checkins`.
+   **Test reale via curl** (merchant Lumière Skin, scenario "pelle sensibile + allergia fragranze"):
+   Status 200, JSON conforme al contratto (tutti i campi attesi presenti, nessun campo di
+   routine/piano presente). Qualità del ragionamento verificata: il modello ha segnalato
+   onestamente che il catalogo non specifica ingredienti dettagliati (non può confermare
+   "fragrance-free" con certezza), e ha escluso attivamente prodotti aggressivi (AHA, Retinol)
+   per un profilo sensibile — coerente con la "candidate selection interna" richiesta
+   nell'architettura congelata. **Deploy verde, commit `a90fe34`.**
+   Nota tecnica: dopo il push, il deployment Vercel ha richiesto alcuni minuti prima di
+   comparire come "Ready" — un primo test troppo ravvicinato al push ha dato 404 per timing,
+   non per un problema reale. Verificare sempre lo stato del deployment prima di testare.
 
 **Da fare (prossimi passi, in ordine):**
 - Verificare `tsc --noEmit` sul nuovo endpoint e correggere eventuali errori.
