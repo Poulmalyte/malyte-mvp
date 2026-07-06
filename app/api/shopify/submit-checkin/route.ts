@@ -121,20 +121,21 @@ export async function POST(request: Request) {
     const improvementScore = improvementMap[answers.improvement || answers.energy || ''] || 3
     const hasReaction = answers.reaction && (answers.reaction.includes('irritation') || answers.reaction.includes('stopped'))
 
-    await supabaseAdmin.from('checkin_events').insert({
+    const { error: checkinSaveError } = await supabaseAdmin.from('brand_checkin_events').insert({
+      brand_plan_id,
       customer_id,
       merchant_id,
-      plan_id: null,
-      plan_version_id: null,
       week_number: week_number || 1,
+      answers,
       adherence_score: adherenceScore,
-      satisfaction_score: Math.round(improvementScore),
       improvement_score: Math.round(improvementScore),
-      symptoms: hasReaction ? [answers.reaction] : [],
-      improvements: answers.improvement ? [answers.improvement] : [],
-      free_text: answers.comment || null,
-      triggered_plan_update: true,
+      had_reaction: !!hasReaction,
+      reaction_detail: hasReaction ? answers.reaction : null,
+      comment: answers.comment || null,
     })
+    if (checkinSaveError) {
+      console.error('[submit-checkin] brand_checkin_events insert failed:', checkinSaveError.message)
+    }
 
     const systemPrompt = `You are a ${category} expert updating a customer's personalized plan based on their weekly check-in.
 
