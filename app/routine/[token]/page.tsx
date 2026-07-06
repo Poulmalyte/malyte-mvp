@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 
+// TEMPORANEO: costante fissa finche il totale settimane non diventa dinamico
+const TEMP_TOTAL_WEEKS = 12
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -44,6 +47,43 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
     </div>
   )
 
+  const StatusRing = ({ week, total }: { week: number, total: number }) => {
+    const segments = Array.from({ length: total }, (_, i) => i < week)
+    const radius = 60
+    const strokeWidth = 8
+    const circumference = 2 * Math.PI * radius
+    const segmentLength = circumference / total
+    const gap = 3
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0' }}>
+        <svg width={150} height={150} viewBox="0 0 150 150" style={{ transform: 'rotate(-90deg)' }}>
+          {segments.map((filled, i) => {
+            const offset = i * segmentLength
+            return (
+              <circle
+                key={i}
+                cx={75}
+                cy={75}
+                r={radius}
+                fill="none"
+                stroke={filled ? '#5B6EF5' : '#E5E5EA'}
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${segmentLength - gap} ${circumference - segmentLength + gap}`}
+                strokeDashoffset={-offset}
+                strokeLinecap="round"
+              />
+            )
+          })}
+        </svg>
+        <div style={{ marginTop: -95, textAlign: 'center' }}>
+          <p style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: 0, fontFamily: "'Satoshi', sans-serif" }}>Week {week}</p>
+          <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>of {total}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
       {/* Header */}
@@ -55,6 +95,9 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
       </div>
 
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 24px 80px' }}>
+
+        {/* Status Ring - dashboard v2, primo elemento introdotto */}
+        <StatusRing week={brandPlan.week_number} total={TEMP_TOTAL_WEEKS} />
 
         {/* Hero */}
         <div style={{ background: 'linear-gradient(135deg, #7C5CFC, #06B6D4)', borderRadius: 20, padding: '24px', marginBottom: 20, color: '#fff' }}>
