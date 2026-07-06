@@ -197,7 +197,6 @@ Return exactly this JSON:
   "what_changes_next_week": "describe ONLY how the routine itself will progress next week (deeper practice, adjusted frequency). Do NOT name or hint at any product the customer is not already using — upcoming products are revealed only at their own check-in, never anticipated"
 }`
 
-console.log("[STEP3 VERIFY] weekState=", weekState, "| userPrompt contains Data state line:", userPrompt.includes("Data state:"))
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
