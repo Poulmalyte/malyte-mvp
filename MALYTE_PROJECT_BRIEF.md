@@ -1363,3 +1363,86 @@ dal primo commit del progetto). Nessuna perdita. Lezione: controllare
 consistency.days_completed/expected senza fonte reale di conteggio giorni;
 SHOPIFY_BILLING_TEST=false prima dei paganti; cleanup pre-submission; tech
 debt 3 tabelle domande; decidere su generate-plan.ts toccato per errore.
+
+## 📝 SESSION NOTES — Dashboard v2: 5 componenti presentation-only completati e congelati
+
+### Metodo (invariato, confermato efficace su 5 iterazioni consecutive)
+Per ogni componente: ispeziona codice esistente → proposta del cambiamento
+minimo → attendi conferma esplicita → patch isolata (mai riscritture) →
+tsc --noEmit → git diff (deve mostrare solo righe additive/isolate sul
+blocco in questione) → deploy → verifica visiva reale su link /routine/[token]
+esistenti. Zero rotture su tutti e 5 gli step.
+
+### Componenti completati e CONGELATI (non toccare senza richiesta esplicita)
+File toccato: SOLO `app/routine/[token]/page.tsx`. Nessun altro file, nessun
+cambio a backend o prompt in nessuno dei 5 step.
+
+1. **Status Ring** — anello SVG sopra l'Hero. Usa `brandPlan.week_number` (dato
+   già esistente). Totale settimane: `TEMP_TOTAL_WEEKS = 12`, costante fissa
+   HARDCODED — da rendere dinamico in uno step futuro (non ancora fatto).
+   Niente animazioni (deciso esplicitamente di non aggiungerle per ora).
+
+2. **Coach Note** — Hero (gradiente viola) + Weekly notes (riquadro corsivo
+   separato) uniti in una carta bianca centrata con avatar iniziale brand.
+   Stessi dati (`plan?.headline`, `plan?.weekly_notes`, `brandPlan.customer_summary`),
+   stesse condizioni (customer_summary solo se week_number===1).
+
+3. **Next Week Preview** — box "NEXT WEEK" da verde acceso a palette
+   neutra/spenta (#F5F5F4, testo #8E8E93/#3C3C43), con piccola freccia →.
+   Stesso dato (`plan.what_changes_next_week`), stessa condizione di visibilità.
+
+4. **Evolution / chiusura** — box viola "Your routine evolves with you" da
+   colorato a neutro centrato con simbolo ∞. Testo statico invariato
+   (non dipende da `plan`/`brandPlan`, era già hardcoded prima). Deciso
+   esplicitamente di NON aggiungere "Week X of 12" qui per non duplicare
+   l'informazione già nello Status Ring.
+
+5. **Starter Bundle** (Week 1 only) — bordo viola spesso → bordo sottile
+   grigio, palette coerente col resto (#5B6EF5 per accenti, #8E8E93/#1C1C1E
+   per testo). Stessa condizione (`{pkg && (...)}`), stessi dati
+   (`package_name`, `items`, `total_price`, `cart_url`), stessa logica CTA
+   (link se cart_url esiste, altrimenti messaggio "Visit brand"). Verificato
+   che questo box appare SOLO su piani Week 1 — coerente col fix di due
+   sessioni fa (`package_data: null` per week>1 in submit-checkin, blocca il
+   trascinamento del bundle oltre la prima settimana).
+
+Verificato su 2 scenari reali: piano Week 10 (senza bundle, con Next Week/
+Evolution) e piano Week 1 di Sara Rossi/Lumière Skin (con Starter Bundle
+completo, 5 prodotti, €205 totale) — tutti e 5 i componenti coerenti insieme
+sulla stessa pagina.
+
+### Filone B — cross-sell nelle settimane successive: RIMANDATO, NON iniziato
+Richiesta del founder: nelle settimane oltre la 1, la dashboard deve poter
+raccomandare prodotti aggiuntivi SOLO quando il backend lo permette
+esplicitamente — stesse regole già esistenti nel prompt di submit-checkin:
+- controllato dal backend, non deciso liberamente dal frontend/modello
+- `intro_week` del prodotto deve combaciare con la settimana corrente
+- massimo un prodotto nuovo per ciclo
+- mai raccomandazioni arbitrarie o "per vendere di più"
+Confermato esplicitamente: questo NON è presentation-only, è verifica/
+eventuale modifica della LOGICA di cross-sell (regola 4 del systemPrompt di
+submit-checkin, già scritta ma mai stress-testata con tag intro_week reali
+su un catalogo con più prodotti in competizione — vedi nota della sessione
+precedente). Da trattare come filone separato, con lo stesso rigore (prima
+verificare lo stato attuale, poi eventualmente correggere), NON mischiato
+con lavoro di presentazione.
+
+### Cosa resta prima di aprire il filone Routine Cards (stato client)
+Tutti i componenti "solo presentazione" sono ORA COMPLETATI. L'unica sezione
+ancora nel vecchio stile "articolo" sono le Routine Cards stesse
+(Morning/Evening routine — liste piatte, no tap-to-expand). Questo è
+l'ULTIMO pezzo prima di richiedere stato client (il founder ha chiesto
+esplicitamente di finire tutto il presentation-only prima di introdurlo).
+
+### TODO aggiornato (ordine di priorità)
+1. Routine Cards con stato client (tap-to-expand) — prossimo pezzo naturale,
+   ma richiede introdurre client-side state per la prima volta in questa pagina.
+2. Rendere TEMP_TOTAL_WEEKS dinamico (oggi hardcoded a 12).
+3. Filone B: verificare/validare la logica di cross-sell reale con catalogo
+   multi-prodotto e tag intro_week popolati correttamente.
+4. Step 4-5 originali (prompt v2 in produzione): ancora non fatti, il nuovo
+   schema JSON gira solo nello script di verifica standalone
+   (lib/dashboard/verify-dashboard-v2.mjs), mai in submit-checkin reale.
+5. (residuo, invariato) consistency.days_completed/expected senza fonte
+   reale; SHOPIFY_BILLING_TEST=false pre-paganti; cleanup pre-submission;
+   tech debt 3 tabelle domande; decidere su generate-plan.ts.
