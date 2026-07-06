@@ -208,10 +208,11 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           </div>
         )}
 
-        {/* Evolution */}
-        <div style={{ background: '#F5F3FF', borderRadius: 14, border: '1px solid #DDD6FE', padding: '16px 20px' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: '#7C5CFC', margin: '0 0 8px' }}>Your routine evolves with you</p>
-          <p style={{ fontSize: 12, color: '#5B21B6', margin: 0, lineHeight: 1.6 }}>
+        {/* Evolution — dashboard v2: chiusura calma, stesso testo, nessun dato nuovo */}
+        <div style={{ background: '#F5F5F4', borderRadius: 16, padding: '28px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 20, color: '#8E8E93', marginBottom: 10, lineHeight: 1 }}>∞</div>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', margin: '0 0 8px' }}>Your routine evolves with you</p>
+          <p style={{ fontSize: 13, color: '#8E8E93', margin: 0, lineHeight: 1.6, maxWidth: 380, marginLeft: 'auto', marginRight: 'auto' }}>
             Every week your plan adapts based on your progress. New products are introduced at exactly the right moment — never too much, never too soon.
           </p>
         </div>
