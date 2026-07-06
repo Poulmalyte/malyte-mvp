@@ -198,11 +198,13 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           </div>
         )}
 
-        {/* Next week */}
+        {/* Next Week Preview — dashboard v2: stesso dato e condizione, solo presentazione piu silenziosa */}
         {plan?.what_changes_next_week && (
-          <div style={{ background: '#F0FDF4', borderRadius: 14, border: '1px solid #6EE7B7', padding: '16px 20px', marginBottom: 20 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#059669', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Next week</p>
-            <p style={{ fontSize: 13, color: '#065F46', margin: 0, lineHeight: 1.6 }}>{plan.what_changes_next_week}</p>
+          <div style={{ background: '#F5F5F4', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              → Next week
+            </p>
+            <p style={{ fontSize: 13, color: '#3C3C43', margin: 0, lineHeight: 1.6 }}>{plan.what_changes_next_week}</p>
           </div>
         )}
 
