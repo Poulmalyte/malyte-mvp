@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
-import { loadMerchantAndProductsContext } from '@/lib/shopify-catalog'
+import { loadMerchantAndProductsContext, resolveAndSaveCustomer } from '@/lib/shopify-catalog'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -157,41 +157,7 @@ Return exactly this JSON:
     }
 
     // Salva customer
-    let customerId: string | null = null
-    if (customer_email) {
-      const { data: existingCustomer } = await supabaseAdmin
-        .from('customers')
-        .select('id')
-        .eq('email', customer_email)
-        .maybeSingle()
-
-      if (existingCustomer) {
-        customerId = existingCustomer.id
-      } else {
-        const { data: newCustomer } = await supabaseAdmin
-          .from('customers')
-          .insert({ email: customer_email })
-          .select('id')
-          .single()
-        customerId = newCustomer?.id || null
-      }
-
-      if (customerId) {
-        await supabaseAdmin
-          .from('merchant_customers')
-          .upsert({ merchant_id, customer_id: customerId }, { onConflict: 'merchant_id,customer_id' })
-
-        await supabaseAdmin
-          .from('customer_profiles')
-          .upsert({
-            customer_id: customerId,
-            merchant_id,
-            quiz_answers,
-            version: 1,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'customer_id,merchant_id' })
-      }
-    }
+    const customerId = await resolveAndSaveCustomer(supabaseAdmin, merchant_id, customer_email, quiz_answers)
 
     // Salva piano in brand_plans con token univoco
     const { data: savedPlan } = await supabaseAdmin

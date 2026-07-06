@@ -73,3 +73,55 @@ export async function loadMerchantAndProductsContext(
 
   return { merchant, merchantProfile, installation, productsContext, category }
 }
+
+/**
+ * Estratto da app/api/shopify/generate-plan-and-bundle/route.ts (righe 159-189),
+ * codice copiato identico, nessuna modifica di logica.
+ * Risolve (o crea) il customer per email, collega merchant<->customer,
+ * e salva le risposte del quiz come profilo cliente per quel merchant.
+ * Ritorna null se non viene fornita un'email.
+ */
+export async function resolveAndSaveCustomer(
+  supabaseAdmin: SupabaseClient,
+  merchant_id: string,
+  customer_email: string | null | undefined,
+  quiz_answers: any
+): Promise<string | null> {
+  let customerId: string | null = null
+  if (!customer_email) return customerId
+
+  const { data: existingCustomer } = await supabaseAdmin
+    .from('customers')
+    .select('id')
+    .eq('email', customer_email)
+    .maybeSingle()
+
+  if (existingCustomer) {
+    customerId = existingCustomer.id
+  } else {
+    const { data: newCustomer } = await supabaseAdmin
+      .from('customers')
+      .insert({ email: customer_email })
+      .select('id')
+      .single()
+    customerId = newCustomer?.id || null
+  }
+
+  if (customerId) {
+    await supabaseAdmin
+      .from('merchant_customers')
+      .upsert({ merchant_id, customer_id: customerId }, { onConflict: 'merchant_id,customer_id' })
+
+    await supabaseAdmin
+      .from('customer_profiles')
+      .upsert({
+        customer_id: customerId,
+        merchant_id,
+        quiz_answers,
+        version: 1,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'customer_id,merchant_id' })
+  }
+
+  return customerId
+}
