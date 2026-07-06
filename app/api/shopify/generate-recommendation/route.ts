@@ -10,16 +10,6 @@ const supabaseAdmin = createClient(
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-/**
- * Recommendation Service — endpoint isolato, NON collegato al frontend.
- *
- * Produce SOLO la raccomandazione (analisi cliente, ragionamento, prodotti,
- * perche', avvertenze). NON genera plan.morning_routine/evening_routine.
- * NON scrive in brand_plans. NON invia email. NON crea scheduled_checkins.
- *
- * Riusa loadMerchantAndProductsContext e resolveAndSaveCustomer, identiche
- * a quelle usate da generate-plan-and-bundle (che resta invariato).
- */
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -99,6 +89,22 @@ Return exactly this JSON:
     })
 
     const customerId = await resolveAndSaveCustomer(supabaseAdmin, merchant_id, customer_email, quiz_answers)
+
+    if (customerId) {
+      await supabaseAdmin
+        .from('customer_profiles')
+        .update({
+          recommendation_snapshot: {
+            customer_analysis: result.customer_analysis,
+            reasoning: result.reasoning,
+            recommended_products: enrichedProducts,
+            warnings: result.warnings || [],
+            created_at: new Date().toISOString(),
+          }
+        })
+        .eq('customer_id', customerId)
+        .eq('merchant_id', merchant_id)
+    }
 
     return NextResponse.json({
       ok: true,
