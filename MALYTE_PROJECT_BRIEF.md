@@ -1141,3 +1141,85 @@ Deployato, tsc pulito.
 - Pagine: /checkin/[checkin_token] (compila check-in), /routine/[token] (mostra piano), /order-followup/[token] (primo quiz).
 - store test: malyte-loop-test | merchant 5e602d80-... | prodotto 7764001882321
 - ⚠️ Gli script node temporanei con la service-role key sono stati TUTTI cancellati (rm). Mai committarli.
+
+## 📝 SESSION NOTES — Dashboard v2 design + bug strutturale checkin_events
+
+### Dashboard v2 — design completato, NON ancora integrato nel codice
+Progettata con Claude (metodo: architettura → UX/visual → JSON schema → prompt,
+un livello alla volta). File salvati in:
+- docs/dashboard-design/malyte-dashboard-01-architecture.md (11 carte, category-agnostic)
+- docs/dashboard-design/malyte-dashboard-02-visual-spec.md (spec mobile per Figma)
+- docs/dashboard-design/malyte-dashboard-03-json-schema.md (contratto dati, schema_version 1.0.0)
+- lib/dashboard/malyte-dashboard-prompt.ts (prompt di produzione, tsc --strict pulito)
+
+Le 11 carte: Status Ring, Coach Note, Progress Trend, Weekly Mission, Routine Cards,
+Consistency Card, AI Observations, Milestones, Next Week Preview, Safety Flag,
+Check-in CTA. Sistema category-agnostic: stessa struttura per skincare/fitness/
+supplementi/sleep, cambia solo il contenuto.
+
+Regola chiave del nuovo schema: week.state (discover/validate/adapt) guida cosa è
+visibile — progress_trend e consistency da week>=2, ai_observation solo da week>=3
+(serve un pattern reale su 2+ check-in).
+
+### Tentativo di integrazione — BLOCCATO da un bug strutturale scoperto oggi
+Per calcolare week.state serve contare i check-in completati per (customer_id,
+merchant_id). Tentativo di usare checkin_events per questo → scoperto che:
+
+**BUG STRUTTURALE CRITICO: checkin_events non ha MAI salvato una riga.**
+- La tabella ha foreign key: plan_id → plans.id, plan_version_id → plan_versions.id
+- Le tabelle `plans` e `plan_versions` sono COMPLETAMENTE VUOTE (0 righe) — residui
+  di un'architettura di piani mai implementata (probabilmente pre-Shopify/legacy).
+- Il flusso Brand reale scrive tutti i piani in `brand_plans` (tabella diversa,
+  mai collegata a checkin_events).
+- Risultato: submit-checkin (riga ~124) tenta sempre l'insert in checkin_events con
+  plan_id: null e plan_version_id: null → viola NOT NULL. Anche passando un id
+  reale di brand_plans, la foreign key fallisce comunque perché punta a `plans`,
+  non a `brand_plans`. L'insert è STRUTTURALMENTE IMPOSSIBILE con lo schema attuale.
+- Il codice non ha try/catch né controllo dell'errore → fallisce silenziosamente,
+  il piano si genera comunque, ma NESSUNO storico di check-in è mai stato salvato.
+
+**Impatto:** ogni funzionalità che si basa su "storico dei check-in passati" (in
+particolare AI Observations della dashboard v2, ma anche qualunque analytics futura
+sull'aderenza nel tempo) non ha dati da leggere. Oggi l'unica traccia dei check-in
+è il piano risultante in brand_plans — mai le risposte grezze (answers) che lo
+hanno generato.
+
+**Soluzione, DA DECIDERE con calma (non una patch a fine sessione):**
+- Opzione A: ricollegare le foreign key di checkin_events a brand_plans invece di
+  plans/plan_versions (richiede capire se ha senso semanticamente).
+  Opzione B: creare una tabella nuova, pensata apposta per il flusso Brand
+  (es. `brand_checkin_events`), con FK verso brand_plans/merchants/customers.
+- In entrambi i casi: decidere PRIMA cosa salvare (solo gli score calcolati, o
+  anche gli answers grezzi — servono per l'AI Observation che deve citare
+  "cosa hai riportato" testualmente, non solo un punteggio).
+
+### Soluzione pragmatica trovata per week.state (bypassa il bug, NON lo risolve)
+week.state si può calcolare contando le righe in `brand_plans` filtrando per
+(customer_id, merchant_id) — quella tabella è affidabile e già usata ovunque:
+```
+count = COUNT(brand_plans WHERE customer_id=X AND merchant_id=Y)
+count <= 1 → "discover" | count == 2 → "validate" | count >= 3 → "adapt"
+```
+Attenzione: NON filtrare solo per customer_email — un utente di test può avere
+piani sotto merchant diversi da sessioni diverse (verificato: 15 righe per
+poul.todu@gmail.com sparse su 3 merchant_id differenti).
+
+### Altro gap trovato nell'integrazione
+`consistency.days_completed/days_expected` (numeri veri di aderenza) non esistono
+nel backend oggi — solo `adherenceScore`, un punteggio 0-1 derivato da una mappa
+di risposte qualitative (es. "Good — most days" → 0.75), già mostrato oggi come
+percentuale nel prompt esistente (`Adherence: ${adherenceScore*100}%`) — la stessa
+falsa precisione che le nostre regole vietano. Per ora: consistency.visible=false
+finché non esiste un conteggio reale giorni-fatti/giorni-previsti.
+
+### TODO prioritari aggiornati (in cima alla lista)
+1. **Decidere l'architettura di checkin_events** (A o B sopra) — blocca AI
+   Observations e ogni storico check-in futuro. Il più importante ora.
+2. Aggiungere un conteggio reale di aderenza (giorni fatti/previsti) se si vuole
+   consistency.visible=true in futuro.
+3. Integrare lib/dashboard/malyte-dashboard-prompt.ts in submit-checkin, con
+   week.state calcolato da brand_plans (soluzione pragmatica sopra).
+4. Testare sui casi di ChatGPT: week 1, 3, 6, 12, aderenza bassa, reazione,
+   dati insufficienti — solo dopo il punto 1 e 3.
+5. (da sessioni precedenti, ancora aperti) SHOPIFY_BILLING_TEST=false prima dei
+   paganti, cleanup pre-submission, tech debt 3 tabelle domande.
