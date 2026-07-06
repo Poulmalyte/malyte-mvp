@@ -157,18 +157,18 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           </div>
         )}
 
-        {/* Bundle */}
+        {/* Starter Bundle — dashboard v2: solo restyling, stessa condizione/dati/logica */}
         {pkg && (
-          <div style={{ background: '#fff', borderRadius: 20, border: '2px solid #7C5CFC', padding: '20px', marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #F0F0F0', padding: '24px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#7C5CFC', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Starter Bundle</p>
-                <p style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0, fontFamily: "'Satoshi', sans-serif" }}>{pkg.package_name}</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Starter Bundle</p>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0, fontFamily: "'Satoshi', sans-serif" }}>{pkg.package_name}</p>
               </div>
               {pkg.total_price > 0 && (
                 <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: 11, color: '#94A3B8', margin: '0 0 2px' }}>Total</p>
-                  <p style={{ fontSize: 20, fontWeight: 800, color: '#7C5CFC', margin: 0, fontFamily: "'Satoshi', sans-serif" }}>
+                  <p style={{ fontSize: 11, color: '#8E8E93', margin: '0 0 2px' }}>Total</p>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: '#5B6EF5', margin: 0, fontFamily: "'Satoshi', sans-serif" }}>
                     €{Number(pkg.total_price).toFixed(2)}
                   </p>
                 </div>
@@ -176,23 +176,23 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
             </div>
 
             {(pkg.items || []).map((item: any, i: number) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E8EDF8', marginBottom: 8 }}>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#FAFAF9', borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.product_title}</p>
-                  {item.reason && <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{item.reason}</p>}
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.product_title}</p>
+                  {item.reason && <p style={{ fontSize: 11, color: '#8E8E93', margin: 0 }}>{item.reason}</p>}
                 </div>
-                {item.price && <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', flexShrink: 0, marginLeft: 8 }}>€{Number(item.price).toFixed(2)}</span>}
+                {item.price && <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', flexShrink: 0, marginLeft: 8 }}>€{Number(item.price).toFixed(2)}</span>}
               </div>
             ))}
 
             {pkg.cart_url ? (
               <a href={pkg.cart_url} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'block', width: '100%', padding: '16px', borderRadius: 12, fontWeight: 800, fontSize: 15, background: 'linear-gradient(135deg, #7C5CFC, #06B6D4)', color: '#fff', border: 'none', cursor: 'pointer', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box', boxShadow: '0 4px 20px rgba(124,92,252,0.3)' }}>
+                style={{ display: 'block', width: '100%', padding: '16px', borderRadius: 12, fontWeight: 700, fontSize: 15, background: '#5B6EF5', color: '#fff', border: 'none', cursor: 'pointer', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}>
                 Add bundle to cart →
               </a>
             ) : (
-              <div style={{ padding: '12px 16px', background: '#F5F3FF', borderRadius: 10, textAlign: 'center' }}>
-                <p style={{ fontSize: 13, color: '#7C5CFC', margin: 0, fontWeight: 600 }}>Visit {brandName} to get started</p>
+              <div style={{ padding: '14px 16px', background: '#F5F5F4', borderRadius: 10, textAlign: 'center' }}>
+                <p style={{ fontSize: 13, color: '#3C3C43', margin: 0, fontWeight: 600 }}>Visit {brandName} to get started</p>
               </div>
             )}
           </div>
