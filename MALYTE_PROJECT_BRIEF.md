@@ -1282,3 +1282,84 @@ Prima di questo fix: 0 righe salvate da sempre. Ora: funziona, verificato con da
    check-in giornaliero o se si accetta consistency.visible=false per ora.
 4. (residuo) SHOPIFY_BILLING_TEST=false prima dei paganti, cleanup pre-submission,
    tech debt 3 tabelle domande, decidere su generate-plan.ts toccato per errore.
+
+## 📝 SESSION NOTES — Dashboard v2: implementazione avviata (Status Ring + Coach Note in produzione)
+
+### Metodo adottato per l'integrazione (Lead Architect mode)
+Da qui in avanti si procede SOLO a piccoli passi verificabili:
+ispeziona codice esistente → proposta del cambiamento minimo → attendi conferma →
+patch isolata (mai riscritture) → tsc --noEmit → git diff (deve mostrare solo
+righe additive/isolate) → deploy → verifica visiva reale su un link esistente.
+Mai più sottosistemi alla volta. Mai assumere che funzioni senza test reale.
+
+### STEP 1-3 backend (completati e verificati prima dell'inizio frontend)
+- Step 1: `weekState` (discover/validate/adapt) calcolato in `submit-checkin`
+  contando righe in `brand_checkin_events` per (customer_id, merchant_id).
+  0→discover, 1→validate, 2+→adapt.
+- Step 2: verificato con script isolato (poi cancellato) su dati reali:
+  poul.todu@gmail.com con 2 check-in → weekState="adapt" confermato.
+- Step 3: `weekState` passato nel `userPrompt` di submit-checkin come riga
+  informativa ("Data state: ${weekState}"), SENZA cambiare systemPrompt né
+  comportamento. Verificato coi log Vercel su una richiesta reale:
+  `[STEP3 VERIFY] weekState= adapt | userPrompt contains Data state line: true`.
+  Log temporaneo poi rimosso. Nessuna riga di produzione esistente toccata.
+
+### Script di verifica standalone (NON in produzione, da cancellare a fine validazione)
+`lib/dashboard/verify-dashboard-v2.mjs` — sola lettura, zero INSERT/UPDATE/DELETE
+(verificato meccanicamente con grep). Supporta `--brand-plan-id <id>` o
+`--customer-id <id>` (trova l'ultimo piano), `--pretty`. Costruisce USER_CONTEXT
+dai dati reali (brand_plans, brand_checkin_events, catalog_items, tag intro_week
+per cross_sell), chiama Anthropic col nuovo prompt dashboard, stampa il JSON e
+un riepilogo di validazione (✔/✘) su: campi required, week.state coerente con
+i dati reali, visibilità corretta di progress_trend/ai_observation per stato,
+niente HTML, niente numeri fabbricati, pronto per il rendering React.
+Scenari ancora da testare con questo script: discover, validate, reaction/no
+reaction, cross-sell allowed/blocked (adapt già confermato).
+
+### Frontend — dashboard v2, primi 2 componenti in produzione
+File modificato: SOLO `app/routine/[token]/page.tsx`. Nessun altro file toccato,
+nessun cambio al backend, nessun cambio al prompt di submit-checkin (quello
+in produzione resta lo schema vecchio — la transizione avverrà tutta insieme
+in futuro, prompt nuovo + frontend nuovo nello stesso rilascio, mai disgiunti).
+
+**1. Status Ring** (congelato per ora, no animazioni, totale settimane
+   TEMP_TOTAL_WEEKS=12 hardcoded — da rendere dinamico in uno step futuro).
+   Aggiunto sopra l'Hero esistente. Usa solo `brandPlan.week_number`, già
+   presente. Verificato visivamente su /routine/[token] reale (Week 10 → 10
+   segmenti pieni su 12).
+
+**2. Coach Note** — Hero + Weekly notes (due blocchi separati, gradiente viola
+   pieno + riquadro corsivo) uniti in UNA carta bianca centrata con bordo
+   sottile e avatar iniziale brand, seguendo lo spec visivo di ieri. STESSI
+   dati (`plan?.headline`, `plan?.weekly_notes`, `brandPlan.customer_summary`),
+   STESSE condizioni logiche (customer_summary solo se week_number===1). Solo
+   presentazione cambiata. Verificato: testo parola-per-parola identico a
+   prima, solo styling nuovo.
+
+Entrambi i cambiamenti confermati puramente additivi/isolati via `git diff`
+prima del deploy (nessuna riga `-` su altre sezioni). tsc --noEmit pulito su
+entrambi. Nessuna rottura del comportamento esistente in nessuno dei due step.
+
+### Incidente minore e risolto durante la sessione
+Durante uno step, `eslint.config.mjs` e `postcss.config.mjs` sono risultati
+cancellati dal disco (causa non identificata, non da script di questa
+sessione). Recuperati con `git checkout HEAD -- <file>` (erano tracciati fin
+dal primo commit del progetto). Nessuna perdita. Lezione: controllare
+`git status` regolarmente durante sessioni lunghe con molti script temporanei.
+
+### Prossimi componenti dashboard v2 da affrontare (uno alla volta, stesso metodo)
+- Routine Cards → trasformare morning/evening routine da lista aperta a carte
+  collassabili tap-to-expand (ancora nel vecchio stile "articolo").
+- Next Week Preview → già esiste (box verde "NEXT WEEK"), da restilizzare in
+  tono più silenzioso/muted come da spec (oggi troppo prominente rispetto a
+  Weekly Mission, che nello spec deve essere l'unica carta "accesa" insieme
+  a Safety Flag).
+- Weekly Mission, Progress Trend, AI Observation, Consistency, Milestones,
+  Safety Flag, Check-in CTA — non ancora iniziati, richiedono prima il nuovo
+  prompt in produzione (Step 4-5, non ancora fatti: il prompt v2 gira solo
+  nello script di verifica standalone, non in submit-checkin).
+
+### TODO residuo (da sessioni precedenti, invariato)
+consistency.days_completed/expected senza fonte reale di conteggio giorni;
+SHOPIFY_BILLING_TEST=false prima dei paganti; cleanup pre-submission; tech
+debt 3 tabelle domande; decidere su generate-plan.ts toccato per errore.
