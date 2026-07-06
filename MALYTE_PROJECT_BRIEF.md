@@ -1223,3 +1223,62 @@ finché non esiste un conteggio reale giorni-fatti/giorni-previsti.
    dati insufficienti — solo dopo il punto 1 e 3.
 5. (da sessioni precedenti, ancora aperti) SHOPIFY_BILLING_TEST=false prima dei
    paganti, cleanup pre-submission, tech debt 3 tabelle domande.
+
+## 📝 SESSION NOTES — Fix storico check-in: RISOLTO e VERIFICATO ✅
+
+### Bug precedente (vedi sessione precedente): CHIUSO
+`checkin_events` non ha mai salvato nulla perché puntava a `plans`/`plan_versions`,
+tabelle vuote e mai collegate al flusso Brand.
+
+### Soluzione implementata
+Creata tabella nuova **`brand_checkin_events`**, pensata apposta per il flusso Brand:
+```sql
+create table brand_checkin_events (
+  id uuid primary key default gen_random_uuid(),
+  brand_plan_id uuid references brand_plans(id) not null,
+  customer_id uuid references customers(id) not null,
+  merchant_id uuid references merchants(id) not null,
+  week_number int not null,
+  answers jsonb not null,
+  adherence_score numeric,
+  improvement_score numeric,
+  had_reaction boolean default false,
+  reaction_detail text,
+  comment text,
+  created_at timestamptz default now()
+);
+```
+RLS abilitato con policy SELECT verificata (merchants.id === merchants.expert_id
+confermato su campione di 20 righe, 0 mismatch — quindi `id = auth.uid()` è corretto).
+
+`app/api/shopify/submit-checkin/route.ts` (riga ~123) aggiornato: insert ora va su
+`brand_checkin_events` con `brand_plan_id` (finalmente usato, era disponibile ma
+ignorato) e `answers` completo in JSONB (prima si perdeva). Errore ora loggato
+esplicitamente (`console.error`) invece di essere ignorato silenziosamente.
+
+### Verificato end-to-end
+Due check-in reali completati (week 7→8) hanno prodotto righe reali in
+`brand_checkin_events` con answers leggibili:
+```
+week 7: routine="Good — most days", reaction="Slight redness", improvement="A little"
+week 8: routine="Great — did it every day", reaction="Some irritation", improvement="No change", had_reaction=true
+```
+Prima di questo fix: 0 righe salvate da sempre. Ora: funziona, verificato con dati reali.
+
+### Cosa questo sblocca
+- `week.state` (discover/validate/adapt) ora calcolabile contando righe reali in
+  `brand_checkin_events` per (customer_id, merchant_id) — non serve più il
+  workaround su brand_plans.
+- `ai_observation` della dashboard v2 ha finalmente uno storico vero da cui
+  citare pattern reali tra check-in.
+- Qualunque analytics futura sull'aderenza nel tempo ha una fonte affidabile.
+
+### TODO aggiornato
+1. Integrare `lib/dashboard/malyte-dashboard-prompt.ts` in submit-checkin,
+   calcolando week.state da brand_checkin_events (ora possibile).
+2. Testare sui casi: week 1, 3, 6, 12, aderenza bassa, reazione, dati insufficienti.
+3. consistency.days_completed/expected ancora non hanno una fonte di conteggio
+   giorni reale (solo adherence_score qualitativo) — da valutare se serve un
+   check-in giornaliero o se si accetta consistency.visible=false per ora.
+4. (residuo) SHOPIFY_BILLING_TEST=false prima dei paganti, cleanup pre-submission,
+   tech debt 3 tabelle domande, decidere su generate-plan.ts toccato per errore.
