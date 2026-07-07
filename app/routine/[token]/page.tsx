@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
+import RoutineCards from './RoutineCards'
 
 // TEMPORANEO: costante fissa finche il totale settimane non diventa dinamico
 const TEMP_TOTAL_WEEKS = 12
@@ -25,61 +26,28 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
   const brandName = brandPlan.merchant_name || 'Your Brand'
   const category = brandPlan.category || 'Skincare'
 
-  const RoutineItem = ({ item, color, bg, border }: any) => (
-    <div style={{ padding: '14px 16px', background: bg, borderRadius: 12, border: `1px solid ${border}`, marginBottom: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color, background: border, padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>Step {item.step_number}</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.product_title}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {item.price && <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>€{Number(item.price).toFixed(2)}</span>}
-          {item.product_url && (
-            <a href={item.product_url} target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: 11, fontWeight: 600, color: '#7C5CFC', textDecoration: 'none', background: '#EDE9FE', padding: '3px 10px', borderRadius: 100, whiteSpace: 'nowrap' }}>
-              View →
-            </a>
-          )}
-        </div>
-      </div>
-      <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 4px', lineHeight: 1.5 }}>{item.instructions}</p>
-      {item.why && <p style={{ fontSize: 11, color: '#94A3B8', margin: 0, fontStyle: 'italic' }}>Why: {item.why}</p>}
-    </div>
-  )
-
-  const StatusRing = ({ week, total }: { week: number, total: number }) => {
-    const segments = Array.from({ length: total }, (_, i) => i < week)
-    const radius = 60
-    const strokeWidth = 8
-    const circumference = 2 * Math.PI * radius
-    const segmentLength = circumference / total
-    const gap = 3
+  // Nessun dato reale di completamento giornaliero esiste ancora nel sistema.
+  // Questo componente mostra solo il numero di step previsti oggi (dato reale).
+  // L'arco colorato di progresso e' predisposto ma non attivo: da collegare quando
+  // esistera' un tracking reale del completamento.
+  const TodayRing = ({ morningCount, eveningCount }: { morningCount: number, eveningCount: number }) => {
+    const totalSteps = morningCount + eveningCount
+    const radius = 78
+    const strokeWidth = 10
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0' }}>
-        <svg width={150} height={150} viewBox="0 0 150 150" style={{ transform: 'rotate(-90deg)' }}>
-          {segments.map((filled, i) => {
-            const offset = i * segmentLength
-            return (
-              <circle
-                key={i}
-                cx={75}
-                cy={75}
-                r={radius}
-                fill="none"
-                stroke={filled ? '#5B6EF5' : '#E5E5EA'}
-                strokeWidth={strokeWidth}
-                strokeDasharray={`${segmentLength - gap} ${circumference - segmentLength + gap}`}
-                strokeDashoffset={-offset}
-                strokeLinecap="round"
-              />
-            )
-          })}
-        </svg>
-        <div style={{ marginTop: -95, textAlign: 'center' }}>
-          <p style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: 0, fontFamily: "'Satoshi', sans-serif" }}>Week {week}</p>
-          <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>of {total}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0 28px' }}>
+        <div style={{ position: 'relative', width: 180, height: 180 }}>
+          <svg width={180} height={180} viewBox="0 0 180 180">
+            <circle cx={90} cy={90} r={radius} fill="none" stroke="#E5E5EA" strokeWidth={strokeWidth} />
+          </svg>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ fontSize: 40, fontWeight: 800, color: '#1C1C1E', margin: 0, fontFamily: "'Satoshi', sans-serif" }}>{totalSteps}</p>
+            <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>step{totalSteps !== 1 ? 's' : ''} today</p>
+          </div>
         </div>
+        <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: '16px 0 2px' }}>Keep going.</p>
+        <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>You're building consistency.</p>
       </div>
     )
   }
@@ -88,16 +56,25 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
     <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
       {/* Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid #E8EDF8', padding: '0 24px' }}>
-        <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 0' }}>
           <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 22, color: '#0F172A' }}>{brandName}</span>
-          <span style={{ fontSize: 12, color: '#94A3B8', background: '#F1F5F9', padding: '4px 12px', borderRadius: 100 }}>Week {brandPlan.week_number}</span>
         </div>
       </div>
 
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 24px 80px' }}>
 
-        {/* Status Ring - dashboard v2, primo elemento introdotto */}
-        <StatusRing week={brandPlan.week_number} total={TEMP_TOTAL_WEEKS} />
+        {/* Greeting - niente Day X, niente countdown, niente durata programma */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C1C1E', margin: '0 0 4px', fontFamily: "'Satoshi', sans-serif" }}>
+            Good morning 👋
+          </h1>
+          <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>Week {brandPlan.week_number}</p>
+        </div>
+
+        {/* Today Ring - mostra solo il numero di step previsti oggi (dato reale).
+            L'arco di progresso e' predisposto ma NON attivo: nessun dato reale di
+            completamento giornaliero esiste ancora. Da collegare piu' avanti. */}
+        <TodayRing morningCount={plan?.morning_routine?.length || 0} eveningCount={plan?.evening_routine?.length || 0} />
 
         {/* Coach Note — dashboard v2: stessi dati di Hero + Weekly notes, sola presentazione nuova */}
         <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #F0F0F0', padding: '24px', marginBottom: 20, textAlign: 'center' }}>
@@ -133,29 +110,14 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           </div>
         </div>
 
-        {/* Morning routine */}
-        {plan?.morning_routine?.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
-              ☀️ Morning routine
-            </p>
-            {plan.morning_routine.map((item: any, i: number) => (
-              <RoutineItem key={i} item={item} color="#F59E0B" bg="#FFFBEB" border="#FDE68A" />
-            ))}
-          </div>
-        )}
+        {/* Today's Routine - Routine Cards espandibili (client component) */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px', fontFamily: "'Satoshi', sans-serif" }}>
+            Today's Routine
+          </p>
+          <RoutineCards morningRoutine={plan?.morning_routine || []} eveningRoutine={plan?.evening_routine || []} />
+        </div>
 
-        {/* Evening routine */}
-        {plan?.evening_routine?.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#6385FF', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
-              🌙 Evening routine
-            </p>
-            {plan.evening_routine.map((item: any, i: number) => (
-              <RoutineItem key={i} item={item} color="#6385FF" bg="#EEF2FF" border="#C7D2FE" />
-            ))}
-          </div>
-        )}
 
         {/* Next Week Preview — dashboard v2: stesso dato e condizione, solo presentazione piu silenziosa */}
         {plan?.what_changes_next_week && (
