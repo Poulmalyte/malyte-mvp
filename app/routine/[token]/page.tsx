@@ -43,7 +43,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           </svg>
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <p style={{ fontSize: 40, fontWeight: 800, color: '#1C1C1E', margin: 0, fontFamily: "'Satoshi', sans-serif" }}>{totalSteps}</p>
-            <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>step{totalSteps !== 1 ? 's' : ''} today</p>
+            <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>step{totalSteps !== 1 ? 's' : ''} this week</p>
           </div>
         </div>
         <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: '16px 0 2px' }}>Keep going.</p>
@@ -66,7 +66,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
         {/* Greeting - niente Day X, niente countdown, niente durata programma */}
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C1C1E', margin: '0 0 4px', fontFamily: "'Satoshi', sans-serif" }}>
-            Good morning 👋
+            Welcome back 👋
           </h1>
           <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>Week {brandPlan.week_number}</p>
         </div>
@@ -113,7 +113,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
         {/* Today's Routine - Routine Cards espandibili (client component) */}
         <div style={{ marginBottom: 20 }}>
           <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px', fontFamily: "'Satoshi', sans-serif" }}>
-            Today's Routine
+            This Week's Routine
           </p>
           <RoutineCards morningRoutine={plan?.morning_routine || []} eveningRoutine={plan?.evening_routine || []} />
         </div>
