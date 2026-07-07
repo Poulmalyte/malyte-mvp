@@ -128,7 +128,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
             }}>
-              Next week we'll focus on {plan.what_changes_next_week.charAt(0).toLowerCase() + plan.what_changes_next_week.slice(1)}
+              {plan.what_changes_next_week}
             </p>
           </div>
         )}
