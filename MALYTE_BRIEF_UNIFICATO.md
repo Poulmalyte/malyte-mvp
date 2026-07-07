@@ -126,12 +126,29 @@ Fatto in 6 passi incrementali, ognuno verificato con `tsc` e deploy:
    + opacity, 300ms), un solo pannello aperto alla volta. Ogni step: immagine prodotto
    (item.image_url se presente nei dati già caricati, altrimenti placeholder neutro — nessun
    backend toccato) + nome + istruzione + Why. Il vecchio RoutineItem inline è stato rimosso.
-5. **Next Week** — teaser breve "Next week we'll focus on...", troncato a 2 righe
-   (WebkitLineClamp). Mai la routine completa della settimana successiva.
+5. **Next Week** — RIMOSSO completamente dalla pagina (deploy `8a0b4d0`). Prima era un
+   teaser breve, poi il founder ha deciso di toglierlo del tutto. La pagina ora scorre dalle
+   Routine Cards direttamente alla timeline Evolution. Fix intermedio prima della rimozione:
+   c'era un doppione di testo ("Next week we'll focus on we'll introduce...") perché il
+   prefisso hardcoded si sommava al testo AI che era già una frase completa — risolto
+   rimuovendo il prefisso, poi rimossa l'intera sezione.
 6. **Evolution** — timeline verticale (Week corrente → +1 → +2), pallino colorato e "you are
    here" sulla settimana attuale. Nessun totale, nessuna "fine del percorso" — le settimane
    proseguono, per dare senso di continuità (richiesta esplicita: la routine non deve sembrare
    qualcosa che finisce).
+
+**IDEA FUTURA — "Weekly Focus" (NON ancora fatta, richiede lavoro sul PROMPT backend):**
+Il founder vuole, al posto del vecchio Next Week, una card "Weekly Focus" che rappresenti
+l'obiettivo principale della settimana corrente (non un'anticipazione della successiva).
+Requisiti: titolo "Weekly Focus", un heading di 1 frase (max 8-10 parole), una descrizione
+di 2-3 frasi (40-60 parole), specifica per la routine e la settimana corrente, senza
+introdurre nuovi step/prodotti, tono premium/rassicurante stile Apple Health/Oura/WHOOP.
+Esempio: heading "Consistency before intensity." + description "This week, focus on completing
+your routine with care rather than trying to do more...". **Punto chiave: deve essere generata
+dall'AI insieme al resto della routine** — quindi NON è UI, richiede di aggiungere un campo
+strutturato (es. `weekly_focus: { heading, description }`) al JSON prodotto dal prompt di
+generazione piano. Da fare separatamente dalla UI, sul prompt, col metodo attento di sempre.
+Il campo `weekly_notes` già esistente è il candidato più vicino da riusare/evolvere.
 
 **Wording allineato al concetto settimanale** (richiesta esplicita del founder): la routine è
 di tutta la settimana, non del singolo giorno. Quindi "This Week's Routine", "steps this week",
