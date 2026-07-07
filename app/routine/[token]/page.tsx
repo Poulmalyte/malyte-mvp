@@ -119,20 +119,6 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
         </div>
 
 
-        {/* Next Week - solo teaser, mai la routine completa della settimana successiva */}
-        {plan?.what_changes_next_week && (
-          <div style={{ background: '#F5F5F4', borderRadius: 16, padding: '18px 20px', marginBottom: 20 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', margin: '0 0 6px' }}>Next Week</p>
-            <p style={{
-              fontSize: 13, color: '#3C3C43', margin: 0, lineHeight: 1.6,
-              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}>
-              {plan.what_changes_next_week}
-            </p>
-          </div>
-        )}
-
         {/* Evolution - timeline verticale, orienta senza dare idea di fine percorso.
             Usa brandPlan.week_number (dato reale). Nessun totale, nessuna "fine". */}
         <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #F0F0F0', padding: '28px 24px' }}>
