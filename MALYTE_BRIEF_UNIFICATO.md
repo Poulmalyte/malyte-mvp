@@ -109,18 +109,48 @@ non nelle altre direzioni. Da consolidare post-scaling, non urgente per il journ
   **Non ancora collegato a `submit-checkin` in produzione** — gira solo in uno script di
   verifica standalone.
 
-**Componenti implementati in `app/routine/[token]/page.tsx` (5, tutti congelati):**
-1. **Status Ring** — anello SVG, `TEMP_TOTAL_WEEKS` hardcoded a 12, niente animazioni.
-2. **Coach Note** — Hero + Weekly notes uniti in una carta bianca centrata con avatar.
-3. **Next Week Preview** — da verde acceso a palette neutra spenta.
-4. **Evolution** — box di chiusura, simbolo ∞, palette neutra.
-5. **Starter Bundle** — restilizzato ma concettualmente da rimuovere da questa pagina (sezione 7).
+**REDESIGN UI v2 COMPLETO — tutti i componenti rifatti e in produzione (deploy `269c391`).**
+La pagina `/routine/[token]` è ora una dashboard premium stile Apple Health/Oura, che
+rappresenta la routine di un cliente che HA GIA' acquistato (non una pagina di vendita).
+Fatto in 6 passi incrementali, ognuno verificato con `tsc` e deploy:
+1. **Header** — solo nome brand, rimosso il badge "Week X".
+2. **Greeting + Week Ring** — "Welcome back / Week N" + anello grande che mostra il
+   numero di step della settimana ("N steps this week"). NESSUNA percentuale finta: non
+   esiste ancora un dato reale di completamento; l'arco colorato di progresso è predisposto
+   ma non attivo, da collegare quando esisterà un tracking reale.
+3. **Coach Note** — card allineata a sinistra: avatar brand + titolo (headline) + testo AI
+   (customer_summary a week 1, weekly_notes). Stessi dati di prima, solo presentazione.
+4. **This Week's Routine — Routine Cards espandibili** — estratte in un NUOVO client component
+   `app/routine/[token]/RoutineCards.tsx` (use client, useState). Accordion: due card
+   Morning/Evening chiuse mostrano icona+nome+"N steps"; tap → espansione animata (max-height
+   + opacity, 300ms), un solo pannello aperto alla volta. Ogni step: immagine prodotto
+   (item.image_url se presente nei dati già caricati, altrimenti placeholder neutro — nessun
+   backend toccato) + nome + istruzione + Why. Il vecchio RoutineItem inline è stato rimosso.
+5. **Next Week** — teaser breve "Next week we'll focus on...", troncato a 2 righe
+   (WebkitLineClamp). Mai la routine completa della settimana successiva.
+6. **Evolution** — timeline verticale (Week corrente → +1 → +2), pallino colorato e "you are
+   here" sulla settimana attuale. Nessun totale, nessuna "fine del percorso" — le settimane
+   proseguono, per dare senso di continuità (richiesta esplicita: la routine non deve sembrare
+   qualcosa che finisce).
 
-**Metodo seguito per ogni componente:** ispeziona codice esistente → proponi il cambiamento
-minimo → attendi conferma esplicita → patch isolata → `tsc --noEmit` → `git diff` isolato →
-deploy → verifica visiva reale. Mai riscritture, mai più sottosistemi insieme.
+**Wording allineato al concetto settimanale** (richiesta esplicita del founder): la routine è
+di tutta la settimana, non del singolo giorno. Quindi "This Week's Routine", "steps this week",
+"Welcome back" invece di riferimenti a "today"/"Good morning".
 
-**Ancora da fare:** Routine Cards con tap-to-expand (richiede stato client, lasciato per ultimo).
+**Starter Bundle RIMOSSO dalla pagina** `/routine/[token]` (deploy `8ca4715`) — il bundle e
+l'Add-to-Cart restano SOLO su `/start/[slug]`, che è il momento dell'acquisto. package_data
+continua a essere letto ma non più renderizzato qui. `/start/[slug]` NON toccato.
+
+**Metodo seguito:** patch incrementali una alla volta, ognuna verificata con `tsc --noEmit`
+prima della successiva, poi deploy e verifica visiva reale. File toccati solo:
+`app/routine/[token]/page.tsx` e il nuovo `app/routine/[token]/RoutineCards.tsx`.
+
+**Residui minori UI (non bloccanti):**
+- Il ring non ha ancora un dato reale di completamento — mostra il numero di step, l'arco di
+  progresso è predisposto ma inattivo.
+- TEMP_TOTAL_WEEKS e pkg/category potrebbero essere ora non più usate in page.tsx dopo le
+  rimozioni — da ripulire in un passaggio finale se tsc/lint le segnala (finora non bloccanti).
+- "Read more" sul Coach Note per testi molto lunghi: non ancora implementato.
 
 ---
 
