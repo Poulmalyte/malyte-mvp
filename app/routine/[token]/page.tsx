@@ -119,23 +119,47 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
         </div>
 
 
-        {/* Next Week Preview — dashboard v2: stesso dato e condizione, solo presentazione piu silenziosa */}
+        {/* Next Week - solo teaser, mai la routine completa della settimana successiva */}
         {plan?.what_changes_next_week && (
-          <div style={{ background: '#F5F5F4', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              → Next week
+          <div style={{ background: '#F5F5F4', borderRadius: 16, padding: '18px 20px', marginBottom: 20 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', margin: '0 0 6px' }}>Next Week</p>
+            <p style={{
+              fontSize: 13, color: '#3C3C43', margin: 0, lineHeight: 1.6,
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}>
+              Next week we'll focus on {plan.what_changes_next_week.charAt(0).toLowerCase() + plan.what_changes_next_week.slice(1)}
             </p>
-            <p style={{ fontSize: 13, color: '#3C3C43', margin: 0, lineHeight: 1.6 }}>{plan.what_changes_next_week}</p>
           </div>
         )}
 
-        {/* Evolution — dashboard v2: chiusura calma, stesso testo, nessun dato nuovo */}
-        <div style={{ background: '#F5F5F4', borderRadius: 16, padding: '28px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: 20, color: '#8E8E93', marginBottom: 10, lineHeight: 1 }}>∞</div>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', margin: '0 0 8px' }}>Your routine evolves with you</p>
-          <p style={{ fontSize: 13, color: '#8E8E93', margin: 0, lineHeight: 1.6, maxWidth: 380, marginLeft: 'auto', marginRight: 'auto' }}>
-            Every week your plan adapts based on your progress. New products are introduced at exactly the right moment — never too much, never too soon.
-          </p>
+        {/* Evolution - timeline verticale, orienta senza dare idea di fine percorso.
+            Usa brandPlan.week_number (dato reale). Nessun totale, nessuna "fine". */}
+        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #F0F0F0', padding: '28px 24px' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', margin: '0 0 22px', textAlign: 'center' }}>Your journey continues</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {[0, 1, 2].map((offset, i) => {
+              const weekLabel = brandPlan.week_number + offset
+              const isCurrent = offset === 0
+              return (
+                <div key={offset} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: isCurrent ? 12 : 8, height: isCurrent ? 12 : 8, borderRadius: '50%',
+                      background: isCurrent ? '#5B6EF5' : '#D1D1D6', flexShrink: 0,
+                    }} />
+                    <p style={{
+                      fontSize: 14, fontWeight: isCurrent ? 700 : 500,
+                      color: isCurrent ? '#1C1C1E' : '#8E8E93', margin: 0,
+                    }}>
+                      Week {weekLabel}{isCurrent ? ' — you are here' : ''}
+                    </p>
+                  </div>
+                  {i < 2 && <div style={{ width: 1, height: 22, background: '#E5E5EA', margin: '4px 0' }} />}
+                </div>
+              )
+            })}
+          </div>
         </div>
 
       </div>
