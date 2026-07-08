@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
+import { getValidAccessToken } from '@/lib/shopify-token'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -86,13 +87,12 @@ export async function POST(request: NextRequest) {
 
   const { data: installation } = await supabaseAdmin
     .from('shopify_installations')
-    .select('access_token, expert_id')
+    .select('expert_id')
     .eq('shop_domain', shop)
     .maybeSingle()
 
   console.log('[Webhook] installation found:', !!installation)
 
-  const accessToken = installation?.access_token as string | undefined
   const merchantId = installation?.expert_id as string | undefined
 
   // ── Flusso piano esistente ────────────────────────────────────────────────
@@ -139,14 +139,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  if (accessToken) {
-    await fetch(`https://${shop}/admin/api/2024-01/orders/${order.id}/metafields.json`, {
+  // Scrittura metafield plan_token sull'ordine (accessoria, non deve bloccare).
+  // Usa getValidAccessToken (auto-refresh, token espirante) e API version corrente.
+  try {
+    const validToken = await getValidAccessToken(shop)
+    await fetch(`https://${shop}/admin/api/2026-04/orders/${order.id}/metafields.json`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': accessToken },
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': validToken },
       body: JSON.stringify({
         metafield: { namespace: 'malyte', key: 'plan_token', value: token, type: 'single_line_text_field' },
       }),
     })
+  } catch (e) {
+    console.warn('[Webhook] metafield write skipped:', e)
   }
 
   // ── Purchase Confirmation -> Week 1 Generation ──────────────────────────────
