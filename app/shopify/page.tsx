@@ -28,12 +28,19 @@ export default async function ShopifyPage() {
       consent_terms: true, consent_timestamp: new Date().toISOString(),
     }, { onConflict: 'id' })
     const { data: newExpert } = await admin.from('experts').upsert({
-      id: user.id, name, slug, category: 'Wellness',
+      id: user.id, name, slug, category: 'Wellness', seller_type: 'brand',
     }, { onConflict: 'id' }).select().single()
     expert = newExpert
   }
 
   if (!expert) redirect('/shopify/login')
+
+  // Risolvi shop_domain dall'installazione (per popolare merchants)
+  const { data: inst } = await admin
+    .from('shopify_installations')
+    .select('shop_domain')
+    .eq('expert_id', user.id)
+    .maybeSingle()
 
   // Cerca o crea merchant
   let { data: merchant } = await admin
@@ -48,7 +55,8 @@ export default async function ShopifyPage() {
       .upsert({
         id: user.id,
         expert_id: user.id,
-        seller_type: expert.seller_type || 'practitioner',
+        seller_type: 'brand',
+        shopify_shop_domain: inst?.shop_domain ?? null,
         name: expert.name,
         slug: expert.slug,
         category: expert.category,
