@@ -151,7 +151,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     // Auto-popola brand name dallo store Shopify se disponibile
     if (inst?.shop_name && !brandName) setBrandName(inst.shop_name)
     if (inst) {
-      const { data: prods } = await supabase.from('shopify_products').select('*').eq('shop', inst.shop_domain).order('created_at', { ascending: false })
+      const { data: prods } = await supabase.from('shopify_products').select('*').eq('shop', inst.shop_domain).is('archived_at', null).order('created_at', { ascending: false })
       setProducts(prods || [])
       const questions: Record<string, Question[]> = {}
       const planTypes: Record<string, 'weekly' | 'guide'> = {}

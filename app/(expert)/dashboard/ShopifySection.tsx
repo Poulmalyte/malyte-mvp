@@ -159,6 +159,7 @@ export default function ShopifySection({ expertId }: { expertId: string }) {
         .from('shopify_products')
         .select('*')
         .eq('shop', inst.shop_domain)
+        .is('archived_at', null)
         .order('created_at', { ascending: false })
       setProducts(prods || [])
 
