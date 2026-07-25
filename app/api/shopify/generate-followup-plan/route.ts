@@ -36,27 +36,6 @@ function normalizeCategory(raw: string | null | undefined): string {
   return c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()
 }
 
-// Scarica un PDF e lo restituisce come blocco document per l'API Anthropic.
-// Ritorna null se il fetch fallisce o il file è troppo grande.
-async function fetchPdfBlock(url: string, maxBytes: number): Promise<any | null> {
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.length === 0 || buf.length > maxBytes) return null
-    return {
-      type: 'document',
-      source: {
-        type: 'base64',
-        media_type: 'application/pdf',
-        data: buf.toString('base64'),
-      },
-    }
-  } catch {
-    return null
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -91,31 +70,17 @@ export async function POST(request: Request) {
     const { data: merchant } = await supabaseAdmin
       .from('merchants').select('*').eq('id', merchant_id).maybeSingle()
 
-    const { data: merchantProfile } = await supabaseAdmin
-      .from('merchant_profiles').select('*').eq('merchant_id', merchant_id).maybeSingle()
-
-    // FALLBACK LEGACY: i practitioner/pdf_seller registrati dal flow expert
-    // esistono solo in `experts` (niente riga in `merchants`/`merchant_profiles`).
-    // Se il merchant non esiste, carichiamo l'expert e usiamo i suoi campi.
-    let expertLegacy: any = null
-    if (!merchant || !merchantProfile) {
-      const { data: expert } = await supabaseAdmin
-        .from('experts').select('*').eq('id', merchant_id).maybeSingle()
-      expertLegacy = expert
-    }
-
-    if (!merchant && !expertLegacy) {
+    if (!merchant) {
       return NextResponse.json({ error: 'Merchant not found' }, { status: 404 })
     }
 
-    // Identità unificata del seller (merchants prima, experts come fallback)
-    const sellerType: string = merchant?.seller_type || expertLegacy?.seller_type || 'brand'
-    const isBrand = sellerType === 'brand'
-    const sellerName: string = merchant?.name
-      || [expertLegacy?.name, expertLegacy?.surname].filter(Boolean).join(' ')
-      || 'this seller'
-    const sellerSlug: string = merchant?.slug || expertLegacy?.slug || ''
-    const category = merchant?.category || expertLegacy?.category || 'Skincare'
+    const { data: merchantProfile } = await supabaseAdmin
+      .from('merchant_profiles').select('*').eq('merchant_id', merchant_id).maybeSingle()
+
+    // Identità del seller — percorso unico: brand Shopify
+    const sellerName: string = merchant.name || 'this seller'
+    const sellerSlug: string = merchant.slug || ''
+    const category = merchant.category || 'Skincare'
     const categoryKey = normalizeCategory(category)
 
     // Carica prodotti dell'ordine — supporta sia array JSON che singolo ID (legacy)
@@ -127,8 +92,7 @@ export async function POST(request: Request) {
       purchasedProductIds = order.shopify_product_id ? [String(order.shopify_product_id)] : []
     }
 
-    // Carica catalogo (per i brand è la fonte del piano; per gli altri serve solo
-    // a identificare cosa è stato acquistato, se mappato)
+    // Carica catalogo — è la fonte del piano
     const { data: catalogItems } = await supabaseAdmin
       .from('catalog_items')
       .select('*, catalog_item_tags(*)')
@@ -166,18 +130,7 @@ export async function POST(request: Request) {
     const purchasedProducts = productsContext.filter(p => p.already_purchased)
     const complementaryProducts = productsContext.filter(p => !p.already_purchased)
 
-    // ─────────────────────────────────────────────────────────────
-    // BRANCHING PER SELLER TYPE
-    // brand        → piano costruito sui prodotti del catalogo acquistati
-    // practitioner → piano costruito sulla metodologia caricata (KB + PDF)
-    // pdf_seller   → piano costruito sul contenuto del PDF acquistato
-    // ─────────────────────────────────────────────────────────────
-
-    let systemPrompt: string
-    let userContent: any[] // blocchi content per il messaggio user (testo + eventuali PDF)
-
-    if (isBrand) {
-      systemPrompt = `You are a ${categoryKey} expert creating a personalised routine for a customer who just purchased products from ${sellerName}.
+    const systemPrompt = `You are a ${categoryKey} expert creating a personalised routine for a customer who just purchased products from ${sellerName}.
 
 Brand: ${sellerName}
 Philosophy: ${merchantProfile?.philosophy || 'Not specified'}
@@ -199,9 +152,9 @@ CRITICAL RULES:
 7. Warm, personal tone — write like a knowledgeable friend who read their answers. Encouragement must be tied to a real detail they gave, not empty ("great job!"). Recognition comes from specificity.
 8. Return ONLY valid JSON, no markdown, no backticks`
 
-      userContent = [{
-        type: 'text',
-        text: `Customer quiz answers:
+    const userContent: any[] = [{
+      type: 'text',
+      text: `Customer quiz answers:
 ${JSON.stringify(quiz_answers, null, 2)}
 
 Create a personalised Week 1 plan using ONLY the products they already purchased.
@@ -226,102 +179,7 @@ Return exactly this JSON:
     "what_changes_next_week": "how the routine progresses in week 2 — progression only, NO product names or purchase hints"
   }
 }`,
-      }]
-    } else {
-      // ── PRACTITIONER / PDF SELLER ──
-      const sellerLabel = sellerType === 'practitioner'
-        ? 'a professional practitioner'
-        : 'an expert content creator selling a digital guide'
-
-      const purchasedLabel = purchasedProducts.length > 0
-        ? purchasedProducts.map(p => p.title).join(', ')
-        : (sellerType === 'practitioner' ? 'a session/program' : 'a digital guide')
-
-      // Contesto metodologia: merchant_profiles prima, experts legacy come fallback
-      const methodologyParts: string[] = []
-      const philosophy = merchantProfile?.philosophy || expertLegacy?.methodology_description
-      if (philosophy) methodologyParts.push(`PHILOSOPHY:\n${philosophy}`)
-
-      const methodName = expertLegacy?.methodology_name
-      if (methodName) methodologyParts.push(`METHOD NAME: ${methodName}`)
-
-      const methodStructured = merchantProfile?.method_structured || expertLegacy?.method_structured
-      if (methodStructured) {
-        methodologyParts.push(`STRUCTURED METHOD:\n${JSON.stringify(methodStructured, null, 2)}`)
-      }
-
-      const interview = merchantProfile?.method_interview_conversation || expertLegacy?.method_interview_conversation
-      if (interview) methodologyParts.push(`METHOD INTERVIEW NOTES:\n${interview}`)
-
-      if (merchantProfile?.routine_rules) {
-        methodologyParts.push(`ROUTINE RULES:\n${JSON.stringify(merchantProfile.routine_rules, null, 2)}`)
-      }
-
-      const methodologyText = methodologyParts.length > 0
-        ? methodologyParts.join('\n\n')
-        : 'No structured methodology provided — rely on the attached PDF documents.'
-
-      systemPrompt = `You are a ${categoryKey} expert creating a personalised Week 1 plan on behalf of ${sellerName}, ${sellerLabel}.
-
-The customer just purchased: ${purchasedLabel}
-
-Seller tone of voice: ${merchantProfile?.tone_of_voice || 'professional but approachable'}
-
-THE SELLER'S METHODOLOGY (the plan MUST be derived exclusively from this — it is the seller's own method, the reason the customer bought from them):
-${methodologyText}
-
-CRITICAL RULES:
-1. Build the plan EXCLUSIVELY from the seller's methodology above (and the attached PDF documents if present)
-2. Do NOT invent or recommend purchasing any products
-3. Each step is an action, practice, meal, or exercise from the methodology — set "product_id" to null and use "product_title" as the name of the step
-4. "what_changes_next_week" must describe the natural progression of the program in week 2, based on the methodology
-5. Return ONLY valid JSON, no markdown, no backticks`
-
-      userContent = [{
-        type: 'text',
-        text: `Customer quiz answers:
-${JSON.stringify(quiz_answers, null, 2)}
-
-Create a personalised Week 1 plan based exclusively on the seller's methodology.
-
-Return exactly this JSON:
-{
-  "customer_summary": "2 sentence profile summary",
-  "plan": {
-    "headline": "Personalised headline for their plan",
-    "week": 1,
-    "morning_routine": [
-      {
-        "product_id": null,
-        "product_title": "name of the action/practice/meal/exercise",
-        "step_number": 1,
-        "instructions": "specific how-to instructions for this customer",
-        "why": "why this matters for their specific goal"
-      }
-    ],
-    "evening_routine": [],
-    "weekly_notes": "personalised advice for week 1",
-    "what_changes_next_week": "how the program progresses in week 2"
-  }
-}`,
-      }]
-
-      // PDF di metodologia: merchant_profiles.methodology_pdf_url (singolo)
-      // oppure experts.method_pdfs_urls (array, max 3 per stare nei limiti API)
-      const pdfUrls: string[] = merchantProfile?.methodology_pdf_url
-        ? [merchantProfile.methodology_pdf_url]
-        : (expertLegacy?.method_pdfs_urls || []).slice(0, 3)
-
-      let totalPdfBytes = 0
-      const maxTotalBytes = 10_000_000 // ~10MB complessivi
-      for (const url of pdfUrls) {
-        const block = await fetchPdfBlock(url, maxTotalBytes - totalPdfBytes)
-        if (block) {
-          totalPdfBytes += Math.ceil(block.source.data.length * 0.75)
-          userContent.unshift(block)
-        }
-      }
-    }
+    }]
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
@@ -338,7 +196,7 @@ Return exactly this JSON:
     try { result = JSON.parse(clean) }
     catch { return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 }) }
 
-    // Arricchisci routine con URL e prezzi (solo per i brand ha senso il match col catalogo)
+    // Arricchisci routine con URL e prezzi dal catalogo
     const enrichRoutine = (routine: any[]) => routine.map(item => {
       const catalogItem = productsContext.find(p => p.id === item.product_id)
       return {
@@ -425,8 +283,8 @@ Return exactly this JSON:
 
     // Log eventi
     await supabaseAdmin.from('event_stream').insert([
-      { merchant_id, customer_id: customerId, event_type: 'followup_quiz_completed', event_data: { quiz_answers, category, seller_type: sellerType, order_token } },
-      { merchant_id, customer_id: customerId, event_type: 'followup_plan_generated', event_data: { week: 1, plan_token: planToken, seller_type: sellerType } },
+      { merchant_id, customer_id: customerId, event_type: 'followup_quiz_completed', event_data: { quiz_answers, category, seller_type: 'brand', order_token } },
+      { merchant_id, customer_id: customerId, event_type: 'followup_plan_generated', event_data: { week: 1, plan_token: planToken, seller_type: 'brand' } },
     ])
 
     return NextResponse.json({
