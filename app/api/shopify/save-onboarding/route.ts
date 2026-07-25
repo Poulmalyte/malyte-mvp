@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       case 1: {
         // Aggiorna merchants
         const merchantUpdate: Record<string, any> = {}
-        if (data.seller_type) merchantUpdate.seller_type = data.seller_type
+        merchantUpdate.seller_type = 'brand'
         if (data.category) merchantUpdate.category = data.category
         if (data.name) merchantUpdate.name = data.name
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         await supabaseAdmin
           .from('experts')
           .update({
-            ...(data.seller_type && { seller_type: data.seller_type }),
+            seller_type: 'brand',
             ...(data.category && { category: data.category }),
           })
           .eq('id', user.id)
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
             merchant_id: user.id,
             event_type: 'merchant_onboarded',
             event_data: {
-              seller_type: data.seller_type,
+              seller_type: 'brand',
               category: data.category,
               completed_at: new Date().toISOString(),
             },
