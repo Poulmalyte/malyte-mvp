@@ -342,13 +342,13 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     setLoadingAnalytics(false)
   }
 
-  const hasPdfOnAnyProduct = products.some(p => p.pdf_path)
+  const hasSyncedProducts = products.length > 0
   const hasQuestionsOnAnyProduct = products.some(p => (p.questions || []).filter((q: Question) => q.question_text?.trim()).length >= 4)
   const onboardingSteps = [
     { label: 'App installed', done: true },
     { label: 'Connect your Shopify store', done: !!installation },
     { label: 'Configure buyer questions', done: hasQuestionsOnAnyProduct },
-    { label: 'Ready to sell', done: hasPdfOnAnyProduct && hasQuestionsOnAnyProduct && !!installation },
+    { label: 'Ready to sell', done: hasSyncedProducts && hasQuestionsOnAnyProduct && !!installation },
   ]
   const onboardingComplete = onboardingSteps.every(s => s.done)
   const onboardingProgress = onboardingSteps.filter(s => s.done).length
