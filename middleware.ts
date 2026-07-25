@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const LEGACY_B2C_PREFIXES = ['/marketplace', '/product', '/expert']
+const LEGACY_B2C_PREFIXES = ['/marketplace', '/product', '/expert', '/my-plans']
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
@@ -51,5 +51,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/marketplace/:path*', '/marketplace', '/product/:path*', '/expert/:path*', '/expert'],
+  matcher: ['/admin/:path*', '/marketplace/:path*', '/marketplace', '/product/:path*', '/expert/:path*', '/expert', '/my-plans/:path*', '/my-plans'],
 }
