@@ -419,7 +419,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
       : { type: 'error', text: `Write blocked - 0 rows updated on ${column}` }
     )
     setSaving(false)
-    console.log('[malyte] persistQuestions', { column, error, rows: data })
+    alert(`[${column}] error=${error ? error.message : 'none'} rows=${data ? data.length : 'null'}`)
     setTimeout(() => setMsg(null), 30000)
   }
 
