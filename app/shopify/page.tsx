@@ -3,11 +3,24 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import ShopifyDashboard from './ShopifyDashboard'
 
-export default async function ShopifyPage() {
+export default async function ShopifyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const params = await searchParams
+  const shop = typeof params.shop === 'string' ? params.shop : null
+
   // Auth con client utente (legge la sessione dai cookie)
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/shopify/login')
+
+  if (!user) {
+    // Arrivo da Shopify (App Store / Dev Dashboard) senza sessione:
+    // avvia l'OAuth invece di mostrare il login manuale.
+    if (shop) redirect(`/api/shopify/install?shop=${encodeURIComponent(shop)}`)
+    redirect('/shopify/login')
+  }
 
   // Letture/scritture dati con client admin (bypassa RLS; filtriamo per user.id)
   const admin = createAdminClient()
