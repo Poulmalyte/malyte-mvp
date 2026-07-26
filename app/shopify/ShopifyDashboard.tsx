@@ -416,14 +416,13 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
     setSaving(true)
     const { data, error } = await supabase.from('merchant_profiles').update({ [column]: questions }).eq('merchant_id', expertId).select('merchant_id')
-    const { data: back } = await supabase.from('merchant_profiles').select(column).eq('merchant_id', expertId).maybeSingle()
-    const stored = (back as any)?.[column]?.[0]?.question_text ?? '(vuoto)'
     setMsg(
       error ? { type: 'error', text: 'Error saving: ' + error.message }
-      : { type: 'success', text: `rows=${data ? data.length : 'null'} | id=${expertId.slice(0, 8)} | DB: "${stored}"` }
+      : (data && data.length > 0) ? { type: 'success', text: 'Questions saved!' }
+      : { type: 'error', text: 'Nothing was saved - please reload and try again.' }
     )
     setSaving(false)
-    setTimeout(() => setMsg(null), 60000)
+    setTimeout(() => setMsg(null), 4000)
   }
 
   const saveBrandQuestions = () => persistQuestions('customer_questions', brandQuestions, setSavingBrandQuestions, setBrandQuestionsMsg)
