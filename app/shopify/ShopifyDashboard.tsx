@@ -419,7 +419,8 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
       : { type: 'error', text: `Write blocked - 0 rows updated on ${column}` }
     )
     setSaving(false)
-    setTimeout(() => setMsg(null), 3000)
+    console.log('[malyte] persistQuestions', { column, error, rows: data })
+    setTimeout(() => setMsg(null), 30000)
   }
 
   const saveBrandQuestions = () => persistQuestions('customer_questions', brandQuestions, setSavingBrandQuestions, setBrandQuestionsMsg)
