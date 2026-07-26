@@ -412,8 +412,12 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   ) {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
     setSaving(true)
-    const { error } = await supabase.from('merchant_profiles').update({ [column]: questions }).eq('merchant_id', expertId)
-    setMsg(error ? { type: 'error', text: 'Error saving.' } : { type: 'success', text: 'Questions saved!' })
+    const { data, error } = await supabase.from('merchant_profiles').update({ [column]: questions }).eq('merchant_id', expertId).select('merchant_id')
+    setMsg(
+      error ? { type: 'error', text: 'Error saving: ' + error.message }
+      : (data && data.length > 0) ? { type: 'success', text: `Saved to ${column}` }
+      : { type: 'error', text: `Write blocked - 0 rows updated on ${column}` }
+    )
     setSaving(false)
     setTimeout(() => setMsg(null), 3000)
   }
