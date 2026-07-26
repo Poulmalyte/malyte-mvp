@@ -99,7 +99,8 @@ RULES:
 3. Respect contraindications
 4. Write in the brand tone of voice
 5. Be specific and personal — address the customer by name
-6. Return ONLY valid JSON, no markdown, no backticks`
+6. Keep every text field concise: max 2 sentences each
+7. Return ONLY valid JSON, no markdown, no backticks`
 
     const userPrompt = `Create a Week 1 personalized plan for:
 ${JSON.stringify(demoProfile, null, 2)}
@@ -128,7 +129,7 @@ Return exactly this JSON:
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 2000,
+      max_tokens: 4000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     })
@@ -136,9 +137,19 @@ Return exactly this JSON:
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
     const clean = text.replace(/```json|```/g, '').trim()
 
+    // Estrae il JSON anche se il modello aggiunge testo prima o dopo
+    const first = clean.indexOf('{')
+    const last = clean.lastIndexOf('}')
+    const candidate = first !== -1 && last > first ? clean.slice(first, last + 1) : clean
+
     let plan: any
-    try { plan = JSON.parse(clean) }
-    catch { return NextResponse.json({ error: 'Failed to parse plan. Please try again.' }, { status: 500 }) }
+    try {
+      plan = JSON.parse(candidate)
+    } catch {
+      console.error('[GeneratePreview] parse failed. stop_reason:', response.stop_reason, 'text length:', text.length)
+      console.error('[GeneratePreview] raw:', text.slice(0, 1500))
+      return NextResponse.json({ error: 'Failed to parse plan. Please try again.' }, { status: 500 })
+    }
 
     // Arricchisci con URL prodotti
     const enrichRoutine = (routine: any[]) => routine.map(item => ({
