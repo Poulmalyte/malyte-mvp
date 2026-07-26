@@ -120,9 +120,10 @@ const CHECKIN_DEFAULTS: Question[] = [
   { id: '3', question_text: 'Any irritation, discomfort or side effects?', question_type: 'text', options: [] },
 ]
 
-function QuestionSection({ title, description, questions, setQuestions, onSave, saving, msg, minQuestions }: {
+function QuestionSection({ title, description, saveLabel, questions, setQuestions, onSave, saving, msg, minQuestions }: {
   title: string
   description: string
+  saveLabel: string
   questions: Question[]
   setQuestions: (qs: Question[]) => void
   onSave: () => void
@@ -141,7 +142,7 @@ function QuestionSection({ title, description, questions, setQuestions, onSave, 
         </div>
       )}
       <button onClick={onSave} disabled={saving} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
-        {saving ? 'Saving…' : 'Save questions'}
+        {saving ? 'Saving…' : saveLabel}
       </button>
     </div>
   )
@@ -415,12 +416,11 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     const { data, error } = await supabase.from('merchant_profiles').update({ [column]: questions }).eq('merchant_id', expertId).select('merchant_id')
     setMsg(
       error ? { type: 'error', text: 'Error saving: ' + error.message }
-      : (data && data.length > 0) ? { type: 'success', text: `Saved to ${column}` }
-      : { type: 'error', text: `Write blocked - 0 rows updated on ${column}` }
+      : (data && data.length > 0) ? { type: 'success', text: 'Questions saved!' }
+      : { type: 'error', text: 'Nothing was saved - please reload and try again.' }
     )
     setSaving(false)
-    alert(`[${column}] error=${error ? error.message : 'none'} rows=${data ? data.length : 'null'}`)
-    setTimeout(() => setMsg(null), 30000)
+    setTimeout(() => setMsg(null), 4000)
   }
 
   const saveBrandQuestions = () => persistQuestions('customer_questions', brandQuestions, setSavingBrandQuestions, setBrandQuestionsMsg)
@@ -589,6 +589,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               <>
                 <QuestionSection
                   title="1. Pre-purchase questions"
+                  saveLabel="Save pre-purchase questions"
                   description="Asked on your quiz page before checkout, at /start. The answers decide which products or bundle gets recommended to a visitor who has not bought yet."
                   questions={prepurchaseQuestions}
                   setQuestions={setPrepurchaseQuestions}
@@ -599,6 +600,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                 />
                 <QuestionSection
                   title="2. Post-purchase questions"
+                  saveLabel="Save post-purchase questions"
                   description="Asked right after an order, in the email your customer receives. The answers generate their first personalised routine, built around what they actually bought."
                   questions={brandQuestions}
                   setQuestions={setBrandQuestions}
@@ -609,6 +611,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                 />
                 <QuestionSection
                   title="3. Weekly check-in questions"
+                  saveLabel="Save check-in questions"
                   description="Asked each week before the next routine is generated. The answers adapt the following week and decide when a new product gets introduced."
                   questions={checkinQuestions}
                   setQuestions={setCheckinQuestions}
