@@ -45,13 +45,13 @@ interface ShopifyProduct {
   duration_weeks: number
 }
 
-function QuestionBuilder({ questions, setQuestions }: { questions: Question[], setQuestions: (qs: Question[]) => void }) {
+function QuestionBuilder({ questions, setQuestions, minQuestions = 4 }: { questions: Question[], setQuestions: (qs: Question[]) => void, minQuestions?: number }) {
   function addQuestion() { setQuestions([...questions, { id: crypto.randomUUID(), question_text: '', question_type: 'text', options: [] }]) }
   function updateQuestion(id: string, field: keyof Question, value: any) { setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q)) }
-  function removeQuestion(id: string) { if (questions.length <= 4) return; setQuestions(questions.filter(q => q.id !== id)) }
-  function addOption(qid: string) { setQuestions(questions.map(q => q.id === qid ? { ...q, options: [...q.options, ''] } : q)) }
-  function updateOption(qid: string, i: number, val: string) { setQuestions(questions.map(q => q.id === qid ? { ...q, options: q.options.map((o, j) => j === i ? val : o) } : q)) }
-  function removeOption(qid: string, i: number) { setQuestions(questions.map(q => q.id === qid ? { ...q, options: q.options.filter((_, j) => j !== i) } : q)) }
+  function removeQuestion(id: string) { if (questions.length <= minQuestions) return; setQuestions(questions.filter(q => q.id !== id)) }
+  function addOption(qid: string) { setQuestions(questions.map(q => q.id === qid ? { ...q, options: [...(q.options || []), ''] } : q)) }
+  function updateOption(qid: string, i: number, val: string) { setQuestions(questions.map(q => q.id === qid ? { ...q, options: (q.options || []).map((o, j) => j === i ? val : o) } : q)) }
+  function removeOption(qid: string, i: number) { setQuestions(questions.map(q => q.id === qid ? { ...q, options: (q.options || []).filter((_, j) => j !== i) } : q)) }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -59,7 +59,7 @@ function QuestionBuilder({ questions, setQuestions }: { questions: Question[], s
         <div key={q.id} style={{ background: '#F5F7FA', borderRadius: 10, padding: 16, border: '1px solid #E8EDF8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <span style={{ color: '#7C5CFC', fontSize: 11, fontWeight: 600 }}>Question {i + 1}</span>
-            {questions.length > 4 && <button onClick={() => removeQuestion(q.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer' }}>Remove</button>}
+            {questions.length > minQuestions && <button onClick={() => removeQuestion(q.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer' }}>Remove</button>}
           </div>
           <input type="text" value={q.question_text} onChange={e => updateQuestion(q.id, 'question_text', e.target.value)} placeholder="e.g. What is your main goal?" style={{ ...inputStyle, marginBottom: 10 }} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
@@ -72,7 +72,7 @@ function QuestionBuilder({ questions, setQuestions }: { questions: Question[], s
           </div>
           {q.question_type === 'select' && (
             <div>
-              {q.options.map((opt, j) => (
+              {(q.options || []).map((opt, j) => (
                 <div key={j} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
                   <input type="text" value={opt} onChange={e => updateOption(q.id, j, e.target.value)} placeholder={`Option ${j + 1}`} style={{ flex: 1, padding: '7px 10px', borderRadius: 7, border: '1px solid #E8EDF8', fontSize: 12, outline: 'none' }} />
                   <button onClick={() => removeOption(q.id, j)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}>x</button>
@@ -84,6 +84,65 @@ function QuestionBuilder({ questions, setQuestions }: { questions: Question[], s
         </div>
       ))}
       <button onClick={addQuestion} style={{ padding: '10px', borderRadius: 10, border: '1px dashed #C4B5FD', background: 'transparent', color: '#94A3B8', fontSize: 13, cursor: 'pointer' }}>+ Add question</button>
+    </div>
+  )
+}
+
+// In DB convivono due forme scritte da writer diversi:
+//   - Step3Intake / dashboard Shopify: { question_text, question_type }
+//   - seller-bridge legacy:            { text, type, enabled }
+// Le riduco a una sola forma in memoria, altrimenti aprire il builder su un
+// merchant scritto dall'altro writer legge campi vuoti e al salvataggio li azzera.
+function normalizeQuestions(raw: any): Question[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((q: any) => q && q.enabled !== false)
+    .map((q: any, i: number) => {
+      const t = q.question_type ?? q.type
+      return {
+        id: String(q.id ?? i + 1),
+        question_text: q.question_text ?? q.text ?? '',
+        question_type: (t === 'select' || t === 'multiselect') ? 'select' : 'text',
+        options: Array.isArray(q.options) ? q.options : [],
+      } as Question
+    })
+}
+
+const PREPURCHASE_DEFAULTS: Question[] = [
+  { id: '1', question_text: 'What are you looking to improve right now?', question_type: 'select', options: ['Hydration', 'Anti-aging', 'Brightening', 'Acne', 'Redness', 'Overall wellbeing'] },
+  { id: '2', question_text: 'Have you used products like these before?', question_type: 'select', options: ['Never', 'A little', 'Regularly'] },
+  { id: '3', question_text: 'What is your budget for a starter set?', question_type: 'select', options: ['Under 50', '50-100', '100-200', '200+'] },
+]
+
+const CHECKIN_DEFAULTS: Question[] = [
+  { id: '1', question_text: 'How consistent were you with your routine this week?', question_type: 'select', options: ['Every day', 'Most days', 'A few days', 'Barely'] },
+  { id: '2', question_text: 'Have you noticed any changes so far?', question_type: 'text', options: [] },
+  { id: '3', question_text: 'Any irritation, discomfort or side effects?', question_type: 'text', options: [] },
+]
+
+function QuestionSection({ title, description, questions, setQuestions, onSave, saving, msg, minQuestions }: {
+  title: string
+  description: string
+  questions: Question[]
+  setQuestions: (qs: Question[]) => void
+  onSave: () => void
+  saving: boolean
+  msg: { type: 'success' | 'error', text: string } | null
+  minQuestions?: number
+}) {
+  return (
+    <div style={card}>
+      <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{title}</p>
+      <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>{description}</p>
+      <QuestionBuilder questions={questions} setQuestions={setQuestions} minQuestions={minQuestions ?? 4} />
+      {msg && (
+        <div style={{ padding: '10px 14px', borderRadius: 8, margin: '12px 0', background: msg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (msg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: msg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
+          {msg.text}
+        </div>
+      )}
+      <button onClick={onSave} disabled={saving} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+        {saving ? 'Saving…' : 'Save questions'}
+      </button>
     </div>
   )
 }
@@ -132,15 +191,25 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [methodCategoryMsg, setMethodCategoryMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [analyticsData, setAnalyticsData] = useState<any>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+
+  // Domande — tre set distinti, tre colonne distinte su merchant_profiles
+  const [questionsLoaded, setQuestionsLoaded] = useState(false)
+  const [prepurchaseQuestions, setPrepurchaseQuestions] = useState<Question[]>([])
+  const [savingPrepurchase, setSavingPrepurchase] = useState(false)
+  const [prepurchaseMsg, setPrepurchaseMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [brandQuestions, setBrandQuestions] = useState<Question[]>([])
   const [savingBrandQuestions, setSavingBrandQuestions] = useState(false)
-  const [brandQuestionsMsg, setBrandQuestionsMsg] = useState<{ type: "success" | "error", text: string } | null>(null)
+  const [brandQuestionsMsg, setBrandQuestionsMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [checkinQuestions, setCheckinQuestions] = useState<Question[]>([])
+  const [savingCheckin, setSavingCheckin] = useState(false)
+  const [checkinMsg, setCheckinMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+
   const [journeySettings, setJourneySettings] = useState({ checkin_frequency_days: 7, max_journey_weeks: 8, abandonment_days: 21, reengage_email: true, program_duration_weeks: 8, after_completion: 'stop' })
   const [savingJourney, setSavingJourney] = useState(false)
   const [journeyMsg, setJourneyMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => { loadData() }, [])
-  useEffect(() => { if (brandQuestions.length === 0) { loadBrandQuestions() } }, [activeTab])
+  useEffect(() => { if (!questionsLoaded) { loadBrandQuestions() } }, [activeTab])
   useEffect(() => { if (activeTab === 'settings') { loadJourneySettings() } }, [activeTab])
 
   async function loadData() {
@@ -277,17 +346,18 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
 
   async function loadBrandQuestions() {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    const { data } = await supabase.from('merchant_profiles').select('customer_questions, customer').eq('merchant_id', expertId).maybeSingle()
-    if (data && data.customer_questions && data.customer_questions.length > 0) {
-      setBrandQuestions(data.customer_questions)
-      return
-    }
+    const { data } = await supabase
+      .from('merchant_profiles')
+      .select('prepurchase_questions, customer_questions, checkin_questions_config')
+      .eq('merchant_id', expertId)
+      .maybeSingle()
+
     const cat = (expert?.category || 'Skincare').replace(' ', '')
-    const defaults: Record<string, any[]> = {
+    const defaults: Record<string, Question[]> = {
       Skincare: [
         { id: '1', question_text: 'What is your skin type?', question_type: 'select', options: ['Dry', 'Oily', 'Combination', 'Normal', 'Sensitive'] },
         { id: '2', question_text: 'What are your main skin concerns?', question_type: 'select', options: ['Hydration', 'Anti-aging', 'Brightening', 'Acne', 'Redness', 'Uneven texture'] },
-        { id: '3', question_text: 'Any known sensitivities or allergies?', question_type: 'text' },
+        { id: '3', question_text: 'Any known sensitivities or allergies?', question_type: 'text', options: [] },
         { id: '4', question_text: 'How would you describe your current routine?', question_type: 'select', options: ['No routine', 'Basic 2-3 steps', 'Full routine 5+ steps'] },
         { id: '5', question_text: 'How much time can you dedicate to your skincare routine daily?', question_type: 'select', options: ['Under 2 minutes', '2-5 minutes', '5-10 minutes', '10+ minutes'] },
         { id: '6', question_text: 'What is your age range?', question_type: 'select', options: ['Under 18', '18-24', '25-34', '35-44', '45-54', '55+'] },
@@ -297,12 +367,12 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
         { id: '2', question_text: 'What is your current fitness level?', question_type: 'select', options: ['Beginner', 'Intermediate', 'Advanced'] },
         { id: '3', question_text: 'How many days per week can you train?', question_type: 'select', options: ['2-3 days', '4-5 days', '6-7 days'] },
         { id: '4', question_text: 'Where do you usually train?', question_type: 'select', options: ['Home', 'Gym', 'Outdoors', 'Mixed'] },
-        { id: '5', question_text: 'Any injuries or limitations we should know about?', question_type: 'text' },
+        { id: '5', question_text: 'Any injuries or limitations we should know about?', question_type: 'text', options: [] },
       ],
       Nutrition: [
         { id: '1', question_text: 'What is your main nutrition goal?', question_type: 'select', options: ['Lose weight', 'Gain muscle', 'Improve energy', 'Eat healthier'] },
         { id: '2', question_text: 'Do you follow any specific diet?', question_type: 'select', options: ['No restrictions', 'Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free'] },
-        { id: '3', question_text: 'Any food allergies?', question_type: 'text' },
+        { id: '3', question_text: 'Any food allergies?', question_type: 'text', options: [] },
         { id: '4', question_text: 'How active are you daily?', question_type: 'select', options: ['Sedentary', 'Lightly active', 'Moderately active', 'Very active'] },
         { id: '5', question_text: 'What is your biggest nutrition challenge?', question_type: 'select', options: ['Portion control', 'Cravings', 'Meal planning', 'Lack of energy', 'Consistency', 'Other'] },
       ],
@@ -318,20 +388,39 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
         { id: '2', question_text: 'How often do you feel overwhelmed?', question_type: 'select', options: ['Rarely', 'Sometimes', 'Often', 'Very often'] },
         { id: '3', question_text: 'What is your biggest current challenge?', question_type: 'select', options: ['Stress', 'Procrastination', 'Low motivation', 'Work-life balance', 'Self-confidence'] },
         { id: '4', question_text: 'How much time can you dedicate daily?', question_type: 'select', options: ['5 min', '10 min', '20 min', '30+ min'] },
-        { id: '5', question_text: 'What outcome would make this program successful for you?', question_type: 'text' },
+        { id: '5', question_text: 'What outcome would make this program successful for you?', question_type: 'text', options: [] },
       ],
     }
-    setBrandQuestions(defaults[cat] || defaults.Skincare)
+
+    const post = normalizeQuestions(data?.customer_questions)
+    setBrandQuestions(post.length > 0 ? post : (defaults[cat] || defaults.Skincare))
+
+    const pre = normalizeQuestions((data as any)?.prepurchase_questions)
+    setPrepurchaseQuestions(pre.length > 0 ? pre : PREPURCHASE_DEFAULTS)
+
+    const checkin = normalizeQuestions((data as any)?.checkin_questions_config)
+    setCheckinQuestions(checkin.length > 0 ? checkin : CHECKIN_DEFAULTS)
+
+    setQuestionsLoaded(true)
   }
 
-  async function saveBrandQuestions() {
+  async function persistQuestions(
+    column: 'prepurchase_questions' | 'customer_questions' | 'checkin_questions_config',
+    questions: Question[],
+    setSaving: (v: boolean) => void,
+    setMsg: (m: { type: 'success' | 'error', text: string } | null) => void
+  ) {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    setSavingBrandQuestions(true)
-    const { error } = await supabase.from('merchant_profiles').update({ customer_questions: brandQuestions }).eq('merchant_id', expertId)
-    setBrandQuestionsMsg(error ? { type: 'error', text: 'Error saving.' } : { type: 'success', text: 'Questions saved!' })
-    setSavingBrandQuestions(false)
-    setTimeout(() => setBrandQuestionsMsg(null), 3000)
+    setSaving(true)
+    const { error } = await supabase.from('merchant_profiles').update({ [column]: questions }).eq('merchant_id', expertId)
+    setMsg(error ? { type: 'error', text: 'Error saving.' } : { type: 'success', text: 'Questions saved!' })
+    setSaving(false)
+    setTimeout(() => setMsg(null), 3000)
   }
+
+  const saveBrandQuestions = () => persistQuestions('customer_questions', brandQuestions, setSavingBrandQuestions, setBrandQuestionsMsg)
+  const savePrepurchaseQuestions = () => persistQuestions('prepurchase_questions', prepurchaseQuestions, setSavingPrepurchase, setPrepurchaseMsg)
+  const saveCheckinQuestions = () => persistQuestions('checkin_questions_config', checkinQuestions, setSavingCheckin, setCheckinMsg)
 
   async function loadAnalytics() {
     if (analyticsData) return
@@ -486,25 +575,45 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                 {savingMethodCategory ? 'Saving…' : 'Save category'}
               </button>
             </div>
-            <div style={card}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Customer quiz questions</p>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>These are the questions your customers answer before getting their plan. Changes take effect immediately on your quiz page.</p>
-              {brandQuestions.length === 0 ? (
-                <button onClick={loadBrandQuestions} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#F8FAFC', border: '1px solid #E8EDF8', color: '#64748B', cursor: 'pointer' }}>Load current questions</button>
-              ) : (
-                <>
-                  <QuestionBuilder questions={brandQuestions} setQuestions={setBrandQuestions} />
-                  {brandQuestionsMsg && (
-                    <div style={{ padding: '10px 14px', borderRadius: 8, margin: '12px 0', background: brandQuestionsMsg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (brandQuestionsMsg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: brandQuestionsMsg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
-                      {brandQuestionsMsg.text}
-                    </div>
-                  )}
-                  <button onClick={saveBrandQuestions} disabled={savingBrandQuestions} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingBrandQuestions ? 0.7 : 1 }}>
-                    {savingBrandQuestions ? 'Saving…' : 'Save questions'}
-                  </button>
-                </>
-              )}
-            </div>
+
+            {!questionsLoaded ? (
+              <div style={card}>
+                <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: '20px 0', margin: 0 }}>Loading questions…</p>
+              </div>
+            ) : (
+              <>
+                <QuestionSection
+                  title="1. Pre-purchase questions"
+                  description="Asked on your quiz page before checkout, at /start. The answers decide which products or bundle gets recommended to a visitor who has not bought yet."
+                  questions={prepurchaseQuestions}
+                  setQuestions={setPrepurchaseQuestions}
+                  onSave={savePrepurchaseQuestions}
+                  saving={savingPrepurchase}
+                  msg={prepurchaseMsg}
+                  minQuestions={2}
+                />
+                <QuestionSection
+                  title="2. Post-purchase questions"
+                  description="Asked right after an order, in the email your customer receives. The answers generate their first personalised routine, built around what they actually bought."
+                  questions={brandQuestions}
+                  setQuestions={setBrandQuestions}
+                  onSave={saveBrandQuestions}
+                  saving={savingBrandQuestions}
+                  msg={brandQuestionsMsg}
+                  minQuestions={4}
+                />
+                <QuestionSection
+                  title="3. Weekly check-in questions"
+                  description="Asked each week before the next routine is generated. The answers adapt the following week and decide when a new product gets introduced."
+                  questions={checkinQuestions}
+                  setQuestions={setCheckinQuestions}
+                  onSave={saveCheckinQuestions}
+                  saving={savingCheckin}
+                  msg={checkinMsg}
+                  minQuestions={2}
+                />
+              </>
+            )}
           </>
         )}
 
@@ -571,7 +680,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                                 </div>
                               </div>
                             )}
-                            {/* PDF PLAN nascosto per i Brand: la routine si genera dai prodotti acquistati, il PDF non serve. Codice mantenuto per Practitioner/PDF Seller (dormienti). */}
+                            {/* PDF PLAN nascosto per i Brand: la routine si genera dai prodotti acquistati, il PDF non serve. */}
                             {false && (
                             <div style={{ marginBottom: 20 }}>
                               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PDF PLAN</label>
@@ -586,11 +695,14 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                               </label>
                             </div>
                             )}
+                            {/* Domande per-prodotto: modello legacy, sostituito dai tre set nel tab Questions. */}
+                            {false && (
                             <div style={{ marginBottom: 20 }}>
                               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>BUYER QUESTIONS (min 4)</label>
                               <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 12 }}>These questions are shown to buyers before their plan is generated.</p>
                               <QuestionBuilder questions={productQuestions[product.shopify_product_id] || []} setQuestions={(qs: Question[]) => setProductQuestions(prev => ({ ...prev, [product.shopify_product_id]: qs }))} />
                             </div>
+                            )}
                             <button onClick={() => handleSaveProduct(product.shopify_product_id)} disabled={savingProduct === product.shopify_product_id}
                               style={{ width: '100%', padding: '12px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingProduct === product.shopify_product_id ? 0.7 : 1 }}>
                               {savingProduct === product.shopify_product_id ? 'Saving…' : 'Save product settings'}
