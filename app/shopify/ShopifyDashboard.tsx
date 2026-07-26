@@ -131,21 +131,39 @@ function QuestionSection({ title, description, saveLabel, questions, setQuestion
   msg: { type: 'success' | 'error', text: string } | null
   minQuestions?: number
 }) {
+  const [open, setOpen] = useState(false)
+  const filled = questions.filter(q => q.question_text?.trim()).length
+
   return (
     <div style={card}>
-      <div style={{ position: 'sticky', top: 0, zIndex: 2, background: '#FFFFFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '6px 0 10px', marginBottom: 8, borderBottom: '1px solid #F1F5F9' }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#7C5CFC', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>{title}</p>
-        <button onClick={onSave} disabled={saving} style={{ padding: '8px 16px', borderRadius: 10, fontWeight: 700, fontSize: 12, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', opacity: saving ? 0.7 : 1 }}>
-          {saving ? 'Saving…' : saveLabel}
-        </button>
+      <div onClick={() => setOpen(!open)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <span style={{ color: '#7C5CFC', fontSize: 11, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>&#9654;</span>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#7C5CFC', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>{title}</p>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B', background: '#F1F5F9', borderRadius: 100, padding: '2px 10px', whiteSpace: 'nowrap' }}>{filled} question{filled === 1 ? '' : 's'}</span>
+        </div>
+        {open ? (
+          <button onClick={e => { e.stopPropagation(); onSave() }} disabled={saving} style={{ padding: '8px 16px', borderRadius: 10, fontWeight: 700, fontSize: 12, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : saveLabel}
+          </button>
+        ) : (
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#7C5CFC', whiteSpace: 'nowrap' }}>Show questions</span>
+        )}
       </div>
-      <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>{description}</p>
+      <p style={{ fontSize: 13, color: '#64748B', margin: '10px 0 0', lineHeight: 1.6 }}>{description}</p>
       {msg && (
-        <div style={{ padding: '10px 14px', borderRadius: 8, margin: '0 0 12px', background: msg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (msg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: msg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
+        <div style={{ padding: '10px 14px', borderRadius: 8, margin: '12px 0 0', background: msg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (msg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: msg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
           {msg.text}
         </div>
       )}
-      <QuestionBuilder questions={questions} setQuestions={setQuestions} minQuestions={minQuestions ?? 4} />
+      {open && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #F1F5F9' }}>
+          <QuestionBuilder questions={questions} setQuestions={setQuestions} minQuestions={minQuestions ?? 4} />
+          <button onClick={onSave} disabled={saving} style={{ marginTop: 16, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : saveLabel}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
