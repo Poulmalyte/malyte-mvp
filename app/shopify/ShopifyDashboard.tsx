@@ -140,7 +140,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [journeyMsg, setJourneyMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => { loadData() }, [])
-  useEffect(() => { if (activeTab === 'method' && brandQuestions.length === 0) { loadBrandQuestions() } }, [activeTab])
+  useEffect(() => { if (brandQuestions.length === 0) { loadBrandQuestions() } }, [activeTab])
   useEffect(() => { if (activeTab === 'settings') { loadJourneySettings() } }, [activeTab])
 
   async function loadData() {
@@ -342,7 +342,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
     setLoadingAnalytics(false)
   }
 
-  const hasQuestionsOnAnyProduct = products.some(p => (p.questions || []).filter((q: Question) => q.question_text?.trim()).length >= 4)
+  const hasQuestionsOnAnyProduct = brandQuestions.filter((q: Question) => q.question_text?.trim()).length >= 4
   const onboardingSteps = [
     { label: 'App installed', done: true },
     { label: 'Connect your Shopify store', done: !!installation },
@@ -391,7 +391,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
         {activeTab === 'overview' && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 12, marginBottom: 16 }}>
-              {[{ label: 'Total orders', value: String(orders.length || totalOrders), color: '#7C5CFC', bg: '#EDE9FE' }, { label: 'Plans generated', value: String(orders.filter((o: any) => o.status === 'plan_generated').length || plansGenerated), color: '#059669', bg: '#D1FDF3' }, { label: 'Products configured', value: String(products.filter(p => (p.questions || []).filter((q: Question) => q.question_text?.trim()).length >= 4).length), color: '#6385FF', bg: '#EEF2FF' }].map((kpi, i) => (
+              {[{ label: 'Total orders', value: String(orders.length || totalOrders), color: '#7C5CFC', bg: '#EDE9FE' }, { label: 'Plans generated', value: String(orders.filter((o: any) => o.status === 'plan_generated').length || plansGenerated), color: '#059669', bg: '#D1FDF3' }, { label: 'Products configured', value: String(products.length), color: '#6385FF', bg: '#EEF2FF' }].map((kpi, i) => (
                 <div key={i} style={{ background: kpi.bg, borderRadius: 12, padding: '16px' }}>
                   <p style={{ fontSize: 10, color: '#64748B', marginBottom: 4, fontWeight: 500 }}>{kpi.label}</p>
                   <p style={{ fontFamily: "'Satoshi', sans-serif", fontSize: 28, fontWeight: 800, color: kpi.color, margin: 0 }}>{kpi.value}</p>
