@@ -133,17 +133,19 @@ function QuestionSection({ title, description, saveLabel, questions, setQuestion
 }) {
   return (
     <div style={card}>
-      <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{title}</p>
+      <div style={{ position: 'sticky', top: 0, zIndex: 2, background: '#FFFFFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '6px 0 10px', marginBottom: 8, borderBottom: '1px solid #F1F5F9' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#7C5CFC', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>{title}</p>
+        <button onClick={onSave} disabled={saving} style={{ padding: '8px 16px', borderRadius: 10, fontWeight: 700, fontSize: 12, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', opacity: saving ? 0.7 : 1 }}>
+          {saving ? 'Saving…' : saveLabel}
+        </button>
+      </div>
       <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>{description}</p>
-      <QuestionBuilder questions={questions} setQuestions={setQuestions} minQuestions={minQuestions ?? 4} />
       {msg && (
-        <div style={{ padding: '10px 14px', borderRadius: 8, margin: '12px 0', background: msg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (msg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: msg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
+        <div style={{ padding: '10px 14px', borderRadius: 8, margin: '0 0 12px', background: msg.type === 'success' ? '#F0FDF4' : '#FEF2F2', border: '1px solid ' + (msg.type === 'success' ? '#6EE7B7' : '#FECACA'), color: msg.type === 'success' ? '#059669' : '#EF4444', fontSize: 13 }}>
           {msg.text}
         </div>
       )}
-      <button onClick={onSave} disabled={saving} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
-        {saving ? 'Saving…' : saveLabel}
-      </button>
+      <QuestionBuilder questions={questions} setQuestions={setQuestions} minQuestions={minQuestions ?? 4} />
     </div>
   )
 }
