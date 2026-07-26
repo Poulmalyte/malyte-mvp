@@ -278,6 +278,7 @@ Return exactly this JSON:
       .update({
         followup_plan_id: savedPlan?.id || null,
         merchant_id,
+        status: 'plan_generated',
       })
       .eq('token', order_token)
 
