@@ -67,6 +67,28 @@ async function registerWebhook(shop: string, token: string, topic: string) {
   }
 }
 
+async function fetchShopName(shop: string, token: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/shop.json`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': token,
+      },
+    })
+    if (!res.ok) {
+      console.warn('[Callback] shop.json non ok:', res.status)
+      return null
+    }
+    const data = await res.json()
+    const name = data?.shop?.name
+    console.log('[Callback] shop.name letto da Shopify:', name)
+    return typeof name === 'string' && name.trim() ? name.trim() : null
+  } catch (err) {
+    console.warn('[Callback] fetchShopName errore:', err)
+    return null
+  }
+}
+
 async function ensureUserForShop(shop: string): Promise<string | null> {
   const email = shopToEmail(shop)
 
@@ -217,16 +239,22 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const shopName = await fetchShopName(shop, access_token)
+
+  const installPayload: Record<string, any> = {
+    shop_domain: shop,
+    access_token,
+    refresh_token,
+    token_expires_at,
+    expert_id: expertId,
+    subscription_status: 'pending',
+  }
+  // Solo se risolto: un null sovrascriverebbe un nome buono a ogni reinstall.
+  if (shopName) installPayload.shop_name = shopName
+
   const { error: installError } = await supabaseAdmin
     .from('shopify_installations')
-    .upsert({
-      shop_domain: shop,
-      access_token,
-      refresh_token,
-      token_expires_at,
-      expert_id: expertId,
-      subscription_status: 'pending',
-    }, { onConflict: 'shop_domain' })
+    .upsert(installPayload, { onConflict: 'shop_domain' })
 
   if (installError) {
     console.error('Supabase error:', installError)

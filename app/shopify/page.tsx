@@ -33,9 +33,26 @@ export default async function ShopifyPage({
     .maybeSingle()
 
   // Se non esiste, crea automaticamente
+  // Nome vero dello store, salvato dal callback all'installazione.
+  const { data: instEarly } = await admin
+    .from('shopify_installations')
+    .select('shop_name')
+    .eq('expert_id', user.id)
+    .maybeSingle()
+  const shopName: string | null = (instEarly as any)?.shop_name || null
+  const emailHandle = user.email?.split('@')[0] || 'Expert'
+
+  // Backfill: chi ha gia' un profilo col nome-handle lo vede corretto al primo accesso.
+  if (expert && shopName && expert.name === emailHandle) {
+    await admin.from('experts').update({ name: shopName }).eq('id', user.id)
+    await admin.from('merchants').update({ name: shopName }).eq('id', user.id)
+    await admin.from('profiles').update({ name: shopName }).eq('id', user.id)
+    expert = { ...expert, name: shopName }
+  }
+
   if (!expert) {
     const slug = `expert-${user.id.slice(0, 8)}`
-    const name = user.email?.split('@')[0] || 'Expert'
+    const name = shopName || emailHandle
     await admin.from('profiles').upsert({
       id: user.id, name, role: 'expert',
       consent_terms: true, consent_timestamp: new Date().toISOString(),
