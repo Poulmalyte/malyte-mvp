@@ -41,7 +41,7 @@ export default async function ShopifyPage({
       consent_terms: true, consent_timestamp: new Date().toISOString(),
     }, { onConflict: 'id' })
     const { data: newExpert } = await admin.from('experts').upsert({
-      id: user.id, name, slug, category: 'Wellness', seller_type: 'brand',
+      id: user.id, name, slug, category: 'Skincare', seller_type: 'brand',
     }, { onConflict: 'id' }).select().single()
     expert = newExpert
   }

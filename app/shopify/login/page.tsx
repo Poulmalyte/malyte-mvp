@@ -57,7 +57,7 @@ export default function ShopifyLoginPage() {
           id: data.user.id,
           name: email.split('@')[0],
           slug: `expert-${data.user.id.slice(0, 8)}`,
-          category: 'Wellness',
+          category: 'Skincare',
         }, { onConflict: 'id' })
         router.push('/shopify')
         router.refresh()

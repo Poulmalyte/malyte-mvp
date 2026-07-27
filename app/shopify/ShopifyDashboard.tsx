@@ -200,14 +200,14 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
 
   // Settings state — brand-first
   const [brandName, setBrandName] = useState(expert?.name || '')
-  const [profileCategory, setProfileCategory] = useState(expert?.category || 'Wellness')
+  const [profileCategory, setProfileCategory] = useState(expert?.category || 'Skincare')
   const [profileEmail, setProfileEmail] = useState(userEmail)
   const [profilePassword, setProfilePassword] = useState('')
   const [profileConfirmPassword, setProfileConfirmPassword] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  const [methodCategory, setMethodCategory] = useState(expert?.category || 'Wellness')
+  const [methodCategory, setMethodCategory] = useState(expert?.category || 'Skincare')
   const [savingMethodCategory, setSavingMethodCategory] = useState(false)
   const [methodCategoryMsg, setMethodCategoryMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [analyticsData, setAnalyticsData] = useState<any>(null)
