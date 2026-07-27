@@ -224,11 +224,11 @@ export async function POST(request: Request) {
       .maybeSingle()
     if (!merchant) {
       const { data: expert } = await supabaseAdmin
-        .from('experts').select('name, slug, category, seller_type').eq('id', user.id).maybeSingle()
+        .from('experts').select('name, slug, category').eq('id', user.id).maybeSingle()
       await supabaseAdmin.from('merchants').upsert({
         id: user.id,
         expert_id: user.id,
-        seller_type: expert?.seller_type || 'brand',
+        seller_type: 'brand',
         name: expert?.name || 'My Brand',
         slug: expert?.slug || ('brand-' + user.id.slice(0, 8)),
         category: expert?.category || null,
@@ -269,6 +269,7 @@ export async function POST(request: Request) {
           price: v?.price ? parseFloat(v.price) : null,
           image_url: img?.src || null,
           product_url: `https://${installation.shop_domain}/products/${sp.handle}`,
+          archived_at: null,
         }, { onConflict: 'shop,shopify_product_id' })
       }
     } catch (e) {
@@ -279,6 +280,7 @@ export async function POST(request: Request) {
       .from('shopify_products')
       .select('*')
       .eq('shop', installation.shop_domain)
+      .is('archived_at', null)
 
     if (!products || products.length === 0) {
       return NextResponse.json({ ok: true, tagged: 0, failed: 0, total: 0 })
