@@ -147,6 +147,25 @@ export default function FollowupClient({ order, merchant, shopifyProducts, merch
                     style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E8EDF8', fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box', background: '#F8FAFC', color: '#0F172A' }}
                   />
                 )}
+                {q.type === 'multiselect' && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {q.options!.map((opt: string) => {
+                      const current: string[] = Array.isArray(answers[q.id]) ? (answers[q.id] as unknown as string[]) : []
+                      const isSelected = current.includes(opt)
+                      return (
+                        <button key={opt} onClick={() => setAnswers(prev => {
+                          const prevList: string[] = Array.isArray(prev[q.id]) ? (prev[q.id] as unknown as string[]) : []
+                          const nextList = isSelected ? prevList.filter(o => o !== opt) : [...prevList, opt]
+                          return { ...prev, [q.id]: nextList }
+                        })}
+                          style={{ padding: '10px 14px', borderRadius: 100, fontSize: 13, fontWeight: 500, cursor: 'pointer', textAlign: 'left', border: `1px solid ${isSelected ? '#7C5CFC' : '#E8EDF8'}`, background: isSelected ? '#EDE9FE' : '#F8FAFC', color: isSelected ? '#7C5CFC' : '#64748B', transition: 'all 0.15s' }}>
+                          {isSelected && <span style={{ marginRight: 6 }}>✓</span>}
+                          {opt}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
