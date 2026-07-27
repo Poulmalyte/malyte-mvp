@@ -49,8 +49,8 @@ export default async function OnboardingPage({
   let currentStep = parseInt(
     searchParams.step || String(merchantProfile?.onboarding_step || 1)
   )
-  if (billingDone && currentStep < 3) {
-    currentStep = 3
+  if (billingDone && currentStep < 2) {
+    currentStep = 2
   }
 
   return (
