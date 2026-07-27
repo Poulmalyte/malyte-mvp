@@ -1,7 +1,6 @@
 table_name,column_name,data_type,is_nullable,column_default
 cd /Users/ni/Desktop/Malyte-mvp
-pbpaste > /tmp/schema-body.csv
-{ echo "table_name,column_name,data_type,is_nullable,column_default"; cat /tmp/schema-body.csv; } > docs/db-schema.csv
+{ echo "table_name,column_name,data_type,is_nullable,column_default"; pbpaste; } > docs/db-schema.csv
 wc -l docs/db-schema.csv
-grep -c "^merchant_profiles," docs/db-schema.csv
-git add docs/db-schema.csv && git commit -m "Regenerate db-schema.csv (complete)" && git push
+grep "^experts,seller_type\|^merchants,seller_type" docs/db-schema.csv
+git add docs/db-schema.csv && git commit -m "Regenerate db-schema.csv (complete, seller_type default brand)" && git push
