@@ -1,6 +1,519 @@
 table_name,column_name,data_type,is_nullable,column_default
-cd /Users/ni/Desktop/Malyte-mvp
-{ echo "table_name,column_name,data_type,is_nullable,column_default"; pbpaste; } > docs/db-schema.csv
-wc -l docs/db-schema.csv
-grep "^experts,seller_type\|^merchants,seller_type" docs/db-schema.csv
-git add docs/db-schema.csv && git commit -m "Regenerate db-schema.csv (complete, seller_type default brand)" && git push
+admin_audit_log,id,uuid,NO,gen_random_uuid()
+admin_audit_log,admin_user_id,uuid,NO,
+admin_audit_log,admin_email,text,YES,
+admin_audit_log,action,text,NO,
+admin_audit_log,target_type,text,YES,
+admin_audit_log,target_id,text,YES,
+admin_audit_log,metadata,jsonb,YES,'{}'::jsonb
+admin_audit_log,ip_address,text,YES,
+admin_audit_log,created_at,timestamp with time zone,YES,now()
+admin_daily_snapshots,id,uuid,NO,gen_random_uuid()
+admin_daily_snapshots,snapshot_date,date,NO,
+admin_daily_snapshots,total_merchants,integer,YES,0
+admin_daily_snapshots,active_merchants,integer,YES,0
+admin_daily_snapshots,total_customers,integer,YES,0
+admin_daily_snapshots,total_quiz_completions,integer,YES,0
+admin_daily_snapshots,total_checkins,integer,YES,0
+admin_daily_snapshots,total_attributed_orders,integer,YES,0
+admin_daily_snapshots,total_revenue_influenced,numeric,YES,0
+admin_daily_snapshots,new_customers,integer,YES,0
+admin_daily_snapshots,email_match_orders,integer,YES,0
+admin_daily_snapshots,product_match_orders,integer,YES,0
+admin_daily_snapshots,temporal_match_orders,integer,YES,0
+admin_daily_snapshots,unmatched_orders,integer,YES,0
+admin_daily_snapshots,webhook_success,integer,YES,0
+admin_daily_snapshots,webhook_failures,integer,YES,0
+admin_daily_snapshots,created_at,timestamp with time zone,YES,now()
+admin_users,id,uuid,NO,gen_random_uuid()
+admin_users,user_id,uuid,NO,
+admin_users,email,text,NO,
+admin_users,created_at,timestamp with time zone,YES,now()
+attributed_orders,id,uuid,NO,gen_random_uuid()
+attributed_orders,merchant_id,uuid,NO,
+attributed_orders,shopify_order_id,text,NO,
+attributed_orders,shopify_order_number,text,YES,
+attributed_orders,order_value,numeric,NO,0
+attributed_orders,order_currency,text,NO,'EUR'::text
+attributed_orders,order_paid_at,timestamp with time zone,NO,
+attributed_orders,customer_email,text,NO,
+attributed_orders,plan_token,text,YES,
+attributed_orders,quiz_completed_at,timestamp with time zone,YES,
+attributed_orders,plan_delivered_at,timestamp with time zone,YES,
+attributed_orders,attribution_type,text,NO,'direct'::text
+attributed_orders,recommendation_match,boolean,YES,false
+attributed_orders,matched_product_ids,jsonb,YES,'[]'::jsonb
+attributed_orders,matched_products_value,numeric,YES,0
+attributed_orders,days_since_quiz,integer,YES,
+attributed_orders,attribution_window,text,YES,
+attributed_orders,within_window,boolean,YES,true
+attributed_orders,created_at,timestamp with time zone,YES,now()
+attributed_orders,updated_at,timestamp with time zone,YES,now()
+attribution_errors,id,uuid,NO,gen_random_uuid()
+attribution_errors,merchant_id,uuid,YES,
+attribution_errors,shopify_domain,text,YES,
+attribution_errors,order_id,text,YES,
+attribution_errors,customer_email,text,YES,
+attribution_errors,error_type,text,YES,
+attribution_errors,error_message,text,YES,
+attribution_errors,raw_payload,jsonb,YES,
+attribution_errors,resolved,boolean,YES,false
+attribution_errors,created_at,timestamp with time zone,YES,now()
+brand_checkin_events,id,uuid,NO,gen_random_uuid()
+brand_checkin_events,brand_plan_id,uuid,NO,
+brand_checkin_events,customer_id,uuid,NO,
+brand_checkin_events,merchant_id,uuid,NO,
+brand_checkin_events,week_number,integer,NO,
+brand_checkin_events,answers,jsonb,NO,
+brand_checkin_events,adherence_score,numeric,YES,
+brand_checkin_events,improvement_score,numeric,YES,
+brand_checkin_events,had_reaction,boolean,YES,false
+brand_checkin_events,reaction_detail,text,YES,
+brand_checkin_events,comment,text,YES,
+brand_checkin_events,created_at,timestamp with time zone,YES,now()
+brand_plans,id,uuid,NO,gen_random_uuid()
+brand_plans,token,text,NO,encode(gen_random_bytes(32), 'hex'::text)
+brand_plans,merchant_id,uuid,YES,
+brand_plans,customer_id,uuid,YES,
+brand_plans,customer_email,text,YES,
+brand_plans,merchant_name,text,YES,
+brand_plans,merchant_slug,text,YES,
+brand_plans,category,text,YES,
+brand_plans,week_number,integer,YES,1
+brand_plans,plan_data,jsonb,NO,
+brand_plans,package_data,jsonb,YES,
+brand_plans,customer_summary,text,YES,
+brand_plans,status,text,YES,'active'::text
+brand_plans,created_at,timestamp with time zone,YES,now()
+brand_plans,updated_at,timestamp with time zone,YES,now()
+catalog_item_tags,id,uuid,NO,gen_random_uuid()
+catalog_item_tags,catalog_item_id,uuid,NO,
+catalog_item_tags,merchant_id,uuid,NO,
+catalog_item_tags,tag_type,text,NO,
+catalog_item_tags,tag_value,text,NO,
+catalog_item_tags,source,text,NO,'ai'::text
+catalog_item_tags,confidence_score,numeric,YES,
+catalog_item_tags,schema_version,text,YES,'v1'::text
+catalog_item_tags,created_at,timestamp with time zone,YES,now()
+catalog_item_tags,updated_at,timestamp with time zone,YES,now()
+catalog_items,id,uuid,NO,gen_random_uuid()
+catalog_items,merchant_id,uuid,NO,
+catalog_items,shopify_product_id,text,YES,
+catalog_items,shopify_product_ref,uuid,YES,
+catalog_items,title,text,NO,
+catalog_items,description,text,YES,
+catalog_items,price,numeric,YES,
+catalog_items,image_url,text,YES,
+catalog_items,shopify_url,text,YES,
+catalog_items,is_active,boolean,YES,true
+catalog_items,ai_tagged,boolean,YES,false
+catalog_items,manually_reviewed,boolean,YES,false
+catalog_items,tag_schema_version,text,YES,'v1'::text
+catalog_items,created_at,timestamp with time zone,YES,now()
+catalog_items,updated_at,timestamp with time zone,YES,now()
+checkin_events,id,uuid,NO,gen_random_uuid()
+checkin_events,customer_id,uuid,NO,
+checkin_events,merchant_id,uuid,NO,
+checkin_events,plan_id,uuid,NO,
+checkin_events,plan_version_id,uuid,NO,
+checkin_events,week_number,integer,NO,
+checkin_events,adherence_score,numeric,YES,
+checkin_events,satisfaction_score,integer,YES,
+checkin_events,improvement_score,integer,YES,
+checkin_events,symptoms,ARRAY,YES,
+checkin_events,improvements,ARRAY,YES,
+checkin_events,free_text,text,YES,
+checkin_events,triggered_plan_update,boolean,YES,false
+checkin_events,created_at,timestamp with time zone,YES,now()
+client_plans,id,uuid,NO,gen_random_uuid()
+client_plans,purchase_id,uuid,YES,
+client_plans,client_id,uuid,YES,
+client_plans,product_id,uuid,YES,
+client_plans,questionnaire_answers,jsonb,YES,
+client_plans,ai_generated_plan,jsonb,YES,
+client_plans,created_at,timestamp with time zone,YES,now()
+client_plans,current_month,integer,YES,1
+client_plans,month_start_date,timestamp with time zone,YES,now()
+client_plans,current_week,integer,YES,1
+client_plans,week_start_date,timestamp with time zone,YES,now()
+client_plans,total_weeks,integer,YES,4
+client_plans,tdee_calculated,integer,YES,
+client_plans,physical_data,jsonb,YES,
+customer_outcomes,id,uuid,NO,gen_random_uuid()
+customer_outcomes,customer_id,uuid,NO,
+customer_outcomes,merchant_id,uuid,NO,
+customer_outcomes,plan_id,uuid,NO,
+customer_outcomes,total_weeks,integer,YES,0
+customer_outcomes,total_checkins,integer,YES,0
+customer_outcomes,avg_adherence,numeric,YES,
+customer_outcomes,avg_satisfaction,numeric,YES,
+customer_outcomes,avg_improvement,numeric,YES,
+customer_outcomes,total_recommendations,integer,YES,0
+customer_outcomes,total_purchases,integer,YES,0
+customer_outcomes,total_revenue,numeric,YES,0
+customer_outcomes,completed,boolean,YES,false
+customer_outcomes,completed_at,timestamp with time zone,YES,
+customer_outcomes,updated_at,timestamp with time zone,YES,now()
+customer_profile_versions,id,uuid,NO,gen_random_uuid()
+customer_profile_versions,customer_id,uuid,NO,
+customer_profile_versions,merchant_id,uuid,NO,
+customer_profile_versions,version_number,integer,NO,
+customer_profile_versions,profile_snapshot,jsonb,NO,
+customer_profile_versions,updated_by,text,NO,
+customer_profile_versions,created_at,timestamp with time zone,YES,now()
+customer_profiles,id,uuid,NO,gen_random_uuid()
+customer_profiles,customer_id,uuid,NO,
+customer_profiles,merchant_id,uuid,NO,
+customer_profiles,skin_type,text,YES,
+customer_profiles,objectives,ARRAY,YES,
+customer_profiles,sensitivities,ARRAY,YES,
+customer_profiles,current_products,jsonb,YES,'[]'::jsonb
+customer_profiles,quiz_answers,jsonb,YES,'{}'::jsonb
+customer_profiles,version,integer,YES,1
+customer_profiles,updated_at,timestamp with time zone,YES,now()
+customer_profiles,recommendation_snapshot,jsonb,YES,
+customers,id,uuid,NO,gen_random_uuid()
+customers,email,text,YES,
+customers,created_at,timestamp with time zone,YES,now()
+event_stream,id,uuid,NO,gen_random_uuid()
+event_stream,customer_id,uuid,YES,
+event_stream,merchant_id,uuid,YES,
+event_stream,session_id,text,YES,
+event_stream,event_type,text,NO,
+event_stream,event_data,jsonb,YES,'{}'::jsonb
+event_stream,schema_version,text,YES,'v1'::text
+event_stream,created_at,timestamp with time zone,YES,now()
+experts,id,uuid,NO,
+experts,name,text,YES,
+experts,slug,text,YES,
+experts,category,text,YES,
+experts,methodology_name,text,YES,
+experts,methodology_description,text,YES,
+experts,results_description,text,YES,
+experts,materials_urls,ARRAY,YES,
+experts,is_published,boolean,YES,false
+experts,created_at,timestamp with time zone,YES,now()
+experts,avatar_url,text,YES,
+experts,tagline,text,YES,
+experts,bio,text,YES,
+experts,years_experience,integer,YES,
+experts,credentials,ARRAY,YES,
+experts,instagram_url,text,YES,
+experts,website_url,text,YES,
+experts,tiktok_url,text,YES,
+experts,youtube_url,text,YES,
+experts,linkedin_url,text,YES,
+experts,iban,text,YES,
+experts,method_pdfs_urls,ARRAY,YES,'{}'::text[]
+experts,method_questions_answers,jsonb,YES,'{}'::jsonb
+experts,allow_substitutions,text,YES,'always'::text
+experts,method_onboarding_completed,boolean,YES,false
+experts,short_bio,text,YES,
+experts,long_bio,text,YES,
+experts,method_structured,jsonb,YES,
+experts,method_interview_conversation,text,YES,
+experts,calorie_metodo,text,YES,'tdee_based'::text
+experts,calorie_deltas,jsonb,YES,
+experts,calorie_fixed,jsonb,YES,
+experts,seller_type,text,YES,'brand'::text
+experts,surname,text,YES,
+merchant_analytics,id,uuid,NO,gen_random_uuid()
+merchant_analytics,merchant_id,uuid,NO,
+merchant_analytics,period,text,NO,
+merchant_analytics,period_start,date,NO,
+merchant_analytics,active_customers,integer,YES,0
+merchant_analytics,completed_plans,integer,YES,0
+merchant_analytics,avg_adherence,numeric,YES,
+merchant_analytics,avg_satisfaction,numeric,YES,
+merchant_analytics,avg_improvement,numeric,YES,
+merchant_analytics,total_recommendations,integer,YES,0
+merchant_analytics,recommendation_clicks,integer,YES,0
+merchant_analytics,recommendation_purchases,integer,YES,0
+merchant_analytics,recommendation_conversion,numeric,YES,
+merchant_analytics,total_revenue_attributed,numeric,YES,0
+merchant_analytics,churned_customers,integer,YES,0
+merchant_analytics,at_risk_customers,integer,YES,0
+merchant_analytics,computed_at,timestamp with time zone,YES,now()
+merchant_customers,id,uuid,NO,gen_random_uuid()
+merchant_customers,merchant_id,uuid,NO,
+merchant_customers,customer_id,uuid,NO,
+merchant_customers,shopify_customer_id,text,YES,
+merchant_customers,acquired_at,timestamp with time zone,YES,now()
+merchant_customers,status,text,YES,'active'::text
+merchant_profiles,id,uuid,NO,gen_random_uuid()
+merchant_profiles,merchant_id,uuid,NO,
+merchant_profiles,philosophy,text,YES,
+merchant_profiles,hero_ingredients,text,YES,
+merchant_profiles,avoid_ingredients,text,YES,
+merchant_profiles,tone_of_voice,text,YES,
+merchant_profiles,target_skin_types,ARRAY,YES,
+merchant_profiles,routine_rules,jsonb,YES,'{}'::jsonb
+merchant_profiles,methodology_pdf_url,text,YES,
+merchant_profiles,method_structured,jsonb,YES,
+merchant_profiles,method_interview_conversation,text,YES,
+merchant_profiles,customer_questions,jsonb,YES,'[]'::jsonb
+merchant_profiles,created_at,timestamp with time zone,YES,now()
+merchant_profiles,updated_at,timestamp with time zone,YES,now()
+merchant_profiles,onboarding_step,integer,YES,1
+merchant_profiles,onboarding_completed,boolean,YES,false
+merchant_profiles,checkin_frequency_days,integer,YES,7
+merchant_profiles,max_journey_weeks,integer,YES,8
+merchant_profiles,abandonment_days,integer,YES,21
+merchant_profiles,reengage_email,boolean,YES,true
+merchant_profiles,after_completion,text,YES,'stop'::text
+merchant_profiles,program_duration_weeks,integer,YES,8
+merchant_profiles,checkin_questions_config,jsonb,YES,'[]'::jsonb
+merchant_profiles,prepurchase_questions,jsonb,NO,'[]'::jsonb
+merchant_settings,id,uuid,NO,gen_random_uuid()
+merchant_settings,merchant_id,uuid,NO,
+merchant_settings,default_language,text,YES,'en'::text
+merchant_settings,timezone,text,YES,'UTC'::text
+merchant_settings,plan_generation_mode,text,YES,'auto'::text
+merchant_settings,checkin_frequency,text,YES,'weekly'::text
+merchant_settings,recommendation_mode,text,YES,'ai'::text
+merchant_settings,branding_config,jsonb,YES,'{}'::jsonb
+merchant_settings,feature_flags,jsonb,YES,'{}'::jsonb
+merchant_settings,created_at,timestamp with time zone,YES,now()
+merchant_settings,updated_at,timestamp with time zone,YES,now()
+merchant_subscription_events,id,uuid,NO,gen_random_uuid()
+merchant_subscription_events,merchant_id,uuid,NO,
+merchant_subscription_events,event_type,text,NO,
+merchant_subscription_events,plan_from,text,YES,
+merchant_subscription_events,plan_to,text,YES,
+merchant_subscription_events,reason,text,YES,
+merchant_subscription_events,metadata,jsonb,YES,'{}'::jsonb
+merchant_subscription_events,created_at,timestamp with time zone,YES,now()
+merchants,id,uuid,NO,gen_random_uuid()
+merchants,expert_id,uuid,YES,
+merchants,seller_type,text,NO,'brand'::text
+merchants,name,text,YES,
+merchants,slug,text,YES,
+merchants,category,text,YES,
+merchants,is_published,boolean,YES,false
+merchants,shopify_shop_domain,text,YES,
+merchants,created_at,timestamp with time zone,YES,now()
+merchants,updated_at,timestamp with time zone,YES,now()
+plan_versions,id,uuid,NO,gen_random_uuid()
+plan_versions,plan_id,uuid,NO,
+plan_versions,customer_id,uuid,NO,
+plan_versions,merchant_id,uuid,NO,
+plan_versions,version_number,integer,NO,
+plan_versions,schema_version,text,YES,'v1'::text
+plan_versions,routine_snapshot,jsonb,NO,
+plan_versions,reason,text,NO,
+plan_versions,created_at,timestamp with time zone,YES,now()
+plans,id,uuid,NO,gen_random_uuid()
+plans,customer_id,uuid,NO,
+plans,merchant_id,uuid,NO,
+plans,status,text,YES,'active'::text
+plans,abandoned_at,timestamp with time zone,YES,
+plans,abandonment_reason,text,YES,
+plans,started_at,timestamp with time zone,YES,now()
+plans,completed_at,timestamp with time zone,YES,
+plans,current_week,integer,YES,1
+plans,current_version_id,uuid,YES,
+plans,created_at,timestamp with time zone,YES,now()
+plans,updated_at,timestamp with time zone,YES,now()
+product_checkin_questions,id,uuid,NO,gen_random_uuid()
+product_checkin_questions,product_id,uuid,YES,
+product_checkin_questions,question_text,text,NO,
+product_checkin_questions,question_type,text,NO,
+product_checkin_questions,options,jsonb,YES,
+product_checkin_questions,order_index,integer,YES,0
+product_checkin_questions,created_at,timestamp with time zone,YES,now()
+product_questions,id,uuid,NO,gen_random_uuid()
+product_questions,product_id,uuid,YES,
+product_questions,question_text,text,NO,
+product_questions,question_type,text,NO,
+product_questions,options,jsonb,YES,
+product_questions,order_index,integer,YES,0
+product_questions,created_at,timestamp with time zone,YES,now()
+product_questions,allow_multiple,boolean,YES,false
+products,id,uuid,NO,gen_random_uuid()
+products,expert_id,uuid,YES,
+products,title,text,YES,
+products,description,text,YES,
+products,price,numeric,YES,
+products,pricing_model,text,YES,
+products,ai_generated_content,jsonb,YES,
+products,is_published,boolean,YES,false
+products,created_at,timestamp with time zone,YES,now()
+products,duration_months,integer,YES,1
+products,progress_indicators,jsonb,YES,'[]'::jsonb
+products,lemonsqueezy_variant_id,text,YES,
+products,checkin_questions,jsonb,YES,
+products,auto_calibration,boolean,YES,true
+profiles,id,uuid,NO,
+profiles,name,text,YES,
+profiles,avatar_url,text,YES,
+profiles,created_at,timestamp with time zone,YES,now()
+profiles,birth_date,date,YES,
+profiles,sex,text,YES,
+profiles,role,text,YES,'client'::text
+profiles,country,text,YES,
+profiles,consent_terms,boolean,YES,false
+profiles,consent_health,boolean,YES,false
+profiles,consent_marketing,boolean,YES,false
+profiles,consent_timestamp,timestamp with time zone,YES,
+purchases,id,uuid,NO,gen_random_uuid()
+purchases,client_id,uuid,YES,
+purchases,product_id,uuid,YES,
+purchases,payment_id,text,YES,
+purchases,amount,numeric,YES,
+purchases,created_at,timestamp with time zone,YES,now()
+purchases,stripe_payment_id,text,YES,
+recommendation_events,id,uuid,NO,gen_random_uuid()
+recommendation_events,customer_id,uuid,NO,
+recommendation_events,merchant_id,uuid,NO,
+recommendation_events,catalog_item_id,uuid,NO,
+recommendation_events,plan_version_id,uuid,NO,
+recommendation_events,recommended_at,timestamp with time zone,YES,now()
+recommendation_events,context,text,YES,
+recommendation_events,clicked,boolean,YES,false
+recommendation_events,clicked_at,timestamp with time zone,YES,
+recommendation_events,purchased,boolean,YES,false
+recommendation_events,purchased_at,timestamp with time zone,YES,
+recommendation_events,purchase_value,numeric,YES,
+recommendation_events,started_using,boolean,YES,false
+recommendation_events,started_using_at,timestamp with time zone,YES,
+recommendation_events,still_using,boolean,YES,
+recommendation_events,stopped_using,boolean,YES,false
+recommendation_events,stopped_using_at,timestamp with time zone,YES,
+recommendation_events,stopped_reason,text,YES,
+recommendation_events,created_at,timestamp with time zone,YES,now()
+recommendation_events,updated_at,timestamp with time zone,YES,now()
+recommendation_packages,id,uuid,NO,gen_random_uuid()
+recommendation_packages,customer_id,uuid,YES,
+recommendation_packages,merchant_id,uuid,YES,
+recommendation_packages,plan_id,uuid,YES,
+recommendation_packages,plan_version_id,uuid,YES,
+recommendation_packages,package_type,text,NO,'routine'::text
+recommendation_packages,package_name,text,NO,
+recommendation_packages,package_stage,integer,NO,1
+recommendation_packages,package_items,jsonb,NO,'[]'::jsonb
+recommendation_packages,total_price,numeric,YES,
+recommendation_packages,cart_url,text,YES,
+recommendation_packages,viewed,boolean,YES,false
+recommendation_packages,viewed_at,timestamp with time zone,YES,
+recommendation_packages,accepted,boolean,YES,
+recommendation_packages,rejected,boolean,YES,false
+recommendation_packages,rejected_reason,text,YES,
+recommendation_packages,added_to_cart,boolean,YES,false
+recommendation_packages,added_to_cart_at,timestamp with time zone,YES,
+recommendation_packages,purchased,boolean,YES,false
+recommendation_packages,purchased_at,timestamp with time zone,YES,
+recommendation_packages,purchase_value,numeric,YES,
+recommendation_packages,started_at,timestamp with time zone,YES,
+recommendation_packages,completed_at,timestamp with time zone,YES,
+recommendation_packages,graduated_at,timestamp with time zone,YES,
+recommendation_packages,created_at,timestamp with time zone,YES,now()
+reviews,id,uuid,NO,gen_random_uuid()
+reviews,expert_id,uuid,NO,
+reviews,client_id,uuid,NO,
+reviews,purchase_id,uuid,NO,
+reviews,product_id,uuid,NO,
+reviews,rating,integer,NO,
+reviews,comment,text,YES,
+reviews,created_at,timestamp with time zone,YES,now()
+scheduled_checkins,id,uuid,NO,gen_random_uuid()
+scheduled_checkins,customer_id,uuid,YES,
+scheduled_checkins,merchant_id,uuid,YES,
+scheduled_checkins,plan_id,uuid,YES,
+scheduled_checkins,plan_version_id,uuid,YES,
+scheduled_checkins,brand_plan_id,uuid,YES,
+scheduled_checkins,week_number,integer,NO,1
+scheduled_checkins,checkin_token,text,NO,encode(gen_random_bytes(32), 'hex'::text)
+scheduled_checkins,scheduled_for,timestamp with time zone,YES,
+scheduled_checkins,completed_at,timestamp with time zone,YES,
+scheduled_checkins,status,text,NO,'pending'::text
+scheduled_checkins,questions_template,jsonb,NO,'[]'::jsonb
+scheduled_checkins,created_at,timestamp with time zone,YES,now()
+scheduled_checkins,reminder_sent_at,timestamp with time zone,YES,
+scheduled_checkins,reminder_count,integer,YES,0
+shopify_brand_products,id,uuid,NO,gen_random_uuid()
+shopify_brand_products,shop_domain,text,NO,
+shopify_brand_products,name,text,NO,
+shopify_brand_products,category,text,YES,
+shopify_brand_products,when_to_use,text,YES,
+shopify_brand_products,benefits,text,YES,
+shopify_brand_products,url,text,YES,
+shopify_brand_products,dosage,text,YES,
+shopify_brand_products,suitable_for,text,YES,
+shopify_brand_products,not_suitable_for,text,YES,
+shopify_brand_products,tags,text,YES,
+shopify_brand_products,created_at,timestamp with time zone,YES,now()
+shopify_checkins,id,uuid,NO,gen_random_uuid()
+shopify_checkins,order_id,uuid,YES,
+shopify_checkins,week_number,integer,NO,
+shopify_checkins,answers,jsonb,YES,
+shopify_checkins,created_at,timestamp with time zone,YES,now()
+shopify_installations,id,uuid,NO,gen_random_uuid()
+shopify_installations,shop_domain,text,NO,
+shopify_installations,access_token,text,NO,
+shopify_installations,created_at,timestamp with time zone,YES,now()
+shopify_installations,updated_at,timestamp with time zone,YES,now()
+shopify_installations,expert_id,uuid,YES,
+shopify_installations,subscription_status,text,YES,'pending'::text
+shopify_installations,subscription_id,text,YES,
+shopify_installations,refresh_token,text,YES,
+shopify_installations,token_expires_at,timestamp with time zone,YES,
+shopify_installations,shop_name,text,YES,
+shopify_oauth_states,id,uuid,NO,gen_random_uuid()
+shopify_oauth_states,state,text,NO,
+shopify_oauth_states,expert_id,uuid,YES,
+shopify_oauth_states,shop_domain,text,YES,
+shopify_oauth_states,created_at,timestamp with time zone,YES,now()
+shopify_orders,id,uuid,NO,gen_random_uuid()
+shopify_orders,shop_domain,text,NO,
+shopify_orders,shopify_order_id,text,NO,
+shopify_orders,customer_email,text,YES,
+shopify_orders,customer_name,text,YES,
+shopify_orders,status,text,YES,'pending'::text
+shopify_orders,created_at,timestamp with time zone,YES,now()
+shopify_orders,shopify_product_id,text,YES,
+shopify_orders,buyer_id,uuid,YES,
+shopify_orders,token,text,YES,encode(gen_random_bytes(32), 'hex'::text)
+shopify_orders,questionnaire_answers,jsonb,YES,
+shopify_orders,shop,text,YES,
+shopify_orders,buyer_email,text,YES,
+shopify_orders,followup_plan_id,uuid,YES,
+shopify_orders,followup_sent_at,timestamp with time zone,YES,
+shopify_orders,merchant_id,uuid,YES,
+shopify_plans,id,uuid,NO,gen_random_uuid()
+shopify_plans,order_id,uuid,YES,
+shopify_plans,week_number,integer,YES,1
+shopify_plans,plan_data,jsonb,YES,
+shopify_plans,generated_at,timestamp with time zone,YES,now()
+shopify_products,id,uuid,NO,gen_random_uuid()
+shopify_products,shop,text,NO,
+shopify_products,shopify_product_id,text,NO,
+shopify_products,shopify_product_title,text,YES,
+shopify_products,pdf_url,text,YES,
+shopify_products,pdf_path,text,YES,
+shopify_products,questions,jsonb,YES,'[]'::jsonb
+shopify_products,plan_type,text,YES,'weekly'::text
+shopify_products,duration_weeks,integer,YES,4
+shopify_products,created_at,timestamp with time zone,YES,now()
+shopify_products,updated_at,timestamp with time zone,YES,now()
+shopify_products,shopify_variant_id,text,YES,
+shopify_products,price,numeric,YES,
+shopify_products,image_url,text,YES,
+shopify_products,product_url,text,YES,
+shopify_products,archived_at,timestamp with time zone,YES,
+webhook_logs,id,uuid,NO,gen_random_uuid()
+webhook_logs,merchant_id,uuid,YES,
+webhook_logs,shopify_domain,text,YES,
+webhook_logs,topic,text,NO,
+webhook_logs,status,text,NO,
+webhook_logs,error_message,text,YES,
+webhook_logs,payload_size_bytes,integer,YES,
+webhook_logs,processing_time_ms,integer,YES,
+webhook_logs,received_at,timestamp with time zone,YES,now()
+weekly_checkins,id,uuid,NO,gen_random_uuid()
+weekly_checkins,purchase_id,uuid,YES,
+weekly_checkins,client_id,uuid,YES,
+weekly_checkins,week_number,integer,NO,
+weekly_checkins,answers,jsonb,YES,
+weekly_checkins,created_at,timestamp with time zone,YES,now()
+weekly_checkins,indicator_scores,jsonb,YES,'{}'::jsonb
+weekly_checkins,free_note,text,YES,
