@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
+import { waitUntil } from '@vercel/functions'
 import { getValidAccessToken } from '@/lib/shopify-token'
+import { syncAndTagProducts } from '@/lib/shopify/sync-and-tag'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,7 +53,6 @@ async function establishSession(
   request: NextRequest
 ): Promise<boolean> {
   try {
-    // Recupera l'email dell'utente
     const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId)
     const email = userData?.user?.email
     if (!email) {
@@ -59,7 +60,6 @@ async function establishSession(
       return false
     }
 
-    // Genera un magic link → contiene il token OTP per verifyOtp
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email,
@@ -70,7 +70,6 @@ async function establishSession(
     }
     const hashedToken = linkData.properties.hashed_token
 
-    // Client SSR che scrive i cookie di sessione sulla response
     const supabaseSSR = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -88,7 +87,6 @@ async function establishSession(
       }
     )
 
-    // verifyOtp stabilisce la sessione e setta i cookie nativamente
     const { error: verifyError } = await supabaseSSR.auth.verifyOtp({
       type: 'magiclink',
       token_hash: hashedToken,
@@ -116,7 +114,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 })
   }
 
-  // Recupera installazione (expert_id = utente auth)
   const { data: installation } = await supabaseAdmin
     .from('shopify_installations')
     .select('expert_id')
@@ -128,7 +125,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${APP_URL}/shopify?error=not_installed`)
   }
 
-  // Token sempre valido tramite helper (refresh automatico se scaduto)
   let accessToken: string
   try {
     accessToken = await getValidAccessToken(shop)
@@ -137,7 +133,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${APP_URL}/shopify?error=not_installed`)
   }
 
-  // Verifica che la subscription sia attiva
   const subscription = await getSubscriptionStatus(shop, accessToken)
 
   if (subscription) {
@@ -150,24 +145,45 @@ export async function GET(request: NextRequest) {
       .eq('shop_domain', shop)
     console.log('[BillingConfirm] ✅ Subscription active:', subscription)
 
-    // Billing confermato → avanza l'onboarding oltre lo Step 2 (Catalog),
-    // così il rientro da /shopify non riporta mai al bottone Connect (loop OAuth).
+    // Billing confermato → avanza l'onboarding oltre lo Step 1 (Identity),
+    // MAI oltre lo step 2 (Catalog): il merchant deve vedere lo step Catalog,
+    // anche se il sync automatico gira già in background, perché è lì che
+    // la UI mostra lo stato "importazione in corso" / il catalogo popolato.
+    // (Prima qui si saltava direttamente a step 3/Intake: bug gemello di
+    // quello corretto il 27/07 in onboarding/page.tsx, stessa causa.)
     if (installation.expert_id) {
       const { data: mp } = await supabaseAdmin
         .from('merchant_profiles')
         .select('onboarding_step, onboarding_completed')
         .eq('merchant_id', installation.expert_id)
         .maybeSingle()
-      if (mp && !mp.onboarding_completed && (mp.onboarding_step ?? 1) < 3) {
+      if (mp && !mp.onboarding_completed && (mp.onboarding_step ?? 1) < 2) {
         await supabaseAdmin
           .from('merchant_profiles')
-          .update({ onboarding_step: 3 })
+          .update({ onboarding_step: 2 })
           .eq('merchant_id', installation.expert_id)
-        console.log('[BillingConfirm] onboarding_step -> 3 per merchant:', installation.expert_id)
+        console.log('[BillingConfirm] onboarding_step -> 2 per merchant:', installation.expert_id)
       }
+
+      // Trigger automatico: import + tagging AI dei prodotti Shopify,
+      // in background, senza bloccare il redirect. Se fallisce, non deve
+      // mai impedire il proseguimento dell'onboarding: il pulsante
+      // "Sync products" resta disponibile come recovery manuale.
+      waitUntil(
+        syncAndTagProducts(installation.expert_id, shop)
+          .then((result) => {
+            if (!result.ok) {
+              console.error('[BillingConfirm] auto-sync failed for shop:', shop, result.error)
+            } else {
+              console.log('[BillingConfirm] auto-sync done for shop:', shop, `tagged=${result.tagged} failed=${result.failed} total=${result.total}`)
+            }
+          })
+          .catch((err) => {
+            console.error('[BillingConfirm] auto-sync threw for shop:', shop, err)
+          })
+      )
     }
 
-    // Costruisci la response di redirect a /shopify e stabilisci la sessione su di essa
     const response = NextResponse.redirect(
       `${APP_URL}/shopify?shop=${shop}&installed=true&billing=confirmed`
     )
