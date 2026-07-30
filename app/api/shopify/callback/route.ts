@@ -231,11 +231,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to get access token' }, { status: 400 })
   }
 
+  // L'identita di uno shop si stabilisce alla PRIMA installazione.
+  // Un secondo giro di OAuth deve aggiornare i token, non riscrivere chi e il merchant.
+  const { data: existingInstall } = await supabaseAdmin
+    .from('shopify_installations')
+    .select('expert_id, subscription_status')
+    .eq('shop_domain', shop)
+    .maybeSingle()
+
+  // Precedenza: sessione autenticata > identita gia registrata > utente sintetico.
   if (!expertId) {
-    const newUserId = await ensureUserForShop(shop)
-    if (newUserId) {
-      expertId = newUserId
-      console.log('[Callback] expertId auto-creato da shop:', expertId)
+    if (existingInstall?.expert_id) {
+      expertId = existingInstall.expert_id
+      console.log('[Callback] expert_id preservato da installazione esistente:', expertId)
+    } else {
+      const newUserId = await ensureUserForShop(shop)
+      if (newUserId) {
+        expertId = newUserId
+        console.log('[Callback] expertId auto-creato da shop:', expertId)
+      }
     }
   }
 
@@ -247,8 +261,9 @@ export async function GET(request: NextRequest) {
     refresh_token,
     token_expires_at,
     expert_id: expertId,
-    subscription_status: 'pending',
   }
+  // Non retrocedere a pending un abbonamento gia confermato su un re-auth.
+  if (!existingInstall) installPayload.subscription_status = 'pending'
   // Solo se risolto: un null sovrascriverebbe un nome buono a ogni reinstall.
   if (shopName) installPayload.shop_name = shopName
 
