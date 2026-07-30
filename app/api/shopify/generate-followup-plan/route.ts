@@ -2,12 +2,19 @@ import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
 
+// La generazione del piano chiama Anthropic: senza questo la funzione viene
+// troncata prima di rispondere e il cliente vede "Load failed" pur avendo
+// il piano salvato a DB.
+export const maxDuration = 60
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
 
 const CHECKIN_TEMPLATES: Record<string, any[]> = {
   Skincare: [
@@ -53,7 +60,30 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
-    if (order.followup_plan_id) return NextResponse.json({ error: 'Plan already generated' }, { status: 400 })
+
+    // Piano già generato: NON è un errore. Se la risposta precedente si è persa
+    // (timeout, rete mobile), il cliente ripreme il bottone e deve arrivare
+    // alla sua routine, non sbattere contro un 400.
+    if (order.followup_plan_id) {
+      const { data: existingPlan } = await supabaseAdmin
+        .from('brand_plans')
+        .select('token')
+        .eq('id', order.followup_plan_id)
+        .maybeSingle()
+
+      if (existingPlan?.token) {
+        console.log('[FollowupPlan] piano già esistente, restituito senza rigenerare:', order.followup_plan_id)
+        return NextResponse.json({
+          ok: true,
+          plan_token: existingPlan.token,
+          plan_url: `${APP_URL}/routine/${existingPlan.token}`,
+          already_generated: true,
+        })
+      }
+
+      console.error('[FollowupPlan] followup_plan_id presente ma brand_plan introvabile:', order.followup_plan_id)
+      return NextResponse.json({ error: 'Plan already generated' }, { status: 400 })
+    }
 
     const shop = order.shop_domain
 
@@ -64,13 +94,40 @@ export async function POST(request: Request) {
       .eq('shop_domain', shop)
       .maybeSingle()
 
-    const merchant_id = installation?.expert_id || order.merchant_id
-    if (!merchant_id) return NextResponse.json({ error: 'Merchant not found' }, { status: 404 })
+    // order.merchant_id è l'identità CONGELATA al momento dell'ordine ed è quella
+    // autorevole per il piano di questo ordine. installation.expert_id è mutevole
+    // (riscritto a ogni nuovo giro di OAuth) e vale solo come fallback.
+    const candidateIds: string[] = []
+    for (const c of [order.merchant_id, installation?.expert_id]) {
+      if (c && !candidateIds.includes(c)) candidateIds.push(c)
+    }
 
-    const { data: merchant } = await supabaseAdmin
-      .from('merchants').select('*').eq('id', merchant_id).maybeSingle()
+    if (candidateIds.length === 0) {
+      console.error('[FollowupPlan] nessun merchant_id risolvibile per shop:', shop, 'order:', order_token)
+      return NextResponse.json({ error: 'Merchant not found' }, { status: 404 })
+    }
 
-    if (!merchant) {
+    let merchant: any = null
+    let merchant_id: string | null = null
+
+    for (const candidate of candidateIds) {
+      const { data, error } = await supabaseAdmin
+        .from('merchants').select('*').eq('id', candidate).maybeSingle()
+
+      if (error) {
+        console.error('[FollowupPlan] errore query merchants per', candidate, error.message)
+        continue
+      }
+      if (data) {
+        merchant = data
+        merchant_id = candidate
+        break
+      }
+      console.warn('[FollowupPlan] nessuna riga merchants per candidato:', candidate)
+    }
+
+    if (!merchant || !merchant_id) {
+      console.error('[FollowupPlan] merchant introvabile. shop:', shop, 'candidati:', candidateIds.join(', '))
       return NextResponse.json({ error: 'Merchant not found' }, { status: 404 })
     }
 
@@ -252,8 +309,7 @@ Return exactly this JSON:
       .single()
 
     const planToken = savedPlan?.token
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
-    const planUrl = planToken ? `${appUrl}/routine/${planToken}` : null
+    const planUrl = planToken ? `${APP_URL}/routine/${planToken}` : null
 
     // Crea scheduled_checkin automatico
     if (savedPlan?.id) {
