@@ -369,7 +369,7 @@ function StepRow({
                 onClick={() => setRunning(true)}
                 style={pillStyle(accent, '#fff', accent)}
               >
-                {remaining < seconds ? `Resume · ${formatCountdown(remaining)}` : `Start · ${formatDuration(seconds)}`}
+                {remaining < seconds ? `Resume · ${formatCountdown(remaining)}` : `Start · ${formatCountdown(seconds)}`}
               </button>
               {remaining < seconds && (
                 <button onClick={reset} style={pillStyle('#fff', '#8E8E93', '#E5E5EA')}>
