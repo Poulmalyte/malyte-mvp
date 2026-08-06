@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { formatDuration, resolveStepDuration } from '@/lib/step-duration'
+import { extractDurationFromText, formatDuration, resolveStepDuration } from '@/lib/step-duration'
 
 type RoutineItem = {
   product_id?: string
@@ -70,6 +70,27 @@ export default function RoutineCards({
     [token]
   )
 
+  /**
+   * "Do it again": toglie il completamento di oggi. Il timer da solo non
+   * basta — lo step resterebbe verde e il conteggio invariato.
+   */
+  const markUndo = useCallback(
+    (period: Period, stepNumber: number) => {
+      const k = keyOf(period, stepNumber)
+      setCompleted((prev) => {
+        const next = new Set(prev)
+        next.delete(k)
+        return next
+      })
+      fetch('/api/step-completion', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, period, stepNumber }),
+      }).catch(() => {})
+    },
+    [token]
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {morningRoutine.length > 0 && (
@@ -84,6 +105,7 @@ export default function RoutineCards({
           completed={completed}
           loaded={loaded}
           onComplete={markComplete}
+          onUndo={markUndo}
         />
       )}
       {eveningRoutine.length > 0 && (
@@ -98,6 +120,7 @@ export default function RoutineCards({
           completed={completed}
           loaded={loaded}
           onComplete={markComplete}
+          onUndo={markUndo}
         />
       )}
     </div>
@@ -115,6 +138,7 @@ function Card({
   completed,
   loaded,
   onComplete,
+  onUndo,
 }: {
   period: Period
   label: string
@@ -126,6 +150,7 @@ function Card({
   completed: Set<string>
   loaded: boolean
   onComplete: (period: Period, stepNumber: number) => void
+  onUndo: (period: Period, stepNumber: number) => void
 }) {
   const doneCount = items.filter((it) => completed.has(keyOf(period, it.step_number))).length
   const allDone = loaded && doneCount === items.length
@@ -181,6 +206,7 @@ function Card({
               isDone={completed.has(keyOf(period, item.step_number))}
               isNext={nextStep?.step_number === item.step_number}
               onComplete={onComplete}
+              onUndo={onUndo}
             />
           ))}
         </div>
@@ -197,6 +223,7 @@ function StepRow({
   isDone,
   isNext,
   onComplete,
+  onUndo,
 }: {
   item: RoutineItem
   period: Period
@@ -205,14 +232,17 @@ function StepRow({
   isDone: boolean
   isNext: boolean
   onComplete: (period: Period, stepNumber: number) => void
+  onUndo: (period: Period, stepNumber: number) => void
 }) {
   // La durata non e' ancora nel piano: la catena scende su categoria ->
   // parola chiave nel titolo -> default (lib/step-duration.ts).
-  const { seconds } = resolveStepDuration({
+  const fromText = extractDurationFromText(item.instructions)
+  const { seconds: estimated } = resolveStepDuration({
     duration_seconds: null,
     category: null,
     product_title: item.product_title,
   })
+  const seconds = fromText ?? estimated
 
   const [remaining, setRemaining] = useState(seconds)
   const [running, setRunning] = useState(false)
@@ -303,7 +333,7 @@ function StepRow({
             <>
               <span style={{ fontSize: 12, color: '#0F9D58', fontWeight: 600 }}>Completed today</span>
               <button
-                onClick={reset}
+                onClick={() => { reset(); onUndo(period, item.step_number) }}
                 style={{
                   fontSize: 11, color: '#8E8E93', background: 'transparent',
                   border: 'none', cursor: 'pointer', padding: '4px 2px', textDecoration: 'underline',

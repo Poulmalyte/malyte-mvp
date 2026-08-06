@@ -100,3 +100,51 @@ export function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds} sec`
   return `${Math.round(seconds / 60)} min`
 }
+
+/**
+ * Durata dichiarata nel testo delle istruzioni.
+ *
+ * Le istruzioni sono generate dall'AI e possono nominare un tempo esplicito
+ * ("give it at least 60 to 90 seconds"), mentre la stima per categoria
+ * guarda solo il titolo del prodotto: i due valori divergevano in pagina —
+ * il cliente leggeva 60-90 secondi e il timer ne contava 30.
+ *
+ * Con un intervallo si prende il massimo: sotto il limite alto lo step non
+ * e' finito. Se non c'e' nulla di riconoscibile la funzione non inventa e
+ * torna null, lasciando la parola alla catena esistente.
+ *
+ * Limite noto: solo inglese, la lingua in cui il prompt genera oggi.
+ */
+export function extractDurationFromText(text?: string | null): number | null {
+  if (!text) return null
+
+  // "60 to 90 seconds", "60-90 seconds", "2 to 3 minutes"
+  const range = text.match(/(\d+)\s*(?:to|-|–|—)\s*(\d+)\s*(second|sec|minute|min)/i)
+  if (range) {
+    const high = parseInt(range[2], 10)
+    const unit = range[3].toLowerCase()
+    const seconds = unit.startsWith('min') ? high * 60 : high
+    return sane(seconds)
+  }
+
+  // "60 seconds", "at least 30 seconds", "1 minute", "a full minute"
+  const single = text.match(/(\d+)\s*(second|sec|minute|min)/i)
+  if (single) {
+    const value = parseInt(single[1], 10)
+    const unit = single[2].toLowerCase()
+    const seconds = unit.startsWith('min') ? value * 60 : value
+    return sane(seconds)
+  }
+
+  return null
+}
+
+/**
+ * Un timer da 3 secondi o da mezz'ora non e' utilizzabile: se il testo
+ * produce un valore fuori scala e' quasi certo che il numero trovato non
+ * fosse una durata (una percentuale, un'eta', un dosaggio).
+ */
+function sane(seconds: number): number | null {
+  if (!Number.isFinite(seconds) || seconds < 5 || seconds > 900) return null
+  return seconds
+}

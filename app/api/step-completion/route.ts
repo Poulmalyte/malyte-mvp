@@ -79,3 +79,33 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true })
 }
+
+/**
+ * Rimuove il completamento di oggi per uno step: e' il "Do it again" della
+ * card. Cancella solo la riga del giorno corrente — la storia dei giorni
+ * precedenti resta, serve a capire l'aderenza nel tempo.
+ */
+export async function DELETE(request: NextRequest) {
+  const body = await request.json().catch(() => null)
+  const token = body?.token
+  const period = body?.period
+  const stepNumber = body?.stepNumber
+
+  if (!token || (period !== 'morning' && period !== 'evening') || typeof stepNumber !== 'number') {
+    return NextResponse.json({ error: 'parametri non validi' }, { status: 400 })
+  }
+
+  const { error } = await supabaseAdmin
+    .from('step_completions')
+    .delete()
+    .eq('token', token)
+    .eq('completed_on', today())
+    .eq('period', period)
+    .eq('step_number', stepNumber)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
+}
