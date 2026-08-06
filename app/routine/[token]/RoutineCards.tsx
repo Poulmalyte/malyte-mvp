@@ -93,6 +93,7 @@ export default function RoutineCards({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <DoneKeyframes />
       {morningRoutine.length > 0 && (
         <Card
           period="morning"
@@ -331,6 +332,14 @@ function StepRow({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
           {isDone ? (
             <>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                background: '#0F9D58', color: '#fff', fontSize: 12, fontWeight: 800,
+                animation: 'malyteStepDone 420ms cubic-bezier(.2,.9,.3,1.2) both',
+              }}>
+                ✓
+              </span>
               <span style={{ fontSize: 12, color: '#0F9D58', fontWeight: 600 }}>Completed today</span>
               <button
                 onClick={() => { reset(); onUndo(period, item.step_number) }}
@@ -425,6 +434,28 @@ function TimerRing({ remaining, total, accent }: { remaining: number; total: num
     </div>
   )
 }
+
+
+/**
+ * L'unica animazione della pagina: la spunta che chiude uno step. Iniettata
+ * qui e non in un foglio globale perche' vive solo dentro questa card.
+ * prefers-reduced-motion rispettato: chi lo ha attivo vede la spunta
+ * comparire senza scatto.
+ */
+const DoneKeyframes = () => (
+  <style>{`
+    @keyframes malyteStepDone {
+      0%   { transform: scale(0.4); opacity: 0 }
+      60%  { transform: scale(1.12); opacity: 1 }
+      100% { transform: scale(1); opacity: 1 }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      @keyframes malyteStepDone {
+        0%, 100% { transform: none; opacity: 1 }
+      }
+    }
+  `}</style>
+)
 
 function pillStyle(background: string, color: string, borderColor: string) {
   return {
