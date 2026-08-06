@@ -344,12 +344,7 @@ function StepRow({
             </>
           ) : running ? (
             <>
-              <span style={{
-                fontSize: 15, fontWeight: 800, color: accent, fontVariantNumeric: 'tabular-nums',
-                minWidth: 52, fontFamily: "'Satoshi', sans-serif",
-              }}>
-                {formatCountdown(remaining)}
-              </span>
+              <TimerRing remaining={remaining} total={seconds} accent={accent} />
               <button
                 onClick={() => setRunning(false)}
                 style={pillStyle('#fff', '#1C1C1E', '#E5E5EA')}
@@ -379,6 +374,53 @@ function StepRow({
             </>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+
+/**
+ * Anello di avanzamento attorno al countdown. Il numero da solo non
+ * comunica quanto manca: l'anello che si svuota da' la percezione fisica
+ * dell'attesa senza che il cliente debba fare il calcolo.
+ *
+ * strokeDashoffset animato via CSS transition, non con un secondo timer:
+ * il tick e' gia' quello del countdown, un'animazione separata andrebbe
+ * fuori sincrono.
+ */
+function TimerRing({ remaining, total, accent }: { remaining: number; total: number; accent: string }) {
+  const size = 46
+  const stroke = 3
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const progress = total > 0 ? remaining / total : 0
+
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none" stroke="#E5E5EA" strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none" stroke={accent} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - progress)}
+          style={{ transition: 'stroke-dashoffset 1s linear' }}
+        />
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{
+          fontSize: 12, fontWeight: 800, color: accent,
+          fontVariantNumeric: 'tabular-nums', fontFamily: "'Satoshi', sans-serif",
+        }}>
+          {formatCountdown(remaining)}
+        </span>
       </div>
     </div>
   )
