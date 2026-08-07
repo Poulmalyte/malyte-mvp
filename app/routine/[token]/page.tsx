@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import RoutineCards from './RoutineCards'
+import { fetchShopLogo } from '@/lib/shop-logo'
 
 // TEMPORANEO: costante fissa finche il totale settimane non diventa dinamico
 const TEMP_TOTAL_WEEKS = 12
@@ -25,6 +26,55 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
   const pkg = brandPlan.package_data
   const brandName = brandPlan.merchant_name || 'Your Brand'
   const category = brandPlan.category || 'Skincare'
+
+  // --- Logo del brand -------------------------------------------------
+  // Letto dalla Storefront API in tokenless access e messo in cache su
+  // shopify_installations. Se manca (merchant headless, brand asset non
+  // compilata, canale bloccato) si ricade sul wordmark testuale.
+  const { data: order } = await supabaseAdmin
+    .from('shopify_orders')
+    .select('shop_domain, shop')
+    .eq('followup_plan_id', brandPlan.id)
+    .maybeSingle()
+
+  const shopDomain = order?.shop_domain || order?.shop || null
+
+  let logo: { url: string; width: number | null; height: number | null } | null = null
+
+  if (shopDomain) {
+    const { data: install } = await supabaseAdmin
+      .from('shopify_installations')
+      .select('shop_logo_url, shop_logo_width, shop_logo_height, shop_logo_checked_at')
+      .eq('shop_domain', shopDomain)
+      .maybeSingle()
+
+    const STALE_MS = 7 * 24 * 60 * 60 * 1000
+    const isStale =
+      !install?.shop_logo_checked_at ||
+      Date.now() - new Date(install.shop_logo_checked_at).getTime() > STALE_MS
+
+    if (install?.shop_logo_url && !isStale) {
+      logo = {
+        url: install.shop_logo_url,
+        width: install.shop_logo_width,
+        height: install.shop_logo_height,
+      }
+    } else if (isStale) {
+      const fresh = await fetchShopLogo(shopDomain)
+      logo = fresh
+      // cache anche il null: evita di richiamare Shopify a ogni render
+      await supabaseAdmin
+        .from('shopify_installations')
+        .update({
+          shop_logo_url: fresh?.url ?? null,
+          shop_logo_width: fresh?.width ?? null,
+          shop_logo_height: fresh?.height ?? null,
+          shop_logo_checked_at: new Date().toISOString(),
+        })
+        .eq('shop_domain', shopDomain)
+    }
+  }
+  // --------------------------------------------------------------------
 
   // Nessun dato reale di completamento giornaliero esiste ancora nel sistema.
   // Questo componente mostra solo il numero di step previsti oggi (dato reale).
@@ -56,8 +106,18 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
     <div style={{ minHeight: '100vh', background: '#F5F7FA', fontFamily: "'Inter', sans-serif" }}>
       {/* Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid #E8EDF8', padding: '0 24px' }}>
-        <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 0' }}>
-          <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 22, color: '#0F172A' }}>{brandName}</span>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 0', display: 'flex', alignItems: 'center', minHeight: 32 }}>
+          {logo?.url ? (
+            <img
+              src={`${logo.url}${logo.url.includes('?') ? '&' : '?'}width=240`}
+              alt={brandName}
+              height={28}
+              width={logo.width && logo.height ? Math.round(28 * (logo.width / logo.height)) : undefined}
+              style={{ height: 28, width: 'auto', maxWidth: 180, display: 'block', objectFit: 'contain' }}
+            />
+          ) : (
+            <span style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 800, fontSize: 22, color: '#0F172A' }}>{brandName}</span>
+          )}
         </div>
       </div>
 
