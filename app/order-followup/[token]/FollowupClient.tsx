@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Props {
@@ -22,6 +22,21 @@ export default function FollowupClient({ order, merchant, shopifyProducts, merch
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [progress, setProgress] = useState(0)
+
+  /**
+   * La generazione dura qualche secondo e non espone avanzamento reale.
+   * La barra sale con incrementi decrescenti e si ferma al 90%: mostra che
+   * qualcosa sta succedendo senza promettere un completamento che non
+   * controlliamo. Il 100% arriva solo col redirect alla routine.
+   */
+  useEffect(() => {
+    if (!loading) { setProgress(0); return }
+    const id = setInterval(() => {
+      setProgress((prev) => (prev >= 90 ? prev : prev + Math.max(0.6, (90 - prev) * 0.06)))
+    }, 180)
+    return () => clearInterval(id)
+  }, [loading])
 
   const brandName = merchant?.name || order.shop_domain?.replace('.myshopify.com', '') || 'your brand'
   const productNames = shopifyProducts.map(p => p.shopify_product_title).filter(Boolean)
@@ -64,10 +79,15 @@ export default function FollowupClient({ order, merchant, shopifyProducts, merch
         <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 32px', lineHeight: 1.6 }}>
           Creating a personalised routine for your {brandName} products.
         </p>
-        <div style={{ height: 4, background: '#E8EDF8', borderRadius: 100, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg, #7C5CFC, #06B6D4)', borderRadius: 100, animation: 'pulse 1.5s ease-in-out infinite' }} />
+        <div style={{ height: 6, background: '#E8EDF8', borderRadius: 100, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, #7C5CFC, #06B6D4)',
+            borderRadius: 100,
+            transition: 'width 200ms linear',
+          }} />
         </div>
-        <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
       </div>
     </div>
   )
