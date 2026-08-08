@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Props {
@@ -36,6 +36,20 @@ export default function CheckinClient({ scheduledCheckin, brandPlan }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [progress, setProgress] = useState(0)
+
+  /**
+   * Stessa logica della barra post-quiz in FollowupClient: incrementi
+   * decrescenti, stop al 90%. Non esiste avanzamento reale da esporre e il
+   * 100% arriverebbe solo col redirect alla routine aggiornata.
+   */
+  useEffect(() => {
+    if (!submitting) { setProgress(0); return }
+    const id = setInterval(() => {
+      setProgress((prev) => (prev >= 90 ? prev : prev + Math.max(0.6, (90 - prev) * 0.06)))
+    }, 180)
+    return () => clearInterval(id)
+  }, [submitting])
 
   const category = brandPlan?.category || 'Skincare'
   const brandName = brandPlan?.merchant_name || 'your brand'
@@ -153,9 +167,23 @@ export default function CheckinClient({ scheduledCheckin, brandPlan }: Props) {
           {submitting ? 'Updating your plan…' : 'Submit & see updated plan →'}
         </button>
 
-        <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 12 }}>
-          Your plan will be updated based on your answers
-        </p>
+        {/* Barra di caricamento: occupa lo stesso slot del testo di supporto,
+            cosi il layout non si sposta quando parte il submit. */}
+        {submitting ? (
+          <div style={{ height: 6, background: '#E8EDF8', borderRadius: 100, overflow: 'hidden', marginTop: 14 }}>
+            <div style={{
+              height: '100%',
+              width: `${progress}%`,
+              background: 'linear-gradient(90deg, #7C5CFC, #06B6D4)',
+              borderRadius: 100,
+              transition: 'width 200ms linear',
+            }} />
+          </div>
+        ) : (
+          <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 12 }}>
+            Your plan will be updated based on your answers
+          </p>
+        )}
       </div>
     </div>
   )
