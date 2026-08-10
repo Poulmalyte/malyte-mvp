@@ -7,23 +7,23 @@ import Link from 'next/link'
 
 const PANELS = [
   {
-    tag: 'For experts',
-    headline: ['Your expertise,', 'scaled by AI.'],
-    sub: 'Upload your methodology. AI builds personalized plans for every client — automatically.',
+    tag: 'For Shopify brands',
+    headline: ['Every order,', 'becomes a routine.'],
+    sub: 'Malyte builds a personalized routine from your catalog after every order, and introduces the next product when the customer is ready for it.',
     steps: [
-      { n: '01', title: 'Upload your methodology',     sub: 'Docs, frameworks, your way of working' },
-      { n: '02', title: 'AI builds your product',      sub: 'Claude structures it into a sellable digital plan' },
-      { n: '03', title: 'Clients get it personalized', sub: 'Every buyer receives a plan tailored to them' },
+      { n: '01', title: 'Connect your store',           sub: 'Your Shopify catalog syncs on install' },
+      { n: '02', title: 'Every order becomes a routine', sub: 'Built only from products you actually sell' },
+      { n: '03', title: 'The next product arrives',      sub: 'Weekly check-ins, recommendations timed to the routine' },
     ],
   },
   {
-    tag: 'For clients',
-    headline: ['A plan built', 'just for you.'],
-    sub: 'Browse programs from top wellness experts. Answer a few questions. Get your personalized AI plan.',
+    tag: 'For their customers',
+    headline: ['A routine that', 'adapts every week.'],
+    sub: 'Your customers get a plan built around what they bought, and it changes based on how their skin responds.',
     steps: [
-      { n: '01', title: 'Browse expert programs',     sub: 'Nutritionists, trainers, skincare specialists' },
-      { n: '02', title: 'Answer a few questions',     sub: 'Tell us your goals, habits and starting point' },
-      { n: '03', title: 'Get your personalized plan', sub: 'AI generates a plan built around you, instantly' },
+      { n: '01', title: 'They answer your questions', sub: 'You decide what the routine is built on' },
+      { n: '02', title: 'They get their routine',     sub: 'Morning and evening, with a reason for each step' },
+      { n: '03', title: 'It adapts every week',       sub: 'Check-ins reshape the plan, step by step' },
     ],
   },
 ]
