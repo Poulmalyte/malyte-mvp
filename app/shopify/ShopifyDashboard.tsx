@@ -771,20 +771,30 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Su mobile la riga va in colonna: badge e bottone a capo,
+                    testo libero di andare a capo invece che troncato. */}
+                <style>{`
+                  @media (max-width: 640px) {
+                    .mly-cust-row { flex-wrap: wrap; align-items: flex-start; }
+                    .mly-cust-main { flex-basis: calc(100% - 52px); }
+                    .mly-cust-main p { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
+                    .mly-cust-actions { flex-basis: 100%; margin-top: 10px; justify-content: flex-start; }
+                  }
+                `}</style>
                 {orders.map((order: any) => {
                   const product = products.find(p => p.shopify_product_id === order.shopify_product_id)
                   const initials = order.buyer_email ? order.buyer_email.slice(0, 2).toUpperCase() : '?'
                   return (
-                    <div key={order.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
+                    <div key={order.id} className="mly-cust-row" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
                       <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: '#fff' }}>{initials}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="mly-cust-main" style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.buyer_email || 'Unknown'}</p>
                         <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{product?.shopify_product_title || 'Product'} · {new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                         {planTitles[order.id] && (
                           <p style={{ fontSize: 11, color: '#7C5CFC', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{planTitles[order.id]}</p>
                         )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <div className="mly-cust-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7', color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706' }}>
                           {order.status === 'plan_generated' ? 'Plan ready' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
                         </span>
