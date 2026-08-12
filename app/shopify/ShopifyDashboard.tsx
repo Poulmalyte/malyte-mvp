@@ -184,6 +184,8 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
   const [installation, setInstallation] = useState<any>(null)
   const [products, setProducts] = useState<ShopifyProduct[]>([])
   const [orders, setOrders] = useState<any[]>([])
+  // titolo del piano generato, per ordine: brand_plans.plan_data.headline
+  const [planTitles, setPlanTitles] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [shopInput, setShopInput] = useState('')
   const [connectingShop, setConnectingShop] = useState(false)
@@ -260,6 +262,19 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
       setProductDuration(durations)
       const { data: ords } = await supabase.from('shopify_orders').select('*').eq('shop_domain', inst.shop_domain).order('created_at', { ascending: false }).limit(20)
       setOrders(ords || [])
+      // Titolo del piano generato. I piani vivono in brand_plans, collegati
+      // all'ordine da followup_plan_id; nessun dato nuovo, sola lettura.
+      const planIds = (ords || []).map((o: any) => o.followup_plan_id).filter(Boolean)
+      if (planIds.length > 0) {
+        const { data: plans } = await supabase.from('brand_plans').select('id, plan_data').in('id', planIds)
+        const titles: Record<string, string> = {}
+        for (const o of ords || []) {
+          const pl = (plans || []).find((x: any) => x.id === o.followup_plan_id)
+          const h = pl?.plan_data?.headline
+          if (h) titles[o.id] = h
+        }
+        setPlanTitles(titles)
+      }
     }
     setLoading(false)
   }
@@ -765,6 +780,9 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.buyer_email || 'Unknown'}</p>
                         <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{product?.shopify_product_title || 'Product'} · {new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        {planTitles[order.id] && (
+                          <p style={{ fontSize: 11, color: '#7C5CFC', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{planTitles[order.id]}</p>
+                        )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7', color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706' }}>
