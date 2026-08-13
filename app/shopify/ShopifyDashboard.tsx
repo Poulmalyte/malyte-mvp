@@ -678,80 +678,9 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {products.map(product => {
-                    const isExpanded = expandedProduct === product.shopify_product_id
-                    const hasPdf = !!product.pdf_path
-                    const hasQuestions = (productQuestions[product.shopify_product_id] || []).filter((q: Question) => q.question_text.trim()).length >= 4
-                    const isReady = hasPdf && hasQuestions
                     return (
-                      <div key={product.shopify_product_id} style={{ border: `1px solid ${isReady ? '#6EE7B7' : '#E8EDF8'}`, borderRadius: 12, overflow: 'hidden' }}>
-                        <div onClick={() => setExpandedProduct(isExpanded ? null : product.shopify_product_id)} style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: isReady ? '#F0FDF4' : '#F8FAFC' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div>
-                              <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px' }}>{product.shopify_product_title}</p>
-                              <div style={{ display: 'flex', gap: 8 }}>
-                                {false && <span style={{ fontSize: 11, color: hasPdf ? '#059669' : '#EF4444' }}>{hasPdf ? 'PDF ok' : 'No PDF'}</span>}
-                                {false && <span style={{ fontSize: 11, color: hasQuestions ? '#059669' : '#EF4444' }}>{hasQuestions ? 'Questions ok' : 'Questions needed'}</span>}
-                              </div>
-                            </div>
-                          </div>
-                          <span style={{ color: '#94A3B8', fontSize: 12 }}>{isExpanded ? 'v' : '>'}</span>
-                        </div>
-                        {isExpanded && (
-                          <div style={{ padding: '20px 16px', borderTop: '1px solid #E8EDF8' }}>
-                            <div style={{ marginBottom: 20 }}>
-                              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PLAN TYPE</label>
-                              <div style={{ display: 'flex', gap: 10 }}>
-                                {[{ value: 'weekly', label: 'Weekly plan', desc: 'New plan every week with check-ins' }, { value: 'guide', label: 'One-time guide', desc: 'Personalized guide, no expiry' }].map(opt => (
-                                  <button key={opt.value} type="button" onClick={() => setProductPlanType(prev => ({ ...prev, [product.shopify_product_id]: opt.value as 'weekly' | 'guide' }))}
-                                    style={{ flex: 1, padding: '12px', borderRadius: 10, textAlign: 'left', cursor: 'pointer', border: `1px solid ${productPlanType[product.shopify_product_id] === opt.value ? '#7C5CFC' : '#E8EDF8'}`, background: productPlanType[product.shopify_product_id] === opt.value ? '#EDE9FE' : '#F8FAFC' }}>
-                                    <div style={{ fontWeight: 600, fontSize: 12, color: productPlanType[product.shopify_product_id] === opt.value ? '#7C5CFC' : '#0F172A', marginBottom: 2 }}>{opt.label}</div>
-                                    <div style={{ fontSize: 11, color: '#94A3B8' }}>{opt.desc}</div>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            {productPlanType[product.shopify_product_id] === 'weekly' && (
-                              <div style={{ marginBottom: 20 }}>
-                                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>DURATION (weeks)</label>
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                  {[4, 8, 12, 16, 24].map(w => (
-                                    <button key={w} type="button" onClick={() => setProductDuration(prev => ({ ...prev, [product.shopify_product_id]: w }))}
-                                      style={{ padding: '7px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${productDuration[product.shopify_product_id] === w ? '#7C5CFC' : '#E8EDF8'}`, background: productDuration[product.shopify_product_id] === w ? '#EDE9FE' : '#F5F7FA', color: productDuration[product.shopify_product_id] === w ? '#7C5CFC' : '#94A3B8' }}>
-                                      {w}w
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {/* PDF PLAN nascosto per i Brand: la routine si genera dai prodotti acquistati, il PDF non serve. */}
-                            {false && (
-                            <div style={{ marginBottom: 20 }}>
-                              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 10 }}>PDF PLAN</label>
-                              {hasPdf && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#F0FDF4', borderRadius: 8, border: '1px solid #6EE7B7', marginBottom: 10 }}>
-                                  <span style={{ fontSize: 12, color: '#059669', fontWeight: 500 }}>PDF uploaded</span>
-                                </div>
-                              )}
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', border: '2px dashed #E8EDF8', borderRadius: 10, cursor: 'pointer', background: '#F8FAFC' }}>
-                                <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadPdf(product.shopify_product_id, f) }} />
-                                <span style={{ fontSize: 13, color: uploadingPdf === product.shopify_product_id ? '#94A3B8' : '#7C5CFC', fontWeight: 600 }}>{uploadingPdf === product.shopify_product_id ? 'Uploading…' : hasPdf ? 'Replace PDF' : '+ Upload PDF'}</span>
-                              </label>
-                            </div>
-                            )}
-                            {/* Domande per-prodotto: modello legacy, sostituito dai tre set nel tab Questions. */}
-                            {false && (
-                            <div style={{ marginBottom: 20 }}>
-                              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'block', marginBottom: 6 }}>BUYER QUESTIONS (min 4)</label>
-                              <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 12 }}>These questions are shown to buyers before their plan is generated.</p>
-                              <QuestionBuilder questions={productQuestions[product.shopify_product_id] || []} setQuestions={(qs: Question[]) => setProductQuestions(prev => ({ ...prev, [product.shopify_product_id]: qs }))} />
-                            </div>
-                            )}
-                            <button onClick={() => handleSaveProduct(product.shopify_product_id)} disabled={savingProduct === product.shopify_product_id}
-                              style={{ width: '100%', padding: '12px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: '#7C5CFC', color: '#fff', border: 'none', cursor: 'pointer', opacity: savingProduct === product.shopify_product_id ? 0.7 : 1 }}>
-                              {savingProduct === product.shopify_product_id ? 'Saving…' : 'Save product settings'}
-                            </button>
-                          </div>
-                        )}
+                      <div key={product.shopify_product_id} style={{ border: '1px solid #E8EDF8', borderRadius: 12, padding: '14px 16px' }}>
+                        <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: 0 }}>{product.shopify_product_title}</p>
                       </div>
                     )
                   })}
