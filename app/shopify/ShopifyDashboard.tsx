@@ -505,7 +505,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
             </div>
           </div>
           <div style={{ display: 'flex', gap: 0, marginTop: 16, overflowX: 'auto' }}>
-            {[{ label: 'Overview', value: 'overview' }, { label: 'Questions', value: 'method' }, { label: 'Products', value: 'products' }, { label: 'Customers', value: 'customers' }, { label: 'Orders', value: 'orders' }, { label: 'Analytics', value: 'analytics' }, { label: 'Settings', value: 'settings' }].map(t => (
+            {[{ label: 'Overview', value: 'overview' }, { label: 'Questions', value: 'method' }, { label: 'Products', value: 'products' }, { label: 'Customers', value: 'customers' }, { label: 'Analytics', value: 'analytics' }, { label: 'Settings', value: 'settings' }].map(t => (
               <button key={t.value} onClick={() => setActiveTab(t.value as any)}
                 style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: activeTab === t.value ? '#7C5CFC' : '#94A3B8', borderBottom: activeTab === t.value ? '2px solid #7C5CFC' : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {t.label}
@@ -573,7 +573,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               <div style={card}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                   <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Recent orders</p>
-                  <button onClick={() => setActiveTab('orders')} style={{ fontSize: 12, color: '#7C5CFC', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View all</button>
+                  <button onClick={() => setActiveTab('customers')} style={{ fontSize: 12, color: '#7C5CFC', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View all</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {orders.slice(0, 3).map((order: any) => (
@@ -821,28 +821,6 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
           </div>
         )}
 
-        {activeTab === 'orders' && (
-          <div style={card}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Orders ({orders.length})</p>
-            {orders.length === 0 ? (
-              <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No orders yet.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {orders.map((order: any) => (
-                  <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E8EDF8' }}>
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 500, color: '#0F172A', margin: '0 0 2px' }}>{order.buyer_email || 'Unknown buyer'}</p>
-                      <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: order.status === 'plan_generated' ? '#D1FDF3' : order.status === 'questionnaire_done' ? '#EDE9FE' : '#FEF3C7', color: order.status === 'plan_generated' ? '#059669' : order.status === 'questionnaire_done' ? '#7C5CFC' : '#D97706' }}>
-                      {order.status === 'plan_generated' ? 'Plan generated' : order.status === 'questionnaire_done' ? 'Questionnaire done' : 'Pending'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {activeTab === 'analytics' && (
           <AnalyticsTab data={analyticsData} loading={loadingAnalytics} onLoad={loadAnalytics} />
