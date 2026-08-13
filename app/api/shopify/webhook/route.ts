@@ -127,6 +127,15 @@ export async function POST(request: NextRequest) {
       shopify_product_id: JSON.stringify(allProductIds),
       buyer_email: buyerEmail,
       customer_email: buyerEmail,
+      customer_name: [order.customer?.first_name, order.customer?.last_name].filter(Boolean).join(' ') || null,
+      // Elenco completo delle righe d'ordine. shopify_product_id resta invariato
+      // per retrocompatibilita'; questa colonna e' la fonte per la UI merchant.
+      line_items: (order.line_items || []).map((i: any) => ({
+        shopify_product_id: i.product_id ? String(i.product_id) : null,
+        title: i.title || null,
+        variant_title: i.variant_title || null,
+        quantity: i.quantity ?? 1,
+      })),
       token,
       status: 'pending',
       merchant_id: merchantId || null,
