@@ -784,12 +784,23 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
                 {orders.map((order: any) => {
                   const product = products.find(p => p.shopify_product_id === order.shopify_product_id)
                   const initials = order.buyer_email ? order.buyer_email.slice(0, 2).toUpperCase() : '?'
+                  // line_items e' popolato dal webhook a partire dagli ordini del 13 ago 2026.
+                  // Gli ordini precedenti restano senza: si ricade sul titolo singolo.
+                  const items: any[] = Array.isArray(order.line_items) ? order.line_items : []
+                  const itemsLabel = items.length > 0
+                    ? items.map((i: any) => i.title).filter(Boolean).join(', ')
+                    : (product?.shopify_product_title || 'Product')
+                  const itemsCount = items.length > 0 ? `${items.length} product${items.length > 1 ? 's' : ''} · ` : ''
                   return (
                     <div key={order.id} className="mly-cust-row" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E8EDF8' }}>
                       <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, #7C5CFC, #4DFFD2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: '#fff' }}>{initials}</div>
                       <div className="mly-cust-main" style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.buyer_email || 'Unknown'}</p>
-                        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{product?.shopify_product_title || 'Product'} · {new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        <p style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.customer_name || order.buyer_email || 'Unknown'}</p>
+                        {order.customer_name && (
+                          <p style={{ fontSize: 11, color: '#64748B', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.buyer_email}</p>
+                        )}
+                        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>{itemsCount}{new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        <p style={{ fontSize: 11, color: '#64748B', margin: '2px 0 0' }}>{itemsLabel}</p>
                         {planTitles[order.id] && (
                           <p style={{ fontSize: 11, color: '#7C5CFC', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{planTitles[order.id]}</p>
                         )}
