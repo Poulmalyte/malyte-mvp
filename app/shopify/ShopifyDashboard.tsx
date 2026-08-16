@@ -202,6 +202,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
 
   // Settings state — brand-first
   const [brandName, setBrandName] = useState(expert?.name || '')
+  const SHOW_CATEGORY_SELECTOR: boolean = false
   const [profileCategory, setProfileCategory] = useState(expert?.category || 'Skincare')
   const [profileEmail, setProfileEmail] = useState(userEmail)
   const [profilePassword, setProfilePassword] = useState('')
@@ -595,6 +596,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
 
         {activeTab === 'method' && (
           <>
+            {SHOW_CATEGORY_SELECTOR && (
             <div style={card}>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Your category</p>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 1.6 }}>Select the category that best describes your expertise.</p>
@@ -616,6 +618,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
               </button>
             </div>
 
+            )}
             {!questionsLoaded ? (
               <div style={card}>
                 <p style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: '20px 0', margin: 0 }}>Loading questions…</p>
