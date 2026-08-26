@@ -200,7 +200,7 @@ COMPLEMENTARY PRODUCTS available for future weeks:
 ${JSON.stringify(complementaryProducts, null, 2)}
 
 CRITICAL RULES:
-1. Week 1 plan MUST use ONLY the products already purchased
+1. Week 1 plan MUST use ONLY the products already purchased, and MUST give EVERY purchased product at least one use somewhere in the plan. Not every product belongs in a daily step: use the frequency field to place occasional actives (exfoliant, retinol) on their own cadence rather than leaving them out. If a purchased product genuinely cannot be used — it conflicts with a sensitivity or allergy the customer stated — do NOT force it into the routine: list it in excluded_products with a clear reason instead. Omitting a product silently is never acceptable.
 2. Do NOT suggest purchasing anything in Week 1
 3. "what_changes_next_week" must describe ONLY the natural progression of the routine in week 2 (how the practice deepens). Do NOT name, suggest, or hint at any product the customer has not purchased — complementary products are introduced later, at the next check-in, never anticipated here
 4. NO medical or clinical claims. Never state the routine cures, treats, heals, repairs, or reduces any condition (e.g. "repairs the skin barrier", "reduces inflammation", "clears acne"). Frame everything as cosmetic care and how things feel, not as a medical outcome.
@@ -228,11 +228,15 @@ Return exactly this JSON:
         "product_title": "exact product title",
         "step_number": 1,
         "instructions": "specific how-to instructions for this customer",
-        "why": "why this matters for their specific goal"
+        "why": "why this matters for their specific goal",
+        "frequency": "one of: daily | 2x_week | 1x_week | as_needed"
       }
     ],
     "evening_routine": [],
     "weekly_notes": "personalised advice for week 1",
+    "excluded_products": [
+      { "product_id": "catalog_item_uuid", "reason": "why this purchased product cannot be used yet" }
+    ],
     "what_changes_next_week": "how the routine progresses in week 2 — progression only, NO product names or purchase hints"
   }
 }`,
@@ -263,6 +267,49 @@ Return exactly this JSON:
         already_purchased: true,
       }
     })
+
+    // --- Copertura dei prodotti acquistati -------------------------------
+    // Non blocca il piano: misura. Un prodotto puo' mancare perche' il modello
+    // l'ha dimenticato (missing) o perche' l'ha escluso apposta (excluded).
+    // Tenerli distinti evita di leggere un'esclusione motivata come un errore.
+    const usedIds = new Set<string>(
+      [...(result.plan?.morning_routine || []), ...(result.plan?.evening_routine || [])]
+        .map((st: any) => st?.product_id).filter(Boolean).map(String)
+    )
+    const excludedRaw = Array.isArray(result.plan?.excluded_products) ? result.plan.excluded_products : []
+    const eligibleIds = purchasedProducts.map(pp => String(pp.id))
+    const excludedIds = new Set<string>(
+      excludedRaw.map((e: any) => String(e?.product_id)).filter((id: string) => eligibleIds.includes(id))
+    )
+    result.plan.excluded_products = excludedRaw.filter((e: any) => excludedIds.has(String(e?.product_id)))
+
+    const missingProducts = purchasedProducts.filter(
+      pp => !usedIds.has(String(pp.id)) && !excludedIds.has(String(pp.id))
+    )
+
+    // Acquisti che non risolvono a un catalog_item attivo: invisibili al modello,
+    // quindi non sono colpa sua. Vanno tracciati a parte.
+    const unresolvedPurchases = purchasedProductIds.filter(
+      pid => !productsContext.some(p => p.already_purchased && (p as any).shopify_product_id === pid)
+    )
+
+    console.log('[FollowupPlan] coverage:', {
+      eligible: purchasedProducts.length,
+      used: purchasedProducts.filter(pp => usedIds.has(String(pp.id))).length,
+      excluded: excludedIds.size,
+      missing: missingProducts.length,
+      missing_titles: missingProducts.map(pp => pp.title),
+      unresolved_purchases: unresolvedPurchases.length,
+    })
+
+    // Default retrocompatibile: uno step senza frequency e' quotidiano.
+    const normalizeFreq = (routine: any[]) => routine.map(st => ({
+      ...st,
+      frequency: ['daily', '2x_week', '1x_week', 'as_needed'].includes(st?.frequency) ? st.frequency : 'daily',
+    }))
+    result.plan.morning_routine = normalizeFreq(result.plan.morning_routine || [])
+    result.plan.evening_routine = normalizeFreq(result.plan.evening_routine || [])
+    // ---------------------------------------------------------------------
 
     result.plan.morning_routine = enrichRoutine(result.plan.morning_routine || [])
     result.plan.evening_routine = enrichRoutine(result.plan.evening_routine || [])

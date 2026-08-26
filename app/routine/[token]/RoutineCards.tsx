@@ -12,11 +12,21 @@ type RoutineItem = {
   price?: number | null
   product_url?: string | null
   image_url?: string | null
+  frequency?: 'daily' | '2x_week' | '1x_week' | 'as_needed' | null
 }
 
 type Period = 'morning' | 'evening'
 
 const keyOf = (period: Period, stepNumber: number) => `${period}-${stepNumber}`
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  '2x_week': '2× a week',
+  '1x_week': '1× a week',
+  as_needed: 'As needed',
+}
+// 'daily' non ha label: e' l'impostazione implicita, mostrarla su ogni step
+// aggiungerebbe rumore. Anche i piani senza frequency ricadono qui.
+const frequencyLabel = (f?: string | null) => (f ? FREQUENCY_LABELS[f] || null : null)
 
 export default function RoutineCards({
   token,
@@ -310,6 +320,11 @@ function StepRow({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: accent, background: accent + '1A', padding: '2px 8px', borderRadius: 100 }}>
             Step {item.step_number}
+            {frequencyLabel(item.frequency) && (
+              <span style={{ marginLeft: 6, color: '#5B6EF5', fontWeight: 600 }}>
+                &middot; {frequencyLabel(item.frequency)}
+              </span>
+            )}
           </span>
           {isDone && (
             <span style={{ fontSize: 10, fontWeight: 700, color: '#0F9D58', background: '#0F9D581A', padding: '2px 8px', borderRadius: 100 }}>

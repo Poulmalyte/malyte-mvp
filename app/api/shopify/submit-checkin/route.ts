@@ -202,7 +202,7 @@ ${crossSellCandidates.length ? JSON.stringify(crossSellCandidates, null, 2) : 'N
 
 RULES:
 1. ONLY recommend products from the catalog above
-2. The Week ${nextWeek} routine is built from products the customer is ALREADY using. Keep those as the core.
+2. The Week ${nextWeek} routine is built from products the customer is ALREADY using. Keep those as the core. KEEP each product's existing frequency from the previous plan unless the check-in gives a real reason to change it (a reaction, or the customer struggling with adherence). Do NOT silently turn a 2x_week product into a daily one. Steps in the previous plan without a frequency field are daily.
 3. If customer had reactions: remove the problematic product and replace with a gentler one ALREADY in their routine — do not add a new purchase to fix a reaction
 4. CROSS-SELL: you MAY introduce AT MOST ONE new product to buy this week, chosen ONLY from the CROSS-SELL CANDIDATES list above. That list is already ranked by fit with this customer — prefer entries near the top, but choose a lower one if it genuinely suits them better. If NONE of them is a real fit for this customer's current routine, stated needs or reported reactions, introduce NOTHING: no cross-sell is always better than a forced one. Never more than one new product per week. Set recommended_product_id to the id of the product you introduce, or null if you introduce none. When you introduce one, also write recommended_reason: 1-2 warm, specific sentences tied to something real about this customer. Never invent price, availability or links — those are resolved elsewhere.
 5. NO medical or clinical claims. Never state the routine cures, treats, heals, repairs, or reduces any condition (e.g. "repairs the skin barrier", "reduces inflammation", "clears acne"). You MAY reference improvements the customer reported or that appear in the check-in/adherence data, but frame them as their reported experience, never as a clinical or medical outcome.
@@ -231,7 +231,8 @@ Return exactly this JSON:
       "product_title": "title",
       "step_number": 1,
       "instructions": "updated instructions",
-      "why": "why this product this week"
+      "why": "why this product this week",
+      "frequency": "one of: daily | 2x_week | 1x_week | as_needed"
     }
   ],
   "evening_routine": [],
@@ -269,6 +270,13 @@ Return exactly this JSON:
       newPlan.recommended_product_id && typeof newPlan.recommended_reason === 'string'
         ? newPlan.recommended_reason.trim().slice(0, 400)
         : null
+
+    const normalizeFreq = (routine: any[]) => routine.map((st: any) => ({
+      ...st,
+      frequency: ['daily', '2x_week', '1x_week', 'as_needed'].includes(st?.frequency) ? st.frequency : 'daily',
+    }))
+    newPlan.morning_routine = normalizeFreq(newPlan.morning_routine || [])
+    newPlan.evening_routine = normalizeFreq(newPlan.evening_routine || [])
 
     newPlan.morning_routine = enrichRoutine(newPlan.morning_routine || [])
     newPlan.evening_routine = enrichRoutine(newPlan.evening_routine || [])
