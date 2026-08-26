@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import RoutineCards from './RoutineCards'
+import CrossSellCard from './CrossSellCard'
 import { fetchShopLogo } from '@/lib/shop-logo'
 
 // TEMPORANEO: costante fissa finche il totale settimane non diventa dinamico
@@ -80,6 +81,57 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
   // Questo componente mostra solo il numero di step previsti oggi (dato reale).
   // L'arco colorato di progresso e' predisposto ma non attivo: da collegare quando
   // esistera' un tracking reale del completamento.
+  // --- Cross-sell -----------------------------------------------------
+  // Dal plan_data arrivano SOLO l'id e la motivazione. Titolo, prezzo,
+  // immagine e destinazione sono sempre risolti dal catalogo a render-time:
+  // se il merchant disattiva il prodotto la card sparisce da sola.
+  let crossSell: {
+    productId: string; title: string; reason: string | null
+    price: number | null; imageUrl: string | null
+  } | null = null
+
+  const recoId = plan?.recommended_product_id ? String(plan.recommended_product_id) : null
+  if (recoId) {
+    const { data: ci } = await supabaseAdmin
+      .from('catalog_items')
+      .select('id, title, shopify_product_id, is_active')
+      .eq('id', recoId)
+      .eq('merchant_id', brandPlan.merchant_id)
+      .maybeSingle()
+
+    if (ci?.is_active && ci.shopify_product_id) {
+      let csShop = shopDomain
+      if (!csShop) {
+        const { data: inst } = await supabaseAdmin
+          .from('shopify_installations')
+          .select('shop_domain')
+          .eq('expert_id', brandPlan.merchant_id)
+          .maybeSingle()
+        csShop = inst?.shop_domain || null
+      }
+      if (csShop) {
+        const { data: sp } = await supabaseAdmin
+          .from('shopify_products')
+          .select('price, image_url, product_url')
+          .eq('shop', csShop)
+          .eq('shopify_product_id', ci.shopify_product_id)
+          .maybeSingle()
+        // Senza product_url non mostriamo nulla: meglio nessuna card
+        // che una CTA che non porta da nessuna parte.
+        if (sp?.product_url) {
+          crossSell = {
+            productId: ci.id,
+            title: ci.title,
+            reason: plan?.recommended_reason || null,
+            price: sp.price ?? null,
+            imageUrl: sp.image_url ?? null,
+          }
+        }
+      }
+    }
+  }
+  // --------------------------------------------------------------------
+
   const TodayRing = ({ morningCount, eveningCount }: { morningCount: number, eveningCount: number }) => {
     const totalSteps = morningCount + eveningCount
     const radius = 78
@@ -177,6 +229,17 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           </p>
           <RoutineCards token={token} morningRoutine={plan?.morning_routine || []} eveningRoutine={plan?.evening_routine || []} />
         </div>
+
+        {crossSell && (
+          <CrossSellCard
+            token={token}
+            productId={crossSell.productId}
+            title={crossSell.title}
+            reason={crossSell.reason}
+            price={crossSell.price}
+            imageUrl={crossSell.imageUrl}
+          />
+        )}
 
 
         {/* Evolution - timeline verticale, orienta senza dare idea di fine percorso.
