@@ -130,6 +130,43 @@ export async function POST(request: Request) {
     const improvementScore = improvementMap[answers.improvement || answers.energy || ''] || 3
     const hasReaction = answers.reaction && (answers.reaction.includes('irritation') || answers.reaction.includes('stopped'))
 
+    // --- CROSS-SELL: selezione candidati (fit primario, intro_week come timing secondario) ---
+    const prevPlan: any = brandPlan.plan_data || {}
+    const routineProductIds = new Set(
+      [...(prevPlan.morning_routine || []), ...(prevPlan.evening_routine || [])]
+        .map((s: any) => s?.product_id).filter(Boolean).map(String)
+    )
+    const lastRecommendedId = prevPlan.recommended_product_id ? String(prevPlan.recommended_product_id) : null
+    const inRoutine = productsContext.filter(p => routineProductIds.has(String(p.id)))
+    const coveredSteps = new Set(inRoutine.map(p => p.routine_step).filter(st => st && st !== 'other'))
+    const customerObjectives: string[] = Array.from(new Set(
+      inRoutine.flatMap(p => p.objectives || []).map((o: any) => String(o).toLowerCase())
+    ))
+    const avoidList = String(merchantProfile?.avoid_ingredients || '')
+      .toLowerCase().split(/[,;]/).map(x => x.trim()).filter(Boolean)
+
+    const scoredCandidates = productsContext
+      .filter(p => !routineProductIds.has(String(p.id)))
+      .filter(p => !lastRecommendedId || String(p.id) !== lastRecommendedId)
+      .map(p => {
+        const hero = String(p.hero_ingredients || '').toLowerCase()
+        if (avoidList.length && avoidList.some(a => hero.includes(a))) return null
+        let fit = 0
+        if (p.routine_step && p.routine_step !== 'other' && !coveredSteps.has(p.routine_step)) fit += 4
+        const objs = (p.objectives || []).map((o: any) => String(o).toLowerCase())
+        const matches = objs.filter((o: string) => customerObjectives.some(c => c.includes(o) || o.includes(c)))
+        if (matches.length) fit += Math.min(matches.length * 2, 6)
+        if (hasReaction && (p.intro_week || 1) >= 3) fit -= 4
+        const iw = p.intro_week || 1
+        const timing = iw === nextWeek ? 3 : iw < nextWeek ? 1 : -Math.min(iw - nextWeek, 3)
+        return { p, fit, score: fit + timing }
+      })
+      .filter((c): c is { p: any; fit: number; score: number } => c !== null)
+      .sort((a, b) => b.score - a.score || b.fit - a.fit || String(a.p.id).localeCompare(String(b.p.id)))
+
+    const crossSellCandidates = scoredCandidates.slice(0, 10).map(c => c.p)
+    console.log('[submit-checkin] cross-sell candidates:', crossSellCandidates.length, 'nextWeek:', nextWeek)
+
     const { error: checkinSaveError } = await supabaseAdmin.from('brand_checkin_events').insert({
       brand_plan_id,
       customer_id,
@@ -160,11 +197,14 @@ ${JSON.stringify(productsContext, null, 2)}
 Previous plan (Week ${week_number}):
 ${JSON.stringify(brandPlan.plan_data, null, 2)}
 
+CROSS-SELL CANDIDATES (ranked, best fit first — products the customer is NOT yet using):
+${crossSellCandidates.length ? JSON.stringify(crossSellCandidates, null, 2) : 'None available — do not introduce any new product this week.'}
+
 RULES:
 1. ONLY recommend products from the catalog above
 2. The Week ${nextWeek} routine is built from products the customer is ALREADY using. Keep those as the core.
 3. If customer had reactions: remove the problematic product and replace with a gentler one ALREADY in their routine — do not add a new purchase to fix a reaction
-4. CROSS-SELL (introduce a NEW product to buy): introduce AT MOST ONE new product this week, and ONLY if a catalog product has intro_week exactly equal to ${nextWeek}. If no product has intro_week === ${nextWeek}, introduce NOTHING new — just refine the existing routine. Never introduce more than one new product, and never in consecutive weeks unless a product's intro_week explicitly lands on this week.
+4. CROSS-SELL: you MAY introduce AT MOST ONE new product to buy this week, chosen ONLY from the CROSS-SELL CANDIDATES list above. That list is already ranked by fit with this customer — prefer entries near the top, but choose a lower one if it genuinely suits them better. If NONE of them is a real fit for this customer's current routine, stated needs or reported reactions, introduce NOTHING: no cross-sell is always better than a forced one. Never more than one new product per week. Set recommended_product_id to the id of the product you introduce, or null if you introduce none.
 5. NO medical or clinical claims. Never state the routine cures, treats, heals, repairs, or reduces any condition (e.g. "repairs the skin barrier", "reduces inflammation", "clears acne"). You MAY reference improvements the customer reported or that appear in the check-in/adherence data, but frame them as their reported experience, never as a clinical or medical outcome.
 6. The customer already knows their profile and is mid-routine. Continue from the previous plan — do NOT reintroduce their profile or re-explain why the routine was originally chosen, unless the latest check-in indicates a major change. No "you have X skin, making you an ideal candidate" openings.
 7. Return ONLY valid JSON, no markdown, no backticks`
@@ -183,6 +223,7 @@ Return exactly this JSON:
   "headline": "Week ${nextWeek} plan headline",
   "week": ${nextWeek},
   "adaptation_note": "1-2 sentences explaining what changed and why",
+  "recommended_product_id": "catalog_item id of the ONE new product introduced this week, or null if none",
   "morning_routine": [
     {
       "product_id": "catalog_item_uuid",
@@ -215,6 +256,13 @@ Return exactly this JSON:
       const catalogItem = productsContext.find(p => p.id === item.product_id)
       return { ...item, price: catalogItem?.price || null, product_url: catalogItem?.product_url || null, variant_id: catalogItem?.variant_id || null }
     })
+
+    // Accetta il cross-sell solo se l'id e' realmente tra i candidati proposti
+    const candidateIds = new Set(crossSellCandidates.map((c: any) => String(c.id)))
+    newPlan.recommended_product_id =
+      newPlan?.recommended_product_id && candidateIds.has(String(newPlan.recommended_product_id))
+        ? String(newPlan.recommended_product_id)
+        : null
 
     newPlan.morning_routine = enrichRoutine(newPlan.morning_routine || [])
     newPlan.evening_routine = enrichRoutine(newPlan.evening_routine || [])
