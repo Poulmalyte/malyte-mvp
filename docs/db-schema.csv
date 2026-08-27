@@ -1,4 +1,3 @@
-table_name,column_name,data_type,is_nullable,column_default
 admin_audit_log,id,uuid,NO,gen_random_uuid()
 admin_audit_log,admin_user_id,uuid,NO,
 admin_audit_log,admin_email,text,YES,
@@ -458,6 +457,11 @@ shopify_installations,subscription_id,text,YES,
 shopify_installations,refresh_token,text,YES,
 shopify_installations,token_expires_at,timestamp with time zone,YES,
 shopify_installations,shop_name,text,YES,
+shopify_installations,shop_logo_url,text,YES,
+shopify_installations,shop_logo_width,integer,YES,
+shopify_installations,shop_logo_height,integer,YES,
+shopify_installations,shop_logo_checked_at,timestamp with time zone,YES,
+shopify_installations,currency,text,NO,'EUR'::text
 shopify_oauth_states,id,uuid,NO,gen_random_uuid()
 shopify_oauth_states,state,text,NO,
 shopify_oauth_states,expert_id,uuid,YES,
@@ -479,6 +483,7 @@ shopify_orders,buyer_email,text,YES,
 shopify_orders,followup_plan_id,uuid,YES,
 shopify_orders,followup_sent_at,timestamp with time zone,YES,
 shopify_orders,merchant_id,uuid,YES,
+shopify_orders,line_items,jsonb,YES,
 shopify_plans,id,uuid,NO,gen_random_uuid()
 shopify_plans,order_id,uuid,YES,
 shopify_plans,week_number,integer,YES,1
@@ -500,6 +505,12 @@ shopify_products,price,numeric,YES,
 shopify_products,image_url,text,YES,
 shopify_products,product_url,text,YES,
 shopify_products,archived_at,timestamp with time zone,YES,
+step_completions,id,uuid,NO,gen_random_uuid()
+step_completions,token,text,NO,
+step_completions,completed_on,date,NO,
+step_completions,period,text,NO,
+step_completions,step_number,integer,NO,
+step_completions,completed_at,timestamp with time zone,NO,now()
 webhook_logs,id,uuid,NO,gen_random_uuid()
 webhook_logs,merchant_id,uuid,YES,
 webhook_logs,shopify_domain,text,YES,
