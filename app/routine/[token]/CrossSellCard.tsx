@@ -1,3 +1,5 @@
+import { formatPrice } from '@/lib/currency'
+
 /**
  * Card cross-sell. Server component: nessuna interattivita'.
  * Titolo, prezzo, immagine e destinazione arrivano SEMPRE dal catalogo
@@ -11,6 +13,7 @@ export default function CrossSellCard({
   reason,
   price,
   imageUrl,
+  currency = 'EUR',
 }: {
   token: string
   productId: string
@@ -18,6 +21,7 @@ export default function CrossSellCard({
   reason: string | null
   price: number | null
   imageUrl: string | null
+  currency?: string
 }) {
   return (
     <div style={{
@@ -51,7 +55,7 @@ export default function CrossSellCard({
           </h3>
           {price != null && (
             <p style={{ fontSize: 14, fontWeight: 600, color: '#5B6EF5', margin: 0 }}>
-              {Number(price).toFixed(2)}
+              {formatPrice(Number(price), currency)}
             </p>
           )}
         </div>

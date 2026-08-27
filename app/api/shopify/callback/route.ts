@@ -67,7 +67,7 @@ async function registerWebhook(shop: string, token: string, topic: string) {
   }
 }
 
-async function fetchShopName(shop: string, token: string): Promise<string | null> {
+async function fetchShopInfo(shop: string, token: string): Promise<{ name: string | null, currency: string | null }> {
   try {
     const res = await fetch(`https://${shop}/admin/api/${API_VERSION}/shop.json`, {
       headers: {
@@ -77,15 +77,19 @@ async function fetchShopName(shop: string, token: string): Promise<string | null
     })
     if (!res.ok) {
       console.warn('[Callback] shop.json non ok:', res.status)
-      return null
+      return { name: null, currency: null }
     }
     const data = await res.json()
     const name = data?.shop?.name
-    console.log('[Callback] shop.name letto da Shopify:', name)
-    return typeof name === 'string' && name.trim() ? name.trim() : null
+    const currency = data?.shop?.currency
+    console.log('[Callback] shop.name / currency letti da Shopify:', name, currency)
+    return {
+      name: typeof name === 'string' && name.trim() ? name.trim() : null,
+      currency: typeof currency === 'string' && currency.trim() ? currency.trim().toUpperCase() : null,
+    }
   } catch (err) {
-    console.warn('[Callback] fetchShopName errore:', err)
-    return null
+    console.warn('[Callback] fetchShopInfo errore:', err)
+    return { name: null, currency: null }
   }
 }
 
@@ -253,7 +257,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const shopName = await fetchShopName(shop, access_token)
+  const { name: shopName, currency: shopCurrency } = await fetchShopInfo(shop, access_token)
 
   const installPayload: Record<string, any> = {
     shop_domain: shop,
@@ -266,6 +270,7 @@ export async function GET(request: NextRequest) {
   if (!existingInstall) installPayload.subscription_status = 'pending'
   // Solo se risolto: un null sovrascriverebbe un nome buono a ogni reinstall.
   if (shopName) installPayload.shop_name = shopName
+  if (shopCurrency) installPayload.currency = shopCurrency
 
   const { error: installError } = await supabaseAdmin
     .from('shopify_installations')

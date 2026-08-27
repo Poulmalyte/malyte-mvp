@@ -87,7 +87,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
   // se il merchant disattiva il prodotto la card sparisce da sola.
   let crossSell: {
     productId: string; title: string; reason: string | null
-    price: number | null; imageUrl: string | null
+    price: number | null; imageUrl: string | null; currency: string
   } | null = null
 
   const recoId = plan?.recommended_product_id ? String(plan.recommended_product_id) : null
@@ -110,6 +110,12 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
         csShop = inst?.shop_domain || null
       }
       if (csShop) {
+        const { data: csInstall } = await supabaseAdmin
+          .from('shopify_installations')
+          .select('currency')
+          .eq('shop_domain', csShop)
+          .maybeSingle()
+        const csCurrency = csInstall?.currency || 'EUR'
         const { data: sp } = await supabaseAdmin
           .from('shopify_products')
           .select('price, image_url, product_url')
@@ -125,6 +131,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
             reason: plan?.recommended_reason || null,
             price: sp.price ?? null,
             imageUrl: sp.image_url ?? null,
+            currency: csCurrency,
           }
         }
       }
@@ -238,6 +245,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
             reason={crossSell.reason}
             price={crossSell.price}
             imageUrl={crossSell.imageUrl}
+            currency={crossSell.currency}
           />
         )}
 
