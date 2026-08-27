@@ -278,7 +278,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           </p>
           <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>
             Powered by{' '}
-            <a href="https://malyte.com" target="_blank" rel="noopener noreferrer" style={{ color: '#5B6EF5', textDecoration: 'none', fontWeight: 600 }}>
+            <a href="https://www.malyte.com/shopify/home" target="_blank" rel="noopener noreferrer" style={{ color: '#5B6EF5', textDecoration: 'none', fontWeight: 600 }}>
               Malyte
             </a>
           </p>
