@@ -234,6 +234,9 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px', fontFamily: "'Satoshi', sans-serif" }}>
             This Week's Routine
           </p>
+          <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 12px', lineHeight: 1.5 }}>
+            Follow these steps every day, morning and evening.
+          </p>
           <RoutineCards token={token} morningRoutine={plan?.morning_routine || []} eveningRoutine={plan?.evening_routine || []} />
         </div>
 
