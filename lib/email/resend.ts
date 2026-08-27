@@ -1,16 +1,45 @@
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = 'Malyte <noreply@malyte.com>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
+const MALYTE_SITE = 'https://malyte.com'
+const SENDER_ADDRESS = 'noreply@malyte.com'
+
+/**
+ * Rimuove i caratteri che romperebbero l'header From (RFC 5322)
+ * e taglia a 64 char per sicurezza sui client email.
+ */
+function sanitizeDisplayName(name: string): string {
+  return (name || '')
+    .replace(/[<>"\\,;:\r\n]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 64)
+}
+
+function buildFrom(brandName: string): string {
+  const clean = sanitizeDisplayName(brandName)
+  return clean ? `${clean} <${SENDER_ADDRESS}>` : `Malyte <${SENDER_ADDRESS}>`
+}
+
+function footer(brandName: string): string {
+  return `
+    <p style="font-size:11px;color:#94A3B8;text-align:center;margin:0 0 6px;">
+      ${brandName}
+    </p>
+    <p style="font-size:11px;color:#94A3B8;text-align:center;margin:0;">
+      Powered by <a href="${MALYTE_SITE}" style="color:#7C5CFC;text-decoration:none;font-weight:600;">Malyte</a>
+    </p>`
+}
 
 export async function sendPlanEmail({
-  to, brandName, planUrl, customerSummary,
+  to, brandName, planUrl, customerSummary, replyTo,
 }: {
-  to: string, brandName: string, planUrl: string, customerSummary?: string
+  to: string, brandName: string, planUrl: string, customerSummary?: string, replyTo?: string
 }) {
   return resend.emails.send({
-    from: FROM,
+    from: buildFrom(brandName),
+    ...(replyTo ? { replyTo } : {}),
     to,
     subject: `Your first routine is waiting`,
     html: `
@@ -40,9 +69,7 @@ export async function sendPlanEmail({
         In 7 days we'll ask how things are going — your answers will improve your plan for week 2.
       </p>
     </div>
-    <p style="font-size:11px;color:#94A3B8;text-align:center;margin:0;">
-      ${brandName} · <a href="${APP_URL}" style="color:#94A3B8;">app.malyte.com</a>
-    </p>
+    ${footer(brandName)}
   </div>
 </body>
 </html>`,
@@ -50,9 +77,9 @@ export async function sendPlanEmail({
 }
 
 export async function sendCheckinReminderEmail({
-  to, brandName, checkinUrl, weekNumber, planUrl, isSecondReminder = false,
+  to, brandName, checkinUrl, weekNumber, planUrl, isSecondReminder = false, replyTo,
 }: {
-  to: string, brandName: string, checkinUrl: string, weekNumber: number, planUrl: string, isSecondReminder?: boolean
+  to: string, brandName: string, checkinUrl: string, weekNumber: number, planUrl: string, isSecondReminder?: boolean, replyTo?: string
 }) {
   const subject = isSecondReminder
     ? `Your updated plan is waiting`
@@ -69,7 +96,8 @@ export async function sendCheckinReminderEmail({
   const cta = isSecondReminder ? `Complete Check-In` : `Update My Plan →`
 
   return resend.emails.send({
-    from: FROM,
+    from: buildFrom(brandName),
+    ...(replyTo ? { replyTo } : {}),
     to,
     subject,
     html: `
@@ -89,12 +117,10 @@ export async function sendCheckinReminderEmail({
         ${cta}
       </a>
     </div>
-    <p style="font-size:12px;color:#94A3B8;text-align:center;margin:0 0 8px;">
+    <p style="font-size:12px;color:#94A3B8;text-align:center;margin:0 0 12px;">
       <a href="${planUrl}" style="color:#7C5CFC;text-decoration:none;">View your current plan</a>
     </p>
-    <p style="font-size:11px;color:#94A3B8;text-align:center;margin:0;">
-      ${brandName} · <a href="${APP_URL}" style="color:#94A3B8;">app.malyte.com</a>
-    </p>
+    ${footer(brandName)}
   </div>
 </body>
 </html>`,
@@ -102,12 +128,13 @@ export async function sendCheckinReminderEmail({
 }
 
 export async function sendInactiveEmail({
-  to, brandName, checkinUrl,
+  to, brandName, checkinUrl, replyTo,
 }: {
-  to: string, brandName: string, checkinUrl: string
+  to: string, brandName: string, checkinUrl: string, replyTo?: string
 }) {
   return resend.emails.send({
-    from: FROM,
+    from: buildFrom(brandName),
+    ...(replyTo ? { replyTo } : {}),
     to,
     subject: `We've paused your personalised journey`,
     html: `
@@ -128,9 +155,7 @@ export async function sendInactiveEmail({
         Resume My Journey →
       </a>
     </div>
-    <p style="font-size:11px;color:#94A3B8;text-align:center;margin:0;">
-      ${brandName} · <a href="${APP_URL}" style="color:#94A3B8;">app.malyte.com</a>
-    </p>
+    ${footer(brandName)}
   </div>
 </body>
 </html>`,
@@ -138,12 +163,13 @@ export async function sendInactiveEmail({
 }
 
 export async function sendFollowupEmail({
-  to, brandName, followupUrl,
+  to, brandName, followupUrl, replyTo,
 }: {
-  to: string, brandName: string, followupUrl: string
+  to: string, brandName: string, followupUrl: string, replyTo?: string
 }) {
   return resend.emails.send({
-    from: FROM,
+    from: buildFrom(brandName),
+    ...(replyTo ? { replyTo } : {}),
     to,
     subject: `Get the most out of your ${brandName} order`,
     html: `
@@ -170,9 +196,7 @@ export async function sendFollowupEmail({
         ✓ Free · Takes less than 2 minutes · Your plan is saved permanently
       </p>
     </div>
-    <p style="font-size:11px;color:#94A3B8;text-align:center;margin:0;">
-      ${brandName} · <a href="${APP_URL}" style="color:#94A3B8;">app.malyte.com</a>
-    </p>
+    ${footer(brandName)}
   </div>
 </body>
 </html>`,

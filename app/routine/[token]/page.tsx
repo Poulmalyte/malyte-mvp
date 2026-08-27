@@ -271,6 +271,19 @@ export default async function RoutinePage({ params }: { params: Promise<{ token:
           </div>
         </div>
 
+        {/* Footer white-label */}
+        <div style={{ textAlign: 'center', padding: '28px 0 8px' }}>
+          <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px', fontWeight: 500 }}>
+            {brandName}
+          </p>
+          <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>
+            Powered by{' '}
+            <a href="https://malyte.com" target="_blank" rel="noopener noreferrer" style={{ color: '#5B6EF5', textDecoration: 'none', fontWeight: 600 }}>
+              Malyte
+            </a>
+          </p>
+        </div>
+
       </div>
     </div>
   )
