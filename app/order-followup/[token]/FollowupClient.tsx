@@ -114,7 +114,7 @@ export default function FollowupClient({ order, merchant, shopifyProducts, merch
             Get the most out of your products
           </h1>
           <p style={{ fontSize: 13, opacity: 0.9, margin: 0, lineHeight: 1.5 }}>
-            Answer 4 quick questions and we'll build a personalised routine around what you just bought.
+            Answer a couple of quick questions and we'll build a personalised routine around what you just bought.
           </p>
         </div>
 

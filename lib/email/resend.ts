@@ -90,8 +90,8 @@ export async function sendCheckinReminderEmail({
     : `Your skin has changed over the last 7 days`
 
   const body = isSecondReminder
-    ? `We can't improve your routine without your feedback. It takes less than 2 minutes — answer 4 quick questions and we'll unlock your next personalised update.`
-    : `Answer 4 quick questions and we'll improve your plan for next week. Your routine adapts based on how your skin is actually responding.`
+    ? `We can't improve your routine without your feedback. It takes less than 2 minutes — answer a couple of quick questions and we'll unlock your next personalised update.`
+    : `Answer a couple of quick questions and we'll improve your plan for next week. Your routine adapts based on how your skin is actually responding.`
 
   const cta = isSecondReminder ? `Complete Check-In` : `Update My Plan →`
 
@@ -185,7 +185,7 @@ export async function sendFollowupEmail({
       <p style="font-size:12px;font-weight:600;color:#7C5CFC;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.08em;">Your order is confirmed</p>
       <h1 style="font-size:22px;font-weight:800;color:#0F172A;margin:0 0 12px;line-height:1.3;">Get a personalised routine for your products</h1>
       <p style="font-size:14px;color:#64748B;margin:0 0 20px;line-height:1.6;">
-        Answer 4 quick questions and we'll build a routine specifically around what you just bought — so you get the best possible results from day one.
+        Answer a couple of quick questions and we'll build a routine specifically around what you just bought — so you get the best possible results from day one.
       </p>
       <a href="${followupUrl}" style="display:block;text-align:center;padding:14px 24px;background:linear-gradient(135deg,#7C5CFC,#06B6D4);color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;">
         Build My Personalised Routine →
