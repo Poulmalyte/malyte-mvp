@@ -79,7 +79,6 @@ const CUR: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
 const RATES = [0.1, 0.15, 0.2, 0.25, 0.3];
 
 const nf = (n: number) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(n));
-const digits = (v: string) => Number(String(v).replace(/[^0-9]/g, "")) || 0;
 
 /* ================================================================== */
 
@@ -236,8 +235,10 @@ function RoutineGroup({ label, icon, steps, open, toggle, color }:
 
 function Calculator() {
   const [cur, setCur] = useState("EUR");
-  const [revenue, setRevenue] = useState(500000);
-  const [aov, setAov] = useState(100);
+  const [revenueInput, setRevenueInput] = useState("500000");
+  const [aovInput, setAovInput] = useState("100");
+  const revenue = revenueInput === "" ? 0 : Number(revenueInput);
+  const aov = aovInput === "" ? 0 : Number(aovInput);
   const [rateIdx, setRateIdx] = useState(0);
 
   const sym = CUR[cur];
@@ -245,8 +246,9 @@ function Calculator() {
   const short = (n: number) => sym + (n >= 1000000 ? `${n / 1000000}M` : `${n / 1000}K`);
 
   const rate = RATES[rateIdx];
-  const safeAov = Math.max(5, Math.min(1000, aov));
-  const orders = revenue / safeAov;
+  const safeRevenue = Math.max(50000, Math.min(5000000, revenue || 50000));
+  const safeAov = Math.max(5, Math.min(1000, aov || 5));
+  const orders = safeRevenue / safeAov;
   const extraOrders = orders * rate;
   const extraRevenue = extraOrders * safeAov;
 
@@ -273,18 +275,20 @@ function Calculator() {
             <label className="lp-flabel" htmlFor="rev">Annual revenue</label>
             <div className="lp-field">
               <span className="lp-sym">{sym}</span>
-              <input id="rev" type="text" inputMode="numeric" value={nf(revenue)}
-                onChange={(e) => setRevenue(Math.max(50000, Math.min(5000000, digits(e.target.value) || 50000)))} />
+              <input id="rev" type="text" inputMode="numeric" value={revenueInput === "" ? "" : nf(revenue)}
+                onChange={(e) => setRevenueInput(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                onBlur={() => setRevenueInput(String(Math.max(50000, Math.min(5000000, revenue || 50000))))} />
             </div>
-            <input type="range" className="lp-range" min={50000} max={5000000} step={25000} value={revenue}
-              onChange={(e) => setRevenue(Number(e.target.value))} aria-label="Annual revenue slider" />
+            <input type="range" className="lp-range" min={50000} max={5000000} step={25000} value={safeRevenue}
+              onChange={(e) => setRevenueInput(e.target.value)} aria-label="Annual revenue slider" />
             <div className="lp-ends"><span>{short(50000)}</span><span>{short(5000000)}</span></div>
 
             <label className="lp-flabel lp-mt" htmlFor="aov">Average order value</label>
             <div className="lp-field">
               <span className="lp-sym">{sym}</span>
-              <input id="aov" type="text" inputMode="numeric" value={nf(aov)}
-                onChange={(e) => setAov(Math.max(5, Math.min(1000, digits(e.target.value) || 5)))} />
+              <input id="aov" type="text" inputMode="numeric" value={aovInput === "" ? "" : nf(aov)}
+                onChange={(e) => setAovInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                onBlur={() => setAovInput(String(Math.max(5, Math.min(1000, aov || 5))))} />
             </div>
 
             <label className="lp-flabel lp-mt" htmlFor="rate">Additional repeat purchase rate</label>
