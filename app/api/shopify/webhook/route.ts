@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
   const { data: installation } = await supabaseAdmin
     .from('shopify_installations')
-    .select('expert_id')
+    .select('expert_id, routine_filters, currency')
     .eq('shop_domain', shop)
     .maybeSingle()
 
@@ -136,6 +136,10 @@ export async function POST(request: NextRequest) {
         variant_title: i.variant_title || null,
         quantity: i.quantity ?? 1,
       })),
+      total_price: order.total_price != null && order.total_price !== ''
+        ? parseFloat(order.total_price)
+        : null,
+      order_currency: order.currency || null,
       token,
       status: 'pending',
       merchant_id: merchantId || null,
@@ -313,6 +317,25 @@ export async function POST(request: NextRequest) {
 
   if (buyerEmail && token) {
     try {
+      const { evaluateFilters } = await import('@/lib/routines/routine-filters')
+      const decision = evaluateFilters(
+        {
+          total_price: order.total_price != null && order.total_price !== ''
+            ? parseFloat(order.total_price)
+            : null,
+          order_currency: order.currency || null,
+          line_items: (order.line_items || []).map((i: any) => ({
+            quantity: i.quantity ?? 1,
+          })),
+        },
+        installation?.routine_filters,
+        installation?.currency ?? null,
+      )
+      if (!decision.send) {
+        console.log('[Filters] followup email skipped:', decision.reason, buyerEmail)
+        return NextResponse.json({ ok: true, skipped: decision.reason })
+      }
+
       const { sendFollowupEmail } = await import('@/lib/email/resend')
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.malyte.com'
       let emailBrandName = shop.replace('.myshopify.com', '')

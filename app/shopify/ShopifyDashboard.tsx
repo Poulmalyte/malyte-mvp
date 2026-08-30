@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import RoutineAudienceFilters from './RoutineAudienceFilters'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 
@@ -766,6 +767,7 @@ export default function ShopifyDashboard({ expertId, expertName, expert, userEma
 
         {activeTab === 'settings' && (
           <>
+            <RoutineAudienceFilters shop={installation?.shop_domain} currency={installation?.currency} />
             <div style={{ ...card, border: '2px solid #7C5CFC', background: 'linear-gradient(135deg, #F5F3FF 0%, #EEF2FF 100%)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <span style={{ fontSize: 24 }}>🔗</span>

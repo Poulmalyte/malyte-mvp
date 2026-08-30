@@ -90,9 +90,31 @@ export async function POST(request: Request) {
     // Carica merchant
     const { data: installation } = await supabaseAdmin
       .from('shopify_installations')
-      .select('expert_id, shop_domain')
+      .select('expert_id, shop_domain, routine_filters, currency')
       .eq('shop_domain', shop)
       .maybeSingle()
+
+    // Rete di sicurezza sui filtri audience: il gate principale e' nel webhook,
+    // qui copriamo i link vecchi aperti dopo un cambio di filtri.
+    {
+      const { evaluateFilters } = await import('@/lib/routines/routine-filters')
+      const decision = evaluateFilters(
+        {
+          total_price: order.total_price ?? null,
+          order_currency: order.order_currency ?? null,
+          line_items: Array.isArray(order.line_items) ? order.line_items : null,
+        },
+        installation?.routine_filters,
+        installation?.currency ?? null,
+      )
+      if (!decision.send) {
+        console.log('[Filters] blocked in generate-followup-plan:', decision.reason)
+        return NextResponse.json(
+          { error: 'This routine is not available for your order.' },
+          { status: 403 },
+        )
+      }
+    }
 
     // order.merchant_id è l'identità CONGELATA al momento dell'ordine ed è quella
     // autorevole per il piano di questo ordine. installation.expert_id è mutevole
