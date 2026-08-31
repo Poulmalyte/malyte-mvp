@@ -53,6 +53,8 @@ function formatMoney(amount: number, currency?: string | null): string {
   }
 }
 
+const SHOW_LINE_ITEM_PRICES: boolean = false
+
 function renderLineItems(items?: LineItem[], currency?: string | null): string {
   if (!Array.isArray(items) || items.length === 0) return ''
   const rows = items.map((it) => {
@@ -61,9 +63,9 @@ function renderLineItems(items?: LineItem[], currency?: string | null): string {
     const variant = it?.variant_title ? ` (${escapeHtml(it.variant_title)})` : ''
     const qty = Number(it?.quantity) > 0 ? Number(it.quantity) : 1
     const unit = it?.price != null && it.price !== '' ? Number(it.price) : NaN
-    const priceCell = Number.isFinite(unit)
+    const priceCell = SHOW_LINE_ITEM_PRICES && Number.isFinite(unit)
       ? `<td align="right" style="font-size:14px;color:#0F172A;padding:3px 0;line-height:1.5;white-space:nowrap;">${escapeHtml(formatMoney(unit * qty, currency))}</td>`
-      : '<td></td>'
+      : ''
     return `<tr><td style="font-size:14px;color:#0F172A;padding:3px 12px 3px 0;line-height:1.5;">${title}${variant} &times;${qty}</td>${priceCell}</tr>`
   }).filter(Boolean).join('')
   if (!rows) return ''
