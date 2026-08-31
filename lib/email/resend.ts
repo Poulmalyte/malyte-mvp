@@ -32,7 +32,7 @@ function footer(brandName: string): string {
     </p>`
 }
 
-type LineItem = { title?: string; quantity?: number; variant_title?: string | null }
+type LineItem = { title?: string; quantity?: number; variant_title?: string | null; price?: string | number | null }
 
 function escapeHtml(v: string): string {
   return (v || '')
@@ -42,14 +42,29 @@ function escapeHtml(v: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function renderLineItems(items?: LineItem[]): string {
+function formatMoney(amount: number, currency?: string | null): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: (currency || 'USD').toUpperCase(),
+    }).format(amount)
+  } catch {
+    return `${amount.toFixed(2)} ${(currency || '').toUpperCase()}`.trim()
+  }
+}
+
+function renderLineItems(items?: LineItem[], currency?: string | null): string {
   if (!Array.isArray(items) || items.length === 0) return ''
   const rows = items.map((it) => {
     const title = escapeHtml(it?.title || '')
     if (!title) return ''
     const variant = it?.variant_title ? ` (${escapeHtml(it.variant_title)})` : ''
     const qty = Number(it?.quantity) > 0 ? Number(it.quantity) : 1
-    return `<tr><td style="font-size:14px;color:#0F172A;padding:3px 0;line-height:1.5;">${title}${variant} &times;${qty}</td></tr>`
+    const unit = it?.price != null && it.price !== '' ? Number(it.price) : NaN
+    const priceCell = Number.isFinite(unit)
+      ? `<td align="right" style="font-size:14px;color:#0F172A;padding:3px 0;line-height:1.5;white-space:nowrap;">${escapeHtml(formatMoney(unit * qty, currency))}</td>`
+      : '<td></td>'
+    return `<tr><td style="font-size:14px;color:#0F172A;padding:3px 12px 3px 0;line-height:1.5;">${title}${variant} &times;${qty}</td>${priceCell}</tr>`
   }).filter(Boolean).join('')
   if (!rows) return ''
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 4px;"><tbody>${rows}</tbody></table>`
@@ -186,12 +201,13 @@ export async function sendInactiveEmail({
 }
 
 export async function sendFollowupEmail({
-  to, brandName, followupUrl, replyTo, customerName, lineItems, orderNumber,
+  to, brandName, followupUrl, replyTo, customerName, lineItems, orderNumber, currency,
 }: {
   to: string, brandName: string, followupUrl: string, replyTo?: string,
-  customerName?: string | null, lineItems?: LineItem[] | null, orderNumber?: string | null
+  customerName?: string | null, lineItems?: LineItem[] | null, orderNumber?: string | null,
+  currency?: string | null
 }) {
-  const itemsBlock = renderLineItems(lineItems || undefined)
+  const itemsBlock = renderLineItems(lineItems || undefined, currency)
   const greeting = customerName
     ? `<p style="font-size:15px;color:#0F172A;margin:0 0 18px;">Hi ${escapeHtml(customerName)},</p>`
     : ''
@@ -202,7 +218,9 @@ export async function sendFollowupEmail({
     from: buildFrom(brandName),
     ...(replyTo ? { replyTo } : {}),
     to,
-    subject: `Get the most out of your ${brandName} order`,
+    subject: orderNumber
+      ? `Your routine for order ${orderNumber} \u00b7 ${brandName}`
+      : `Your routine for your ${brandName} order`,
     html: `
 <!DOCTYPE html>
 <html>

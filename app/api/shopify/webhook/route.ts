@@ -353,6 +353,7 @@ export async function POST(request: NextRequest) {
           title: i?.title ?? '',
           quantity: i?.quantity ?? 1,
           variant_title: i?.variant_title ?? null,
+          price: i?.price ?? null,
         }))
         .filter((i: any) => i.title)
       const emailOrderNumber = order.name || (order.order_number != null ? `#${order.order_number}` : null)
@@ -368,6 +369,7 @@ export async function POST(request: NextRequest) {
         customerName: emailCustomerName,
         lineItems: emailLineItems,
         orderNumber: emailOrderNumber,
+        currency: order.currency ?? installation?.currency ?? null,
       })
     } catch (emailErr) {
       console.error('Followup email error:', emailErr)
