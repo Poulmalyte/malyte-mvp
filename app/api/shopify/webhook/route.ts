@@ -344,10 +344,30 @@ export async function POST(request: NextRequest) {
         if (m?.name) emailBrandName = m.name
       }
       console.log('[Email] brandName resolution:', { merchantId, emailBrandName })
+      const emailCustomerName = [order.customer?.first_name, order.customer?.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || null
+      const emailLineItems = (order.line_items || [])
+        .map((i: any) => ({
+          title: i?.title ?? '',
+          quantity: i?.quantity ?? 1,
+          variant_title: i?.variant_title ?? null,
+        }))
+        .filter((i: any) => i.title)
+      const emailOrderNumber = order.name || (order.order_number != null ? `#${order.order_number}` : null)
+      console.log('[Email] followup payload:', {
+        hasName: !!emailCustomerName,
+        items: emailLineItems.length,
+        orderNumber: emailOrderNumber,
+      })
       await sendFollowupEmail({
         to: buyerEmail,
         brandName: emailBrandName,
         followupUrl: `${appUrl}/order-followup/${token}`,
+        customerName: emailCustomerName,
+        lineItems: emailLineItems,
+        orderNumber: emailOrderNumber,
       })
     } catch (emailErr) {
       console.error('Followup email error:', emailErr)

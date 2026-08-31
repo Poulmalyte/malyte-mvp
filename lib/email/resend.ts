@@ -32,6 +32,29 @@ function footer(brandName: string): string {
     </p>`
 }
 
+type LineItem = { title?: string; quantity?: number; variant_title?: string | null }
+
+function escapeHtml(v: string): string {
+  return (v || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function renderLineItems(items?: LineItem[]): string {
+  if (!Array.isArray(items) || items.length === 0) return ''
+  const rows = items.map((it) => {
+    const title = escapeHtml(it?.title || '')
+    if (!title) return ''
+    const variant = it?.variant_title ? ` (${escapeHtml(it.variant_title)})` : ''
+    const qty = Number(it?.quantity) > 0 ? Number(it.quantity) : 1
+    return `<tr><td style="font-size:14px;color:#0F172A;padding:3px 0;line-height:1.5;">${title}${variant} &times;${qty}</td></tr>`
+  }).filter(Boolean).join('')
+  if (!rows) return ''
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 4px;"><tbody>${rows}</tbody></table>`
+}
+
 export async function sendPlanEmail({
   to, brandName, planUrl, customerSummary, replyTo,
 }: {
@@ -163,10 +186,18 @@ export async function sendInactiveEmail({
 }
 
 export async function sendFollowupEmail({
-  to, brandName, followupUrl, replyTo,
+  to, brandName, followupUrl, replyTo, customerName, lineItems, orderNumber,
 }: {
-  to: string, brandName: string, followupUrl: string, replyTo?: string
+  to: string, brandName: string, followupUrl: string, replyTo?: string,
+  customerName?: string | null, lineItems?: LineItem[] | null, orderNumber?: string | null
 }) {
+  const itemsBlock = renderLineItems(lineItems || undefined)
+  const greeting = customerName
+    ? `<p style="font-size:15px;color:#0F172A;margin:0 0 18px;">Hi ${escapeHtml(customerName)},</p>`
+    : ''
+  const orderTag = orderNumber
+    ? `<span style="font-size:14px;font-weight:500;color:#94A3B8;"> &middot; Order ${escapeHtml(orderNumber)}</span>`
+    : ''
   return resend.emails.send({
     from: buildFrom(brandName),
     ...(replyTo ? { replyTo } : {}),
@@ -179,21 +210,17 @@ export async function sendFollowupEmail({
 <body style="margin:0;padding:0;background:#F5F7FA;font-family:'Inter',Arial,sans-serif;">
   <div style="max-width:560px;margin:0 auto;padding:32px 24px;">
     <div style="margin-bottom:24px;">
-      <span style="font-size:22px;font-weight:800;color:#0F172A;">${brandName}</span>
+      <span style="font-size:22px;font-weight:800;color:#0F172A;">${brandName}</span>${orderTag}
     </div>
     <div style="background:#fff;border-radius:16px;border:1px solid #E8EDF8;padding:28px;margin-bottom:20px;">
-      <p style="font-size:12px;font-weight:600;color:#7C5CFC;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.08em;">Your order is confirmed</p>
-      <h1 style="font-size:22px;font-weight:800;color:#0F172A;margin:0 0 12px;line-height:1.3;">Get a personalised routine for your products</h1>
-      <p style="font-size:14px;color:#64748B;margin:0 0 20px;line-height:1.6;">
-        Answer a couple of quick questions and we'll build a routine specifically around what you just bought — so you get the best possible results from day one.
+      ${greeting}
+      ${itemsBlock ? `<p style="font-size:13px;font-weight:600;color:#64748B;margin:0 0 8px;">You ordered:</p>${itemsBlock}` : ''}
+      <h1 style="font-size:19px;font-weight:800;color:#0F172A;margin:24px 0 8px;line-height:1.3;">Get the most out of them</h1>
+      <p style="font-size:14px;color:#64748B;margin:0 0 18px;line-height:1.6;">
+        Answer 2 quick questions and we'll set the right order and frequency for these products.
       </p>
-      <a href="${followupUrl}" style="display:block;text-align:center;padding:14px 24px;background:linear-gradient(135deg,#7C5CFC,#06B6D4);color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;">
-        Build My Personalised Routine →
-      </a>
-    </div>
-    <div style="background:#F5F3FF;border-radius:12px;border:1px solid #DDD6FE;padding:16px;margin-bottom:20px;">
-      <p style="font-size:12px;color:#5B21B6;margin:0;line-height:1.6;">
-        ✓ Free · Takes less than 2 minutes · Your plan is saved permanently
+      <p style="margin:0;font-size:15px;line-height:1.5;">
+        <a href="${followupUrl}" style="color:#7C5CFC;font-weight:700;text-decoration:underline;">&rarr; Build the routine for the products you just bought</a>
       </p>
     </div>
     ${footer(brandName)}
