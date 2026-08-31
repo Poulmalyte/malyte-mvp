@@ -217,7 +217,7 @@ export async function sendFollowupEmail({
       ${itemsBlock ? `<p style="font-size:13px;font-weight:600;color:#64748B;margin:0 0 8px;">You ordered:</p>${itemsBlock}` : ''}
       <h1 style="font-size:19px;font-weight:800;color:#0F172A;margin:24px 0 8px;line-height:1.3;">Get the most out of them</h1>
       <p style="font-size:14px;color:#64748B;margin:0 0 18px;line-height:1.6;">
-        Answer 2 quick questions and we'll set the right order and frequency for these products.
+        Answer a few quick questions and we'll set the right order and frequency for these products.
       </p>
       <p style="margin:0;font-size:15px;line-height:1.5;">
         <a href="${followupUrl}" style="color:#7C5CFC;font-weight:700;text-decoration:underline;">&rarr; Build the routine for the products you just bought</a>
