@@ -100,6 +100,7 @@ export async function POST(request: Request) {
       return {
         id: item.id,
         title: item.title,
+        shopify_product_id: item.shopify_product_id ? String(item.shopify_product_id) : null,
         routine_step: getTag('routine_step')[0] || 'other',
         usage_time: getTag('usage_time')[0] || 'both',
         objectives: getTag('objective'),
@@ -130,6 +131,45 @@ export async function POST(request: Request) {
     const improvementScore = improvementMap[answers.improvement || answers.energy || ''] || 3
     const hasReaction = answers.reaction && (answers.reaction.includes('irritation') || answers.reaction.includes('stopped'))
 
+    // Prodotti gia' posseduti: tutti gli ordini del cliente su questo shop,
+    // non solo quello che ha originato il piano. Filtra su shop_domain (NOT NULL,
+    // scritto dal webhook) e non su merchant_id, che resta null sugli ordini per
+    // cui il cliente non ha mai aperto il link.
+    const checkinEmail = (brandPlan.customer_email || '').trim().toLowerCase()
+    const ownedProductIds = new Set<string>()
+
+    if (checkinEmail) {
+      const base = supabaseAdmin
+        .from('shopify_orders')
+        .select('line_items, shopify_product_id, customer_email, buyer_email')
+      const { data: customerOrders } = installation?.shop_domain
+        ? await base.eq('shop_domain', installation.shop_domain)
+        : await base.eq('merchant_id', merchant_id)
+
+      for (const o of customerOrders || []) {
+        const oEmail = (o.buyer_email || o.customer_email || '').trim().toLowerCase()
+        if (oEmail !== checkinEmail) continue
+
+        if (Array.isArray(o.line_items)) {
+          for (const li of o.line_items as any[]) {
+            const pid = li?.shopify_product_id ? String(li.shopify_product_id) : null
+            if (!pid || ownedProductIds.has(pid)) continue
+            ownedProductIds.add(pid)
+          }
+        } else if (o.shopify_product_id) {
+          try {
+            const parsed = JSON.parse(o.shopify_product_id)
+            for (const pid of Array.isArray(parsed) ? parsed : [parsed]) {
+              ownedProductIds.add(String(pid))
+            }
+          } catch {
+            ownedProductIds.add(String(o.shopify_product_id))
+          }
+        }
+      }
+    }
+    console.log('[submit-checkin] owned products:', ownedProductIds.size, Array.from(ownedProductIds).join(','))
+
     // --- CROSS-SELL: selezione candidati (fit primario, intro_week come timing secondario) ---
     const prevPlan: any = brandPlan.plan_data || {}
     const routineProductIds = new Set(
@@ -147,6 +187,7 @@ export async function POST(request: Request) {
 
     const scoredCandidates = productsContext
       .filter(p => !routineProductIds.has(String(p.id)))
+      .filter(p => !p.shopify_product_id || !ownedProductIds.has(p.shopify_product_id))
       .filter(p => !lastRecommendedId || String(p.id) !== lastRecommendedId)
       .map(p => {
         const hero = String(p.hero_ingredients || '').toLowerCase()
@@ -165,6 +206,17 @@ export async function POST(request: Request) {
       .sort((a, b) => b.score - a.score || b.fit - a.fit || String(a.p.id).localeCompare(String(b.p.id)))
 
     const crossSellCandidates = scoredCandidates.slice(0, 10).map(c => c.p)
+
+    // Posseduti ma non ancora in routine: comprati in un ordine successivo a
+    // quello che ha originato il piano. Non sono cross-sell (il cliente li ha
+    // gia' pagati), vanno integrati negli step della settimana.
+    const newlyPurchased = productsContext.filter(
+      pc =>
+        pc.shopify_product_id &&
+        ownedProductIds.has(pc.shopify_product_id) &&
+        !routineProductIds.has(String(pc.id))
+    )
+    console.log('[submit-checkin] owned not in routine:', newlyPurchased.length)
     console.log('[submit-checkin] cross-sell candidates:', crossSellCandidates.length, 'nextWeek:', nextWeek)
 
     const { error: checkinSaveError } = await supabaseAdmin.from('brand_checkin_events').insert({
@@ -197,6 +249,9 @@ ${JSON.stringify(productsContext, null, 2)}
 Previous plan (Week ${week_number}):
 ${JSON.stringify(brandPlan.plan_data, null, 2)}
 
+ALREADY OWNED, NOT YET IN THE ROUTINE (bought in a later order — the customer already paid for these, they are NOT cross-sell):
+${newlyPurchased.length ? JSON.stringify(newlyPurchased, null, 2) : 'None.'}
+
 CROSS-SELL CANDIDATES (ranked, best fit first — products the customer is NOT yet using):
 ${crossSellCandidates.length ? JSON.stringify(crossSellCandidates, null, 2) : 'None available — do not introduce any new product this week.'}
 
@@ -207,7 +262,8 @@ RULES:
 4. CROSS-SELL: you MAY introduce AT MOST ONE new product to buy this week, chosen ONLY from the CROSS-SELL CANDIDATES list above. That list is already ranked by fit with this customer — prefer entries near the top, but choose a lower one if it genuinely suits them better. If NONE of them is a real fit for this customer's current routine, stated needs or reported reactions, introduce NOTHING: no cross-sell is always better than a forced one. Never more than one new product per week. Set recommended_product_id to the id of the product you introduce, or null if you introduce none. When you introduce one, also write recommended_reason: 1-2 warm, specific sentences tied to something real about this customer. Never invent price, availability or links — those are resolved elsewhere.
 5. NO medical or clinical claims. Never state the routine cures, treats, heals, repairs, or reduces any condition (e.g. "repairs the skin barrier", "reduces inflammation", "clears acne"). You MAY reference improvements the customer reported or that appear in the check-in/adherence data, but frame them as their reported experience, never as a clinical or medical outcome.
 6. The customer already knows their profile and is mid-routine. Continue from the previous plan — do NOT reintroduce their profile or re-explain why the routine was originally chosen, unless the latest check-in indicates a major change. No "you have X skin, making you an ideal candidate" openings.
-7. Return ONLY valid JSON, no markdown, no backticks`
+7. ALREADY OWNED products: any product in the ALREADY OWNED list must be worked into this week's morning or evening routine with real instructions and a frequency, exactly like the products carried over from the previous plan. Do NOT set recommended_product_id to one of them and do NOT describe them as something to buy: the customer already has them. If one genuinely does not fit yet (a reported reaction, or it would clash with a product already in use), leave it out and say why in adaptation_note.
+8. Return ONLY valid JSON, no markdown, no backticks`
 
     const userPrompt = `Customer Week ${week_number} check-in answers:
 ${JSON.stringify(answers, null, 2)}
