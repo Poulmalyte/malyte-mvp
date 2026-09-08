@@ -216,6 +216,23 @@ export async function POST(request: Request) {
         ownedProductIds.has(pc.shopify_product_id) &&
         !routineProductIds.has(String(pc.id))
     )
+    // Prodotti ammessi negli step: gia' in routine + posseduti da ordini successivi.
+    // Il candidato cross-sell NON entra qui: e' un suggerimento d'acquisto,
+    // non qualcosa che il cliente puo' gia' applicare.
+    // Un prodotto in routine vale come posseduto solo se risulta anche dagli
+    // ordini. Senza questo, un cross-sell finito per errore negli step di una
+    // settimana passata resta legittimo per sempre (si eredita lungo la chain).
+    // shopify_product_id null = catalog item non sincronizzato: non possiamo
+    // dire nulla, lo teniamo per non svuotare routine legittime.
+    const inRoutineOwned = inRoutine.filter((p: any) => {
+      if (!p.shopify_product_id) return true
+      const owned = ownedProductIds.has(p.shopify_product_id)
+      if (!owned) console.warn('[submit-checkin] routine product not in any order:', p.title, p.id)
+      return owned
+    })
+    const allowedStepProducts = [...inRoutineOwned, ...newlyPurchased]
+      .filter((p, i, arr) => arr.findIndex(x => String(x.id) === String(p.id)) === i)
+    const allowedStepIds = new Set<string>(allowedStepProducts.map((p: any) => String(p.id)))
     console.log('[submit-checkin] owned not in routine:', newlyPurchased.length)
     console.log('[submit-checkin] cross-sell candidates:', crossSellCandidates.length, 'nextWeek:', nextWeek)
 
@@ -243,8 +260,8 @@ Tone: ${merchantProfile?.tone_of_voice || 'professional but approachable'}
 Hero ingredients: ${merchantProfile?.hero_ingredients || 'Not specified'}
 Avoid: ${merchantProfile?.avoid_ingredients || 'None'}
 
-Available products:
-${JSON.stringify(productsContext, null, 2)}
+PRODUCTS THE CUSTOMER OWNS (the ONLY products that may appear as steps in the Week ${nextWeek} routine):
+${JSON.stringify(allowedStepProducts, null, 2)}
 
 Previous plan (Week ${week_number}):
 ${JSON.stringify(brandPlan.plan_data, null, 2)}
@@ -256,10 +273,10 @@ CROSS-SELL CANDIDATES (ranked, best fit first — products the customer is NOT y
 ${crossSellCandidates.length ? JSON.stringify(crossSellCandidates, null, 2) : 'None available — do not introduce any new product this week.'}
 
 RULES:
-1. ONLY recommend products from the catalog above
+1. Every step in morning_routine and evening_routine MUST use a product from the PRODUCTS THE CUSTOMER OWNS list. Never build a step from a cross-sell candidate
 2. The Week ${nextWeek} routine is built from products the customer is ALREADY using. Keep those as the core. KEEP each product's existing frequency from the previous plan unless the check-in gives a real reason to change it (a reaction, or the customer struggling with adherence). Do NOT silently turn a 2x_week product into a daily one. Steps in the previous plan without a frequency field are daily.
 3. If customer had reactions: remove the problematic product and replace with a gentler one ALREADY in their routine — do not add a new purchase to fix a reaction
-4. CROSS-SELL: you MAY introduce AT MOST ONE new product to buy this week, chosen ONLY from the CROSS-SELL CANDIDATES list above. That list is already ranked by fit with this customer — prefer entries near the top, but choose a lower one if it genuinely suits them better. If NONE of them is a real fit for this customer's current routine, stated needs or reported reactions, introduce NOTHING: no cross-sell is always better than a forced one. Never more than one new product per week. Set recommended_product_id to the id of the product you introduce, or null if you introduce none. When you introduce one, also write recommended_reason: 1-2 warm, specific sentences tied to something real about this customer. Never invent price, availability or links — those are resolved elsewhere.
+4. CROSS-SELL: you MAY introduce AT MOST ONE new product to buy this week, chosen ONLY from the CROSS-SELL CANDIDATES list above. That list is already ranked by fit with this customer — prefer entries near the top, but choose a lower one if it genuinely suits them better. If NONE of them is a real fit for this customer's current routine, stated needs or reported reactions, introduce NOTHING: no cross-sell is always better than a forced one. Never more than one new product per week. Set recommended_product_id to the id of the product you introduce, or null if you introduce none. When you introduce one, also write recommended_reason: 1-2 warm, specific sentences tied to something real about this customer. Never invent price, availability or links — those are resolved elsewhere. CRITICAL: the product you introduce must NOT appear in morning_routine or evening_routine. The customer does not own it yet — telling them to apply it this week is a contradiction. It is a suggestion only; it becomes a routine step at a later check-in, after they have bought it.
 5. NO medical or clinical claims. Never state the routine cures, treats, heals, repairs, or reduces any condition (e.g. "repairs the skin barrier", "reduces inflammation", "clears acne"). You MAY reference improvements the customer reported or that appear in the check-in/adherence data, but frame them as their reported experience, never as a clinical or medical outcome.
 6. The customer already knows their profile and is mid-routine. Continue from the previous plan — do NOT reintroduce their profile or re-explain why the routine was originally chosen, unless the latest check-in indicates a major change. No "you have X skin, making you an ideal candidate" openings.
 7. ALREADY OWNED products: any product in the ALREADY OWNED list must be worked into this week's morning or evening routine with real instructions and a frequency, exactly like the products carried over from the previous plan. Do NOT set recommended_product_id to one of them and do NOT describe them as something to buy: the customer already has them. If one genuinely does not fit yet (a reported reaction, or it would clash with a product already in use), leave it out and say why in adaptation_note.
@@ -326,6 +343,19 @@ Return exactly this JSON:
       newPlan.recommended_product_id && typeof newPlan.recommended_reason === 'string'
         ? newPlan.recommended_reason.trim().slice(0, 400)
         : null
+
+    // Guard: nessuno step puo' usare un prodotto che il cliente non possiede.
+    // Copre il caso in cui l'AI infila il candidato cross-sell nella routine.
+    const stripUnowned = (routine: any[], slot: string) => {
+      const kept = (routine || []).filter((st: any) => {
+        const ok = allowedStepIds.has(String(st?.product_id))
+        if (!ok) console.warn('[submit-checkin] dropped unowned step:', slot, st?.product_title, st?.product_id)
+        return ok
+      })
+      return kept.map((st: any, i: number) => ({ ...st, step_number: i + 1 }))
+    }
+    newPlan.morning_routine = stripUnowned(newPlan.morning_routine, 'morning')
+    newPlan.evening_routine = stripUnowned(newPlan.evening_routine, 'evening')
 
     const normalizeFreq = (routine: any[]) => routine.map((st: any) => ({
       ...st,

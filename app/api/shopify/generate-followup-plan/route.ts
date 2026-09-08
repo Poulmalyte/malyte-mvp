@@ -358,9 +358,21 @@ Return exactly this JSON:
         ...item,
         price: catalogItem?.price || null,
         product_url: catalogItem?.product_url || null,
-        already_purchased: true,
+        already_purchased: !!catalogItem?.already_purchased,
       }
     })
+
+    // Sentinella: in Week 1 nessuno step dovrebbe usare un prodotto non acquistato.
+    // Non rimuove nulla (un piano vuoto sarebbe peggio di uno step di troppo):
+    // segnala soltanto, cosi' una violazione delle regole 1-2 e' visibile nei log.
+    const purchasedIdSet = new Set(purchasedProducts.map(pp => String(pp.id)))
+    for (const [slot, routine] of [['morning', result.plan?.morning_routine], ['evening', result.plan?.evening_routine]] as const) {
+      for (const st of (routine || [])) {
+        if (st?.product_id && !purchasedIdSet.has(String(st.product_id))) {
+          console.warn('[FollowupPlan] unpurchased product in Week 1 step:', slot, st?.product_title, st?.product_id)
+        }
+      }
+    }
 
     // --- Copertura dei prodotti acquistati -------------------------------
     // Non blocca il piano: misura. Un prodotto puo' mancare perche' il modello
