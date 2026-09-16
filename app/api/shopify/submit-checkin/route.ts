@@ -230,12 +230,31 @@ export async function POST(request: Request) {
     // settimana passata resta legittimo per sempre (si eredita lungo la chain).
     // shopify_product_id null = catalog item non sincronizzato: non possiamo
     // dire nulla, lo teniamo per non svuotare routine legittime.
-    // Se non troviamo NESSUN ordine del cliente, i dati di possesso non sono
-    // affidabili: teniamo i prodotti della routine precedente invece di svuotarla.
+    // Se non troviamo NESSUN ordine del cliente non possiamo verificare il
+    // possesso. Per non svuotare la routine teniamo i prodotti precedenti, ma
+    // escludiamo sempre quelli mai proposti come cross-sell nella catena:
+    // e' esattamente la contaminazione ereditata che questo filtro deve bloccare.
     const ownershipKnown = ownedProductIds.size > 0
-    if (!ownershipKnown) console.warn('[submit-checkin] no orders found for customer, keeping previous routine products')
+    const everRecommendedIds = new Set<string>()
+    if (!ownershipKnown) {
+      const { data: chainPlans } = await supabaseAdmin
+        .from('brand_plans')
+        .select('plan_data')
+        .eq('merchant_id', merchant_id)
+        .eq('customer_email', brandPlan.customer_email)
+      for (const cp of chainPlans || []) {
+        const rid = (cp as any)?.plan_data?.recommended_product_id
+        if (rid) everRecommendedIds.add(String(rid))
+      }
+      console.warn('[submit-checkin] no orders found for customer, excluding past cross-sells:', everRecommendedIds.size)
+    }
     const inRoutineOwned = inRoutine.filter((p: any) => {
-      if (!ownershipKnown || !p.shopify_product_id) return true
+      if (!ownershipKnown) {
+        const wasCrossSell = everRecommendedIds.has(String(p.id))
+        if (wasCrossSell) console.warn('[submit-checkin] past cross-sell removed from routine:', p.title, p.id)
+        return !wasCrossSell
+      }
+      if (!p.shopify_product_id) return true
       const owned = ownedProductIds.has(p.shopify_product_id)
       if (!owned) console.warn('[submit-checkin] routine product not in any order:', p.title, p.id)
       return owned
@@ -382,19 +401,20 @@ Return exactly this JSON:
     // Regola di prodotto: mai una routine vuota. Almeno 1 step mattina e 1 sera
     // (minimo 2 in totale). Se uno slot e' vuoto si ricade sugli step della
     // settimana precedente; se resta vuoto il piano NON viene salvato.
+    // Solo prodotti ammessi: il fallback non deve mai reintrodurre un prodotto
+    // che il cliente non possiede (es. un vecchio cross-sell).
     const fallbackSlot = (prev: any[]) => {
       const owned = prev.filter((st: any) => allowedStepIds.has(String(st?.product_id)))
-      const base = owned.length ? owned : prev
-      return enrichRoutine(normalizeFreq(base.map((st: any, i: number) => ({ ...st, step_number: i + 1 }))))
+      return enrichRoutine(normalizeFreq(owned.map((st: any, i: number) => ({ ...st, step_number: i + 1 }))))
     }
     const fallbackSlots: string[] = []
-    if (newPlan.morning_routine.length === 0 && prevMorningSteps.length > 0) {
+    if (newPlan.morning_routine.length === 0) {
       newPlan.morning_routine = fallbackSlot(prevMorningSteps)
-      fallbackSlots.push('morning')
+      if (newPlan.morning_routine.length) fallbackSlots.push('morning')
     }
-    if (newPlan.evening_routine.length === 0 && prevEveningSteps.length > 0) {
+    if (newPlan.evening_routine.length === 0) {
       newPlan.evening_routine = fallbackSlot(prevEveningSteps)
-      fallbackSlots.push('evening')
+      if (newPlan.evening_routine.length) fallbackSlots.push('evening')
     }
 
     const morningCount = newPlan.morning_routine.length
