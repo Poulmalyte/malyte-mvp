@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
 
+// La generazione chiama Anthropic: evita che la funzione venga troncata.
+export const maxDuration = 60
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -172,6 +175,9 @@ export async function POST(request: Request) {
 
     // --- CROSS-SELL: selezione candidati (fit primario, intro_week come timing secondario) ---
     const prevPlan: any = brandPlan.plan_data || {}
+    // Copia intatta degli step precedenti: serve al fallback "mai zero step".
+    const prevMorningSteps: any[] = Array.isArray(prevPlan.morning_routine) ? [...prevPlan.morning_routine] : []
+    const prevEveningSteps: any[] = Array.isArray(prevPlan.evening_routine) ? [...prevPlan.evening_routine] : []
     const routineProductIds = new Set(
       [...(prevPlan.morning_routine || []), ...(prevPlan.evening_routine || [])]
         .map((s: any) => s?.product_id).filter(Boolean).map(String)
@@ -224,8 +230,12 @@ export async function POST(request: Request) {
     // settimana passata resta legittimo per sempre (si eredita lungo la chain).
     // shopify_product_id null = catalog item non sincronizzato: non possiamo
     // dire nulla, lo teniamo per non svuotare routine legittime.
+    // Se non troviamo NESSUN ordine del cliente, i dati di possesso non sono
+    // affidabili: teniamo i prodotti della routine precedente invece di svuotarla.
+    const ownershipKnown = ownedProductIds.size > 0
+    if (!ownershipKnown) console.warn('[submit-checkin] no orders found for customer, keeping previous routine products')
     const inRoutineOwned = inRoutine.filter((p: any) => {
-      if (!p.shopify_product_id) return true
+      if (!ownershipKnown || !p.shopify_product_id) return true
       const owned = ownedProductIds.has(p.shopify_product_id)
       if (!owned) console.warn('[submit-checkin] routine product not in any order:', p.title, p.id)
       return owned
@@ -280,7 +290,8 @@ RULES:
 5. NO medical or clinical claims. Never state the routine cures, treats, heals, repairs, or reduces any condition (e.g. "repairs the skin barrier", "reduces inflammation", "clears acne"). You MAY reference improvements the customer reported or that appear in the check-in/adherence data, but frame them as their reported experience, never as a clinical or medical outcome.
 6. The customer already knows their profile and is mid-routine. Continue from the previous plan — do NOT reintroduce their profile or re-explain why the routine was originally chosen, unless the latest check-in indicates a major change. No "you have X skin, making you an ideal candidate" openings.
 7. ALREADY OWNED products: any product in the ALREADY OWNED list must be worked into this week's morning or evening routine with real instructions and a frequency, exactly like the products carried over from the previous plan. Do NOT set recommended_product_id to one of them and do NOT describe them as something to buy: the customer already has them. If one genuinely does not fit yet (a reported reaction, or it would clash with a product already in use), leave it out and say why in adaptation_note.
-8. Return ONLY valid JSON, no markdown, no backticks`
+8. The routine is NEVER empty. morning_routine and evening_routine must each contain at least one step, and a good routine usually has more than one step per slot. If nothing changes this week, REPEAT every step from the previous plan in full (same products, instructions and frequency) — "no changes" means copying the steps, never omitting them.
+9. Return ONLY valid JSON, no markdown, no backticks`
 
     const userPrompt = `Customer Week ${week_number} check-in answers:
 ${JSON.stringify(answers, null, 2)}
@@ -366,6 +377,47 @@ Return exactly this JSON:
 
     newPlan.morning_routine = enrichRoutine(newPlan.morning_routine || [])
     newPlan.evening_routine = enrichRoutine(newPlan.evening_routine || [])
+
+    // --- Minimo step garantito -------------------------------------------
+    // Regola di prodotto: mai una routine vuota. Almeno 1 step mattina e 1 sera
+    // (minimo 2 in totale). Se uno slot e' vuoto si ricade sugli step della
+    // settimana precedente; se resta vuoto il piano NON viene salvato.
+    const fallbackSlot = (prev: any[]) => {
+      const owned = prev.filter((st: any) => allowedStepIds.has(String(st?.product_id)))
+      const base = owned.length ? owned : prev
+      return enrichRoutine(normalizeFreq(base.map((st: any, i: number) => ({ ...st, step_number: i + 1 }))))
+    }
+    const fallbackSlots: string[] = []
+    if (newPlan.morning_routine.length === 0 && prevMorningSteps.length > 0) {
+      newPlan.morning_routine = fallbackSlot(prevMorningSteps)
+      fallbackSlots.push('morning')
+    }
+    if (newPlan.evening_routine.length === 0 && prevEveningSteps.length > 0) {
+      newPlan.evening_routine = fallbackSlot(prevEveningSteps)
+      fallbackSlots.push('evening')
+    }
+
+    const morningCount = newPlan.morning_routine.length
+    const eveningCount = newPlan.evening_routine.length
+
+    if (morningCount === 0 || eveningCount === 0) {
+      console.error('[submit-checkin] plan blocked, not enough steps:', { morningCount, eveningCount, brand_plan_id })
+      await supabaseAdmin.from('event_stream').insert({
+        merchant_id,
+        customer_id,
+        event_type: 'plan_generation_blocked',
+        event_data: { reason: 'min_steps', morning: morningCount, evening: eveningCount, brand_plan_id, next_week: nextWeek },
+      })
+      return NextResponse.json({ error: 'We could not update your plan. Please try again shortly.' }, { status: 500 })
+    }
+
+    if (fallbackSlots.length) {
+      console.warn('[submit-checkin] empty slot filled from previous plan:', fallbackSlots.join(','))
+    }
+    if (morningCount + eveningCount === 2) {
+      console.warn('[submit-checkin] routine has only 2 steps (should be rare):', brand_plan_id)
+    }
+    // ----------------------------------------------------------------------
 
     const { data: newBrandPlan } = await supabaseAdmin
       .from('brand_plans')
