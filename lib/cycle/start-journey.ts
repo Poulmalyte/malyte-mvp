@@ -43,6 +43,8 @@ type ShopifyOrderPayload = {
   id: number | string
   name?: string | null
   order_number?: number | string | null
+  total_price?: string | null
+  currency?: string | null
   customer_locale?: string | null
   customer?: { first_name?: string | null } | null
   line_items?: ShopifyLineItem[]
@@ -67,11 +69,22 @@ export async function startCycleJourney(params: {
     // 1. Order row saved by the webhook
     const { data: orderRow } = await supabase
       .from('shopify_orders')
-      .select('id, token')
+      .select('id, token, status')
       .eq('shop_domain', shop)
       .eq('shopify_order_id', String(order.id))
       .maybeSingle()
     if (!orderRow) return { ok: false, reason: 'order_row_not_found' }
+    // The webhook upsert resets the order status on retries, so reorders are de-duplicated via event_stream
+    const { data: seenReorder } = await supabase
+      .from('event_stream')
+      .select('id')
+      .eq('merchant_id', merchantId)
+      .eq('event_type', 'cycle_reorder')
+      .eq('event_data->>shopify_order_id', String(order.id))
+      .limit(1)
+    if (seenReorder?.length) {
+      return { ok: true, journeyId: '', controlGroup: false, skipped: 'reorder_already_handled' }
+    }
 
     // 2. Idempotency: Shopify can deliver the same webhook more than once
     const { data: existing } = await supabase
@@ -97,6 +110,49 @@ export async function startCycleJourney(params: {
     }
 
     const language = (order.customer_locale || 'en').trim() || 'en'
+
+    // 3b. Reorder: the customer is already in an active cycle with this brand.
+    // Same products → no new welcome: the journey continues and the stock clock restarts.
+    // New products → the old journey is closed and a new one starts below.
+    if (customerId) {
+      const { data: active } = await supabase
+        .from('cycle_journeys')
+        .select('id, stock_estimates')
+        .eq('merchant_id', merchantId)
+        .eq('customer_id', customerId)
+        .eq('status', 'active')
+        .eq('in_control_group', false)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (active) {
+        const known = new Set(((active.stock_estimates as any[]) || []).map((e) => String(e?.productId)))
+        const boughtIds = (order.line_items || []).filter((li) => li?.product_id).map((li) => String(li.product_id))
+        const sameProducts = boughtIds.length > 0 && boughtIds.every((id) => known.has(id))
+        const now = new Date().toISOString()
+        await supabase.from('event_stream').insert({
+          merchant_id: merchantId,
+          customer_id: customerId,
+          event_type: 'cycle_reorder',
+          event_data: {
+            journey_id: active.id,
+            same_products: sameProducts,
+            shopify_order_id: String(order.id),
+            order_value: order.total_price != null ? Number(order.total_price) : null,
+            currency: order.currency || null,
+          },
+        })
+        if (sameProducts) {
+          await supabase
+            .from('cycle_journeys')
+            .update({ started_at: now, reported_running_low: false, updated_at: now })
+            .eq('id', active.id)
+          await supabase.from('shopify_orders').update({ status: 'cycle_reorder' }).eq('id', orderRow.id)
+          return { ok: true, journeyId: active.id, controlGroup: false, skipped: 'reorder_same_products' }
+        }
+        await supabase.from('cycle_journeys').update({ status: 'completed', updated_at: now }).eq('id', active.id)
+      }
+    }
 
     // 4. Control group: ~10% of each brand's customers get no cycle emails (measures Malyte's impact)
     const inControl = isInControlGroup(merchantId, customerId || buyerEmail)

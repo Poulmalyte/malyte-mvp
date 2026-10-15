@@ -1,10 +1,17 @@
 import type { QuestionSpec, UsageGuide, WeeklyResult } from './engine'
 import type { WelcomeStepContent } from './start-journey'
 
-/** Weekly step content (week >= 1). Written by the weekly job (next phase). */
+/** Links resolved by code (never by the AI) for a weekly step. */
+export type WeeklyLinks = {
+  refill: { title: string; url: string | null } | null
+  recommendations: { productId: string; title: string; reason: string; url: string | null }[]
+}
+
+/** Weekly step content (week >= 1), written by the weekly job. */
 export type WeeklyStepContent = {
   kind: 'weekly'
   result: WeeklyResult
+  links: WeeklyLinks
   fixedQuestionIds: { goal?: string; frequency?: string; progress?: string }
 }
 
@@ -27,8 +34,9 @@ export function stepQuestions(content: StepContent): QuestionSpec[] {
 export function stepReference(content: StepContent): {
   usageGuide: UsageGuide | null
   tip: { title: string; body: string } | null
+  links: WeeklyLinks | null
 } {
-  if (content?.kind === 'welcome') return { usageGuide: content.onboarding.usageGuide, tip: null }
-  if (content?.kind === 'weekly') return { usageGuide: null, tip: content.result.usageTip }
-  return { usageGuide: null, tip: null }
+  if (content?.kind === 'welcome') return { usageGuide: content.onboarding.usageGuide, tip: null, links: null }
+  if (content?.kind === 'weekly') return { usageGuide: null, tip: content.result.usageTip, links: content.links || null }
+  return { usageGuide: null, tip: null, links: null }
 }

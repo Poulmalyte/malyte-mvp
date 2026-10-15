@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
-import type { EmailContent, QuestionSpec, UsageGuide } from '@/lib/cycle/engine'
+import type { EmailContent, QuestionSpec, UsageGuide, WeeklyResult } from '@/lib/cycle/engine'
+import type { WeeklyLinks } from '@/lib/cycle/steps'
 
 /**
  * Emails of the consumption cycle. Kept in a separate file so the existing
@@ -11,7 +12,12 @@ import type { EmailContent, QuestionSpec, UsageGuide } from '@/lib/cycle/engine'
  * These are the signals that keep a transactional email out of the Promotions tab.
  */
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Created on first send, not at import time: the build must not need RESEND_API_KEY
+let resendClient: Resend | null = null
+function resend(): Resend {
+  if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY)
+  return resendClient
+}
 const MALYTE_SITE = 'https://www.malyte.com/shopify/home'
 const SENDER_ADDRESS = 'noreply@malyte.com'
 
@@ -141,7 +147,113 @@ export function renderCycleWelcomeEmail(params: Omit<WelcomeEmailParams, 'to'>):
 
 export async function sendCycleWelcomeEmail(params: WelcomeEmailParams) {
   const { subject, html, text } = renderCycleWelcomeEmail(params)
-  const { error } = await resend.emails.send({
+  const { error } = await resend().emails.send({
+    from: buildFrom(params.brandName),
+    to: params.to,
+    subject,
+    html,
+    text,
+  })
+  if (error) throw new Error(`Resend error: ${error.message}`)
+}
+
+// ─────────────────────────────────────────────────────────────
+// Weekly email
+// ─────────────────────────────────────────────────────────────
+
+const h1 = (text: string, top = 26) =>
+  `<h1 style="font-size:19px;font-weight:800;color:#0F172A;margin:${top}px 0 8px;line-height:1.3;">${esc(text)}</h1>`
+const muted = (text: string) => `<p style="font-size:14px;color:#64748B;margin:0 0 12px;line-height:1.6;">${esc(text)}</p>`
+const arrowLink = (href: string, label: string) =>
+  `<p style="margin:0 0 10px;font-size:15px;line-height:1.5;"><a href="${href}" style="color:#7C5CFC;font-weight:700;text-decoration:underline;">&rarr; ${esc(label)}</a></p>`
+
+function weeklyQuestionHtml(q: QuestionSpec, answerUrl: (questionId: string, optionIndex: number) => string): string {
+  if (!q?.options?.length) return ''
+  if (q.type === 'scale') {
+    const nums = q.options
+      .map((o, i) => `<a href="${answerUrl(q.id, i)}" style="color:#7C5CFC;font-weight:800;font-size:18px;text-decoration:underline;padding:0 10px 0 0;">${esc(o.label)}</a>`)
+      .join('')
+    const legend = q.scaleLabels
+      ? `<p style="font-size:12px;color:#94A3B8;margin:6px 0 0;">1 = ${esc(q.scaleLabels.low)} &middot; 5 = ${esc(q.scaleLabels.high)}</p>`
+      : ''
+    return `${h1(q.question)}<p style="margin:0;line-height:1.8;">${nums}</p>${legend}`
+  }
+  return `${h1(q.question)}${muted('Tap your answer — it is saved instantly.')}${q.options.map((o, i) => arrowLink(answerUrl(q.id, i), o.label)).join('')}`
+}
+
+type WeeklyEmailParams = {
+  to: string
+  brandName: string
+  week: number
+  result: WeeklyResult
+  links: WeeklyLinks
+  answerUrl: (questionId: string, optionIndex: number) => string
+  pageUrl: string
+  runningLowUrl: string
+  stopUrl: string
+}
+
+export function renderCycleWeeklyEmail(p: Omit<WeeklyEmailParams, 'to'>): { subject: string; html: string; text: string } {
+  const { brandName, week, result, links, answerUrl, pageUrl, runningLowUrl, stopUrl } = p
+  const refillHtml = links.refill
+    ? `${h1(result.refill?.state === 'now' ? 'Time to restock' : 'Running low soon')}${arrowLink(links.refill.url || pageUrl, `Reorder ${links.refill.title}`)}`
+    : ''
+  const recsHtml = links.recommendations.length
+    ? `${h1('To go further')}${links.recommendations
+        .map((r) => `${arrowLink(r.url || pageUrl, r.title)}<p style="font-size:13px;color:#64748B;margin:-4px 0 14px;line-height:1.55;">${esc(r.reason)}</p>`)
+        .join('')}`
+    : ''
+  const questionsHtml = (result.emailQuestions || []).map((q) => weeklyQuestionHtml(q, answerUrl)).join('')
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F5F7FA;font-family:'Inter',Arial,sans-serif;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 24px;">
+    <div style="margin-bottom:24px;">
+      <span style="font-size:22px;font-weight:800;color:#0F172A;">${esc(brandName)}</span><span style="font-size:14px;font-weight:500;color:#94A3B8;"> &middot; Week ${week}</span>
+    </div>
+    <div style="background:#fff;border-radius:16px;border:1px solid #E8EDF8;padding:28px;margin-bottom:20px;">
+      ${paragraphs(result.email?.body || '')}
+      ${result.usageTip ? `${h1(result.usageTip.title, 14)}${muted(result.usageTip.body)}` : ''}
+      ${refillHtml}
+      ${recsHtml}
+      ${questionsHtml}
+      <p style="font-size:13px;margin:22px 0 0;"><a href="${runningLowUrl}" style="color:#64748B;text-decoration:underline;">I'm running low</a></p>
+    </div>
+    ${footer(brandName)}
+    <p style="font-size:11px;color:#94A3B8;text-align:center;margin:8px 0 0;">
+      <a href="${stopUrl}" style="color:#94A3B8;text-decoration:underline;">Stop these weekly emails</a>
+    </p>
+  </div>
+</body>
+</html>`
+
+  const lines: string[] = [(result.email?.body || '').trim(), '']
+  if (result.usageTip) lines.push(result.usageTip.title.toUpperCase(), result.usageTip.body, '')
+  if (links.refill) lines.push(`Reorder ${links.refill.title}: ${links.refill.url || pageUrl}`, '')
+  if (links.recommendations.length) {
+    lines.push('TO GO FURTHER')
+    for (const r of links.recommendations) lines.push(`${r.title}: ${r.url || pageUrl}`, r.reason)
+    lines.push('')
+  }
+  for (const q of result.emailQuestions || []) {
+    lines.push(q.question)
+    q.options.forEach((o, i) => lines.push(`${o.label}: ${answerUrl(q.id, i)}`))
+    lines.push('')
+  }
+  lines.push(`I'm running low: ${runningLowUrl}`, `Stop these weekly emails: ${stopUrl}`, '', `${brandName} · Powered by Malyte`)
+
+  const subject = result.refill?.state === 'now' && links.refill
+    ? `Running low on ${links.refill.title}? \u00b7 ${brandName}`
+    : `Week ${week}: ${result.usageTip?.title || 'your next tip'} \u00b7 ${brandName}`
+  return { subject: subject.slice(0, 120), html, text: lines.join('\n') }
+}
+
+export async function sendCycleWeeklyEmail(params: WeeklyEmailParams) {
+  const { subject, html, text } = renderCycleWeeklyEmail(params)
+  const { error } = await resend().emails.send({
     from: buildFrom(params.brandName),
     to: params.to,
     subject,

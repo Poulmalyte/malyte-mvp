@@ -229,6 +229,8 @@ export type QuestionSpec = {
   question: string;
   type: "scale" | "choice";
   options: { label: string; instantReply: string; usesPerDay?: number }[]; // scale = exactly 5 options "1".."5"
+  /** Scale questions only: what 1 and 5 mean (shown next to the numbers). */
+  scaleLabels?: { low: string; high: string };
 };
 
 export type StockEstimate = {
@@ -449,9 +451,10 @@ What you write:
      a) one personal line (first name if available, refer to their last answer if relevant);
      b) the progress note, if present;
      c) the tip;
-     d) refill message, if refillState is "soon" or "now" (see below);
-     e) recommendations as "to go further", one short line each, if present;
-     f) one line inviting them to answer the question below (the buttons are added by the template — do not list options).
+     d) if refillState is "soon" or "now": ONE short sentence about it (the reorder link is added below by the template);
+     e) if there are recommendations: ONE short sentence introducing them (the products, reasons and links are listed below by the template — do not name or list them);
+     f) one line inviting them to answer the question below (the answer links are added by the template — do not list options).
+   - Do not repeat the tip title as a heading: the template shows the tip separately, so in the body summarise it in one sentence.
    - Refill: "soon" → mention roughly how many days are left and link it to their progress; "now" → focus on
      continuing without a gap. Never invent discounts or offers.
 
@@ -665,6 +668,7 @@ export function buildProgressQuestion(
     kind: "progress",
     question: p.question,
     type: "scale",
+    scaleLabels: { low: p.lowLabel, high: p.highLabel },
     options: ["1", "2", "3", "4", "5"].map((n) => ({
       label: n,
       instantReply: replies?.find((r) => r.option === n)?.instantReply ?? "Thanks, noted.",
@@ -692,6 +696,16 @@ export function parseModelJson<T>(text: string): T {
   }
 }
 
+/** Forces a model-written question into a safe shape: stable id, kind, 2–5 options with labels. */
+function cleanQuestion(q: QuestionSpec | undefined, id: string, kind: "adaptive" | "followup"): QuestionSpec {
+  const type = q?.type === "scale" ? "scale" : "choice";
+  let options = (q?.options || [])
+    .filter((o) => o && typeof o.label === "string" && o.label.trim())
+    .map((o) => ({ label: o.label.trim().slice(0, 80), instantReply: (o.instantReply || "").trim().slice(0, 400) }));
+  options = type === "scale" ? options.slice(0, 5) : options.slice(0, 4);
+  return { id, kind, question: (q?.question || "").trim().slice(0, 200), type, options };
+}
+
 export async function runWeeklyCycle(input: CycleInput, callModel: CallModel): Promise<WeeklyResult> {
   if (!input.niche) throw new Error("Niche must be set at onboarding before weekly runs.");
   const plan = buildWeekPlan(input);
@@ -706,7 +720,12 @@ export async function runWeeklyCycle(input: CycleInput, callModel: CallModel): P
     input.product,
     plan.recommendationCount,
   );
-  decision.followUpQuestions = (decision.followUpQuestions ?? []).slice(0, 2);
+  const week = input.customer.week ?? 1;
+  decision.adaptiveQuestion = cleanQuestion(decision.adaptiveQuestion, `adaptive_w${week}`, "adaptive");
+  decision.followUpQuestions = (decision.followUpQuestions ?? [])
+    .slice(0, 2)
+    .map((q, i) => cleanQuestion(q, `followup_w${week}_${i + 1}`, "followup"))
+    .filter((q) => q.options.length >= 2);
 
   // Agent 2 — writer writes
   const written = parseModelJson<WriterOutput>(
@@ -715,7 +734,7 @@ export async function runWeeklyCycle(input: CycleInput, callModel: CallModel): P
 
   const emailQuestions: QuestionSpec[] = [
     ...(plan.progressWeek ? [buildProgressQuestion(input.niche, decision.progressReplies, profilesOf(input))] : []),
-    decision.adaptiveQuestion,
+    ...(decision.adaptiveQuestion.options.length >= 2 ? [decision.adaptiveQuestion] : []),
   ];
 
   return {

@@ -16,10 +16,10 @@ export default async function CycleStepPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>
-  searchParams: Promise<{ q?: string; a?: string }>
+  searchParams: Promise<{ q?: string; a?: string; low?: string; stop?: string }>
 }) {
   const { token } = await params
-  const { q, a } = await searchParams
+  const { q, a, low, stop } = await searchParams
   const supabase = createAdminClient()
 
   const { data: step } = await supabase
@@ -40,7 +40,7 @@ export default async function CycleStepPage({
 
   const content = step.content as StepContent
   const questions = stepQuestions(content)
-  const { usageGuide, tip } = stepReference(content)
+  const { usageGuide, tip, links } = stepReference(content)
 
   const existing: Record<string, string> = {}
   for (const row of answers || []) existing[row.question_id] = row.answer
@@ -61,6 +61,8 @@ export default async function CycleStepPage({
       preselected={preselected}
       usageGuide={usageGuide}
       tip={tip}
+      links={links}
+      action={stop === '1' ? 'stop' : low === '1' ? 'low' : null}
     />
   )
 }

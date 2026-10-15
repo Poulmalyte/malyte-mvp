@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { QuestionSpec, UsageGuide } from '@/lib/cycle/engine'
+import type { WeeklyLinks } from '@/lib/cycle/steps'
 
 interface Props {
   token: string
@@ -12,12 +13,15 @@ interface Props {
   preselected: { questionId: string; optionIndex: number } | null
   usageGuide: UsageGuide | null
   tip: { title: string; body: string } | null
+  links?: WeeklyLinks | null
+  /** From the email footer links: 'low' = I'm running low, 'stop' = stop weekly emails */
+  action?: 'low' | 'stop' | null
 }
 
 const violet = '#7C5CFC'
 
 export default function CycleClient({
-  token, week, brandName, questions, existingAnswers, preselected, usageGuide, tip,
+  token, week, brandName, questions, existingAnswers, preselected, usageGuide, tip, links, action,
 }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>(existingAnswers)
   const [replies, setReplies] = useState<Record<string, string>>({})
@@ -25,6 +29,7 @@ export default function CycleClient({
   const [error, setError] = useState('')
   const [runningLow, setRunningLow] = useState<'idle' | 'saving' | 'done'>('idle')
   const didPreselect = useRef(false)
+  const [stopState, setStopState] = useState<'idle' | 'saving' | 'done'>('idle')
 
   async function answer(q: QuestionSpec, optionIndex: number) {
     const option = q.options[optionIndex]
@@ -54,6 +59,32 @@ export default function CycleClient({
     didPreselect.current = true
     const q = questions.find((x) => x.id === preselected.questionId)
     if (q) answer(q, preselected.optionIndex)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function stopEmails() {
+    setStopState('saving')
+    try {
+      const res = await fetch('/api/cycle/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      if (!res.ok) throw new Error()
+      setStopState('done')
+    } catch {
+      setStopState('idle')
+      setError('Something went wrong, please try again.')
+    }
+  }
+
+  // Links from the email footer
+  const didAction = useRef(false)
+  useEffect(() => {
+    if (didAction.current || !action) return
+    didAction.current = true
+    if (action === 'low') reportRunningLow()
+    // 'stop' asks for a confirmation click (see below), so scanners can't unsubscribe people
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -87,6 +118,40 @@ export default function CycleClient({
       </div>
 
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px 64px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {action === 'stop' && (
+          <div style={{ ...card, textAlign: 'center' }}>
+            {stopState === 'done' ? (
+              <>
+                <p style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>Done — no more weekly emails.</p>
+                <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>You will not receive further tips for this order.</p>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 12px' }}>Stop the weekly emails from {brandName}?</p>
+                <button
+                  onClick={stopEmails}
+                  disabled={stopState === 'saving'}
+                  style={{ padding: '10px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, background: '#0F172A', color: '#fff', border: 'none', cursor: 'pointer' }}
+                >
+                  {stopState === 'saving' ? 'Stopping…' : 'Yes, stop them'}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {action === 'low' && (
+          <div style={{ ...card, textAlign: 'center' }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>
+              {runningLow === 'done' ? 'Noted, thanks.' : 'Saving…'}
+            </p>
+            <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>We will remind you how to restock in your next email.</p>
+            {links?.refill?.url && (
+              <p style={{ margin: '12px 0 0' }}>
+                <a href={links.refill.url} style={{ color: violet, fontWeight: 700 }}>Reorder {links.refill.title} now →</a>
+              </p>
+            )}
+          </div>
+        )}
         {visible.map((q, qi) => {
           const chosen = answers[q.id]
           const reply = replies[q.id]
@@ -157,6 +222,22 @@ export default function CycleClient({
             <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: 1.6 }}>{tip.body}</p>
           </div>
         )}
+
+        {links?.recommendations?.length ? (
+          <div style={card}>
+            <p style={label}>To go further</p>
+            {links.recommendations.map((r) => (
+              <div key={r.productId} style={{ marginBottom: 12 }}>
+                {r.url ? (
+                  <a href={r.url} style={{ fontSize: 14, fontWeight: 700, color: violet }}>{r.title} →</a>
+                ) : (
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: 0 }}>{r.title}</p>
+                )}
+                <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0', lineHeight: 1.5 }}>{r.reason}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         {usageGuide?.items?.length ? (
           <div style={card}>
