@@ -1,7 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 import { getValidAccessToken } from '@/lib/shopify-token'
+
+// The consumption cycle runs an AI call after the response (see `after` below).
+export const maxDuration = 60
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -87,11 +90,14 @@ export async function POST(request: NextRequest) {
 
   const { data: installation } = await supabaseAdmin
     .from('shopify_installations')
-    .select('expert_id, routine_filters, currency')
+    .select('expert_id, routine_filters, currency, journey_mode')
     .eq('shop_domain', shop)
     .maybeSingle()
 
   console.log('[Webhook] installation found:', !!installation)
+
+  // Brand switch: 'routine' (default, existing flow) or 'cycle' (consumption cycle)
+  const journeyMode: 'routine' | 'cycle' = installation?.journey_mode === 'cycle' ? 'cycle' : 'routine'
 
   const merchantId = installation?.expert_id as string | undefined
 
@@ -143,6 +149,7 @@ export async function POST(request: NextRequest) {
       token,
       status: 'pending',
       merchant_id: merchantId || null,
+      journey_mode: journeyMode,
     }, { onConflict: 'shop_domain,shopify_order_id' })
 
   console.log('[Webhook] upsert error:', JSON.stringify(upsertError))
@@ -361,8 +368,9 @@ export async function POST(request: NextRequest) {
         hasName: !!emailCustomerName,
         items: emailLineItems.length,
         orderNumber: emailOrderNumber,
+        journeyMode,
       })
-      await sendFollowupEmail({
+      const sendClassicFollowup = () => sendFollowupEmail({
         to: buyerEmail,
         brandName: emailBrandName,
         followupUrl: `${appUrl}/order-followup/${token}`,
@@ -371,6 +379,23 @@ export async function POST(request: NextRequest) {
         orderNumber: emailOrderNumber,
         currency: order.currency ?? installation?.currency ?? null,
       })
+
+      if (journeyMode === 'cycle' && merchantId) {
+        // ── Consumption cycle ──────────────────────────────────────────────
+        // Runs after the response so Shopify gets its 200 immediately.
+        // If anything fails, the customer still gets the classic follow-up email.
+        after(async () => {
+          const { startCycleJourney } = await import('@/lib/cycle/start-journey')
+          const result = await startCycleJourney({ shop, order, merchantId, buyerEmail })
+          console.log('[Cycle] start result:', result)
+          if (!result.ok) {
+            console.warn('[Cycle] falling back to classic follow-up email:', result.reason)
+            try { await sendClassicFollowup() } catch (e) { console.error('[Cycle] fallback email error:', e) }
+          }
+        })
+      } else {
+        await sendClassicFollowup()
+      }
     } catch (emailErr) {
       console.error('Followup email error:', emailErr)
     }
