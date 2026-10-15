@@ -41,6 +41,8 @@ type ShopifyLineItem = {
 
 type ShopifyOrderPayload = {
   id: number | string
+  name?: string | null
+  order_number?: number | string | null
   customer_locale?: string | null
   customer?: { first_name?: string | null } | null
   line_items?: ShopifyLineItem[]
@@ -218,6 +220,7 @@ export async function startCycleJourney(params: {
     await sendCycleWelcomeEmail({
       to: buyerEmail,
       brandName,
+      orderNumber: order.name || (order.order_number != null ? `#${order.order_number}` : null),
       email: onboarding.welcomeEmail,
       usageGuide: onboarding.usageGuide,
       question: onboarding.goalQuestion,

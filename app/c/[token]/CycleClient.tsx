@@ -87,12 +87,17 @@ export default function CycleClient({
       </div>
 
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px 64px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {visible.map((q) => {
+        {visible.map((q, qi) => {
           const chosen = answers[q.id]
           const reply = replies[q.id]
           const isScale = q.type === 'scale'
           return (
             <div key={q.id} style={card}>
+              {qi > 0 && !chosen && (
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Optional · helps us remind you at the right time
+                </p>
+              )}
               <p style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: '0 0 14px', lineHeight: 1.4 }}>{q.question}</p>
               <div style={{ display: 'flex', flexDirection: isScale ? 'row' : 'column', gap: 8, flexWrap: 'wrap' }}>
                 {q.options.map((o, i) => {
@@ -124,6 +129,7 @@ export default function CycleClient({
               {saving === q.id && <p style={{ fontSize: 13, color: '#94A3B8', margin: '12px 0 0' }}>Saving…</p>}
               {reply && saving !== q.id && (
                 <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: '#059669', margin: '0 0 4px' }}>✓ Answer saved</p>
                   <p style={{ fontSize: 14, color: '#065F46', margin: 0, lineHeight: 1.55 }}>{reply}</p>
                 </div>
               )}
