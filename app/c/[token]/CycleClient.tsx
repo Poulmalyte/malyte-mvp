@@ -160,7 +160,7 @@ export default function CycleClient({
             <div key={q.id} style={card}>
               {qi > 0 && !chosen && (
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  Optional · helps us remind you at the right time
+                  {q.kind === 'frequency' ? 'Optional · helps us remind you at the right time' : 'Optional · one more quick question'}
                 </p>
               )}
               <p style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: '0 0 14px', lineHeight: 1.4 }}>{q.question}</p>
